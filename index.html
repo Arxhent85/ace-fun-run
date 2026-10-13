@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ACE FUN RUN - Browser Edition</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+    <!-- UI Overlay -->
+    <div id="ui-overlay">
+      <!-- Top Status Bar -->
+      <div class="top-bar">
+        <div class="top-left-group">
+          <div class="rank-badge" id="rank-display">1st</div>
+          <button class="hud-btn" id="fullscreen-btn" title="Vollbildmodus (F)">
+            <span class="hud-icon">⛶</span>
+            <span class="hud-text">Vollbild</span>
+          </button>
+        </div>
+
+        <!-- Progress Track -->
+        <div class="progress-container">
+          <div class="progress-track" id="progress-track">
+            <div class="progress-marker marker-player" id="marker-player" title="You"></div>
+            <div class="progress-marker marker-bot1" id="marker-bot1" title="Eagle"></div>
+            <div class="progress-marker marker-bot2" id="marker-bot2" title="Beaver"></div>
+            <div class="progress-marker marker-bot3" id="marker-bot3" title="Fox"></div>
+            <div class="finish-flag">🏁</div>
+          </div>
+        </div>
+
+        <div class="stats-badge" id="speed-display">0 km/h</div>
+      </div>
+
+      <!-- Bottom Action Bar -->
+      <div class="bottom-bar">
+        <!-- Powerup Use Button -->
+        <div class="control-btn powerup-slot" id="powerup-btn" title="Powerup nutzen">
+          <img src="assets/images/transparent.png" id="powerup-icon" class="powerup-img" alt="Powerup">
+          <span class="btn-label" id="powerup-label">[X]</span>
+        </div>
+
+        <!-- Jump Button -->
+        <div class="control-btn jump-slot" id="jump-btn" title="Springen">
+          <span class="btn-icon">⬆️</span>
+          <span class="btn-label">JUMP</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countdown Text -->
+    <div id="countdown-display">3</div>
+
+    <!-- Start / Title Screen -->
+    <div id="start-screen" class="modal-screen">
+      <h1 class="modal-title">ACE FUN RUN</h1>
+      <p style="margin-bottom: 20px; font-size: 18px; color: #ffeb3b; font-weight: bold;">
+        🌲 Sunset Valley - 4 Player Race 🌲
+      </p>
+      
+      <div class="menu-btn-group">
+        <button class="start-btn" id="start-btn">🏁 RACE STARTEN</button>
+        <button class="secondary-btn" id="menu-fullscreen-btn">⛶ VOLLBILD AN/AUS</button>
+      </div>
+
+      <div class="controls-hint">
+        <p>🎮 <strong>Steuerung PC:</strong> <span class="key-tag">LEERTASTE</span> / <span class="key-tag">⬆️</span> = Springen | <span class="key-tag">X</span> / <span class="key-tag">SHIFT</span> = Power-Up</p>
+        <p style="margin-top: 6px;">📱 <strong>Mobile & Tablet:</strong> Touch-Buttons oder rechte Bildschirmhälfte antippen</p>
+      </div>
+    </div>
+
+    <!-- Victory / Results Screen -->
+    <div id="results-screen" class="modal-screen hidden">
+      <div class="results-card">
+        <h2 class="modal-title" style="font-size: 34px; margin-bottom: 10px;" id="result-title">ZIEL ERREICHT!</h2>
+        <p id="result-subtitle" style="color: #aaa; margin-bottom: 15px;">Ergebnis der Runde:</p>
+        
+        <ul class="leaderboard-list" id="results-list">
+          <!-- Dynamically populated -->
+        </ul>
+
+        <button class="start-btn" id="restart-btn" style="padding: 12px 35px; font-size: 20px;">NOCHMAL SPIELEN</button>
+      </div>
+    </div>
+
+    <!-- Mobile Portrait Warning (only shows when phone is in portrait) -->
+    <div id="orientation-warning">
+      <div class="phone-rotate-icon">📱</div>
+      <h2>Bitte ins Querformat drehen</h2>
+      <p>Drehe dein Smartphone oder Tablet ins Querformat (Landscape) für das perfekte Spielerlebnis!</p>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
