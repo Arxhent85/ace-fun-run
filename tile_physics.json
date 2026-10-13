@@ -1,0 +1,937 @@
+{
+  "RSlide1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RSlide1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RSlide1-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RSlide1-4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RSlide2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RSlide2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RSlide2-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Slide1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Slide1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Slide1-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Slide1-4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Slide2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Slide2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Slide2-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Jump1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Jump2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stone1-1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stone1-1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stone2-1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stone2-1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stone3-1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stone3-1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stone4-1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stone4-1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "busk1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "busk2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "busk3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rbusk1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rbusk2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rbusk3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rveg1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rveg2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rveg3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rveg4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "veg1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "veg2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "veg3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "veg4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rtre1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rtre2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rtre3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rtre4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "tre1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "tre2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "tre3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "tre4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RStup1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RStup2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RStup3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RStup4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Stup1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Stup2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Stup3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Stup4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rstotte1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rstotte1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rstotte2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rstotte2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stotte1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stotte1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stotte1v2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stotte1v2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stotte2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stotte2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "candyStone1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "candyStone1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "candyStone2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "candyStone2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "candyStone3-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "candyStone3-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "candyStone4-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "candyStone4-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RcandyStone1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RcandyStone1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RcandyStone2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RcandyStone2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RcandyStone3-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RcandyStone3-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RcandyStone4-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RcandyStone4-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Av1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Av2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Av3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Av4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Bv1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Bv2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Bv3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Bv4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Bv6": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Bv5": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Cv1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Cv2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Cv3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Cv4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Dv1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Dv2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Dv3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Ev1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Ev2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Ev3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Fv1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0Fv2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Av1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Av2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Av3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Av4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Bv1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Bv2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Bv3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Bv4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Bv5": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Bv6": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Cv1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Cv2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Cv4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Cv3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Dv1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Dv2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Dv3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Ev1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Ev2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Ev3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Fv1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0Fv2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0stotte1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0stotte2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0stotte2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0stotte2-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0stotte3-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0stotte3-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0stotte3-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0stotte1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "0stotte1-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0stotte1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0stotte1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0stotte1-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0stotte2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0stotte2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0stotte2-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0stotte3-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0stotte3-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "R0stotte3-3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "veg5": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "veg6": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rveg5": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rveg6": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "tree1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "tree1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "tree2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "tree2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "tree3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rtree1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rtree1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rtree2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rtree2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rtree3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stottev1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stottev2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stottev3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "stottev4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rstottev1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rstottev2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rstottev4": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Rstottev3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "gele1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "gele2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "gele3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "is1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "is2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "is3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "slow1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "slow2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "slow3": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Br_0-0": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Br_0-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Br_1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Br_1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Br_2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Br_2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "Br_3-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RBr_0-0": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RBr_0-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RBr_1-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RBr_1-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RBr_2-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RBr_2-2": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  },
+  "RBr_3-1": {
+    "isDecor": true,
+    "isSensor": false,
+    "shapes": []
+  }
+}

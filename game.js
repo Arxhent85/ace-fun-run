@@ -1,9 +1,10 @@
 // ACE FUN RUN - Browser Edition Game Engine
-// Grounded in decompiled Solar2D/Corona Lua code from ACE FUN RUN.apk
+// Reverse-engineered Solar2D / Corona SDK Physics & Sprites from ACE FUN RUN.apk
 
 (async function () {
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
+  const gameContainer = document.getElementById('game-container');
 
   // DOM HUD Elements
   const rankDisplay = document.getElementById('rank-display');
@@ -102,16 +103,22 @@
     return img;
   }
 
-  // Preload essential graphics
+  // Preload graphics (Backgrounds & Tiles)
   loadImage('assets/images/map/background/forest/bkg_sundown.png');
   loadImage('assets/images/map/background/forest/bkg_mountains.png');
   loadImage('assets/images/map/background/forest/cloud1.png');
   loadImage('assets/images/map/element/forest/crate.png');
   loadImage('assets/images/map/element/forest/Goal.png');
-  loadImage('assets/images/game/avatar/bearBodySprite.png');
-  loadImage('assets/images/game/avatar/baldeagleBodySprite.png');
-  loadImage('assets/images/game/avatar/beaverBodySprite.png');
-  loadImage('assets/images/game/avatar/foxBodySprite.png');
+
+  // Preload All Avatar Body, Head, and Feet Sprites
+  const ANIMALS = ['bear', 'fox', 'beaver', 'baldeagle'];
+  for (const a of ANIMALS) {
+    loadImage(`assets/images/game/avatar/${a}BodySprite.png`);
+    loadImage(`assets/images/game/accessory/hat/${a}/${a}HeadSprite.png`);
+    loadImage(`assets/images/game/accessory/boots/${a}Feet.png`);
+  }
+
+  // Preload Powerup items
   loadImage('assets/images/game/powerup/blade/blade.png');
   loadImage('assets/images/game/powerup/trap/sprite.png');
   loadImage('assets/images/game/powerup/trap/icon.png');
@@ -120,16 +127,21 @@
   loadImage('assets/images/game/powerup/speed/icon.png');
   loadImage('assets/images/game/powerup/shield/icon.png');
 
-  // Load Map JSON
+  // Load Map & Avatar Sprites JSON
   let mapData = null;
+  let avatarSprites = null;
   try {
-    const resp = await fetch('sunset_valley.json');
-    mapData = await resp.json();
+    const [mResp, aResp] = await Promise.all([
+      fetch('sunset_valley.json'),
+      fetch('avatar_sprites.json')
+    ]);
+    mapData = await mResp.json();
+    avatarSprites = await aResp.json();
   } catch (err) {
-    console.error('Failed to load map data:', err);
+    console.error('Failed to load JSON data:', err);
   }
 
-  const GOAL_X = 23635; // Extracted Goal Position
+  const GOAL_X = 23635;
   const WORLD_WIDTH = mapData ? mapData.cols * TILE_W : 24720;
   const WORLD_HEIGHT = mapData ? mapData.rows * TILE_H : 900;
 
@@ -142,7 +154,7 @@
     { id: 5, name: 'Shield', icon: 'assets/images/game/powerup/shield/icon.png', sfx: 'shield_act' }
   ];
 
-  // Particle System (Blood & Boost effects)
+  // Particle System
   const particles = [];
   function spawnBlood(x, y, count = 25) {
     for (let i = 0; i < count; i++) {
@@ -172,11 +184,10 @@
     }
   }
 
-  // Active World Entities (Sawblades, Traps, Crates)
+  // Active World Entities
   let activePowerupItems = [];
   let crates = [];
 
-  // Parse Crates from Map Data
   if (mapData) {
     for (let r = 0; r < mapData.rows; r++) {
       for (let c = 0; c < mapData.cols; c++) {
@@ -197,25 +208,114 @@
     }
   }
 
-  // Character definitions
+  // Solid Tile Filter: Ignore decorative background trees, bushes, vegetation & structures
+  function isSolidTile(tname) {
+    if (!tname || tname === 'powerUp' || tname === 'Goal') return false;
+    if (tname.startsWith('veg') || tname.startsWith('Rveg') ||
+        tname.startsWith('tre') || tname.startsWith('Rtre') ||
+        tname.startsWith('busk') || tname.startsWith('Rbusk') ||
+        tname.startsWith('stone') || tname.startsWith('Rstone') ||
+        tname.startsWith('Stup') || tname.startsWith('RStup') ||
+        tname.startsWith('stotte') || tname.startsWith('Rstotte')) {
+      return false;
+    }
+    return true;
+  }
+
+  // Multi-Level Ground Height Query under player's feet
+  function getGroundUnder(worldX, currentFeetY) {
+    if (!mapData) return 350;
+    const col = Math.floor(worldX / TILE_W);
+    if (col < 0 || col >= mapData.cols) return WORLD_HEIGHT - 50;
+
+    const startRow = Math.max(0, Math.floor((currentFeetY - 20) / TILE_H));
+
+    for (let r = startRow; r < mapData.rows; r++) {
+      const cell = mapData.grid[r][col];
+      if (!cell || cell === 1) continue;
+
+      const tileIds = Array.isArray(cell) ? cell : [cell];
+      for (const tid of tileIds) {
+        const tname = mapData.tileNames[tid - 1];
+        if (!isSolidTile(tname)) continue;
+
+        const tileTop = r * TILE_H;
+        let surfaceY = tileTop;
+        const localX = Math.max(0, Math.min(1, (worldX % TILE_W) / TILE_W));
+
+        // Downhill slopes (R-prefix)
+        if (tname.startsWith('R1') || tname.startsWith('R2') || tname.startsWith('R3')) {
+          surfaceY = tileTop + localX * TILE_H;
+        }
+        // Uphill slopes
+        else if (tname.includes('1C') || tname.includes('1D') || tname.includes('1E') ||
+                 tname.includes('1F') || tname.includes('1G') || tname.includes('1H')) {
+          surfaceY = tileTop + (1 - localX) * TILE_H;
+        }
+
+        // Return first solid platform supporting the character's feet
+        if (surfaceY >= currentFeetY - 25) {
+          return surfaceY;
+        }
+      }
+    }
+
+    return WORLD_HEIGHT - 50;
+  }
+
+  function getTileInfoAt(worldX, worldY) {
+    if (!mapData) return {};
+    const col = Math.floor(worldX / TILE_W);
+    const row = Math.floor(worldY / TILE_H);
+    if (col < 0 || col >= mapData.cols || row < 0 || row >= mapData.rows) return {};
+
+    const cell = mapData.grid[row][col];
+    const tid = Array.isArray(cell) ? cell[0] : cell;
+    const tname = mapData.tileNames[tid - 1] || '';
+
+    return {
+      name: tname,
+      bounce: tname.includes('gele') || tname.includes('Jump'),
+      boost: tname.includes('is')
+    };
+  }
+
+  // Draw Avatar Layer from Sprite Sheet
+  function drawAvatarLayer(ctx, img, frames, frameIdx, originX, originY) {
+    if (!img || !img.complete || !frames || frames.length === 0) return;
+    const f = frames[frameIdx % frames.length];
+    const { texture, color } = f;
+    const dx = color.x - originX;
+    const dy = color.y - originY;
+    ctx.drawImage(img, texture.x, texture.y, texture.w, texture.h, dx, dy, color.w, color.h);
+  }
+
+  // Character definitions with Multi-Layer Avatar Sprites
   class Character {
-    constructor(id, name, isPlayer, spriteSrc, startX, startY) {
+    constructor(id, name, isPlayer, animal, startX, startY) {
       this.id = id;
       this.name = name;
       this.isPlayer = isPlayer;
-      this.sprite = loadImage(spriteSrc);
+      this.animal = animal;
+
+      this.bodyImg = loadImage(`assets/images/game/avatar/${animal}BodySprite.png`);
+      this.headImg = loadImage(`assets/images/game/accessory/hat/${animal}/${animal}HeadSprite.png`);
+      this.feetImg = loadImage(`assets/images/game/accessory/boots/${animal}Feet.png`);
+
       this.x = startX;
       this.y = startY;
       this.vx = 0;
       this.vy = 0;
       this.width = 44;
       this.height = 50;
-      this.onGround = false;
+      this.onGround = true;
+      this.coyoteTimer = 0.15;
+      this.jumpBuffer = 0;
       this.dead = false;
       this.deathTimer = 0;
       this.shield = false;
       this.speedBoostTimer = 0;
-      this.powerup = null; // currently held powerup
+      this.powerup = null;
       this.animFrame = 0;
       this.animTime = 0;
       this.finished = false;
@@ -225,11 +325,18 @@
     }
 
     jump() {
-      if (this.dead || !this.onGround) return false;
-      this.vy = JUMP_FORCE;
-      this.onGround = false;
-      if (this.isPlayer) sounds.play('jump');
-      return true;
+      if (this.dead) return false;
+      if (this.onGround || this.coyoteTimer > 0) {
+        this.vy = JUMP_FORCE;
+        this.onGround = false;
+        this.coyoteTimer = 0;
+        this.jumpBuffer = 0;
+        if (this.isPlayer) sounds.play('jump');
+        return true;
+      }
+      // Buffer jump for 180ms
+      this.jumpBuffer = 0.18;
+      return false;
     }
 
     usePowerUp(racers) {
@@ -241,7 +348,7 @@
         updatePowerupHUD(null);
       }
 
-      if (p.id === 1) { // Sawblade rolls forward along ground
+      if (p.id === 1) { // Sawblade
         activePowerupItems.push({
           type: 'blade',
           ownerId: this.id,
@@ -251,7 +358,7 @@
           vy: 0,
           life: 5.0
         });
-      } else if (p.id === 2) { // Bear Trap dropped behind
+      } else if (p.id === 2) { // Bear Trap
         activePowerupItems.push({
           type: 'trap',
           ownerId: this.id,
@@ -260,7 +367,7 @@
           active: true,
           life: 15.0
         });
-      } else if (p.id === 3) { // Lightning hits 1st place
+      } else if (p.id === 3) { // Lightning
         sounds.play('lightning_hit');
         const leader = racers.slice().sort((a, b) => b.x - a.x)[0];
         if (leader && leader.id !== this.id) {
@@ -298,80 +405,89 @@
         return;
       }
 
-      // Speed calculation
+      // Check jump buffer
+      if (this.jumpBuffer > 0) {
+        this.jumpBuffer -= dt;
+        if (this.onGround) {
+          this.jump();
+          this.jumpBuffer = 0;
+        }
+      }
+      if (this.coyoteTimer > 0) {
+        this.coyoteTimer -= dt;
+      }
+
+      // Horizontal acceleration
       let targetSpeed = DEFAULT_TOP_SPEED;
       if (this.speedBoostTimer > 0) {
         this.speedBoostTimer -= dt;
-        targetSpeed = 620;
-        spawnSpeedPuff(this.x, this.y);
+        targetSpeed *= 1.5;
+        if (this.isPlayer) spawnSpeedPuff(this.x, this.y);
       }
 
-      // Acceleration
       if (this.vx < targetSpeed) {
-        this.vx = Math.min(targetSpeed, this.vx + ACCELERATE_X * dt);
+        this.vx = Math.min(targetSpeed, this.vx + ACCELERATE_X * dt * 2.5);
       } else if (this.vx > targetSpeed) {
         this.vx = Math.max(targetSpeed, this.vx - ACCELERATE_X * dt);
       }
 
       // Gravity
       this.vy += GRAVITY * dt;
+      if (this.vy > 900) this.vy = 900;
 
-      // Integrate
+      // Position update
       this.x += this.vx * dt;
       this.y += this.vy * dt;
 
-      // Bot AI Decision Making
-      if (!this.isPlayer && !this.finished) {
+      // Bot AI
+      if (!this.isPlayer) {
         this.botAI(dt, racers);
       }
 
-      // World Ground & Tile Collision
+      // Collision Resolution
       this.checkCollisions();
 
-      // Check Crates
-      if (!this.powerup) {
-        for (const c of crates) {
-          if (!c.collected && Math.hypot(this.x - c.x, this.y - c.y) < 40) {
-            c.collected = true;
-            c.respawnTimer = 10.0;
-            const chosen = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
-            this.powerup = chosen;
+      // Collect Crates
+      for (const c of crates) {
+        if (!c.collected && Math.hypot(this.x - c.x, this.y - c.y) < 40) {
+          c.collected = true;
+          c.respawnTimer = 6.0;
+          if (!this.powerup) {
+            this.powerup = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
             if (this.isPlayer) {
               sounds.play('pickup');
-              updatePowerupHUD(chosen);
+              updatePowerupHUD(this.powerup);
             }
-            break;
           }
         }
       }
 
-      // Check Finish Line
+      // Finish Line Detection
       if (!this.finished && this.x >= GOAL_X) {
         this.finished = true;
         this.finishTime = performance.now();
         if (this.isPlayer) {
           sounds.play('coins');
-          showResults(racers);
+          setTimeout(() => showResults(racers), 1000);
         }
       }
 
-      // Animation
+      // Animation Cycle
       if (this.onGround) {
-        this.animTime += dt * (this.vx / 80);
-        this.animFrame = Math.floor(this.animTime) % 6;
+        this.animTime += dt * (this.vx / 45);
+        this.animFrame = Math.floor(this.animTime) % 7;
       } else {
-        this.animFrame = 3; // jump frame
+        this.animFrame = 3; // jump tuck frame
       }
     }
 
     botAI(dt, racers) {
       this.botJumpCooldown -= dt;
-      // Raycast / lookahead for gaps or obstacles
       const aheadX = this.x + 90;
-      const groundAhead = getGroundYAt(aheadX);
-      const groundCurrent = getGroundYAt(this.x);
+      const currentFeetY = this.y + this.height / 2;
+      const groundAhead = getGroundUnder(aheadX, currentFeetY);
+      const groundCurrent = getGroundUnder(this.x, currentFeetY);
 
-      // Jump if obstacle ahead (ground rises sharply) or approaching a pit/drop
       if (this.botJumpCooldown <= 0 && this.onGround) {
         if (groundAhead < groundCurrent - 25 || groundAhead > groundCurrent + 100) {
           this.jump();
@@ -379,60 +495,56 @@
         }
       }
 
-      // Use powerups smartly
       if (this.powerup && Math.random() < 0.02) {
         this.usePowerUp(racers);
       }
     }
 
     checkCollisions() {
-      // Find ground Y under character
-      const groundY = getGroundYAt(this.x);
-      const playerBottom = this.y + this.height / 2;
+      const currentFeetY = this.y + this.height / 2;
+      const groundY = getGroundUnder(this.x, currentFeetY);
 
-      // Check for jelly trampoline or boost pad underfoot
-      const tileInfo = getTileInfoAt(this.x, playerBottom);
-      if (tileInfo.bounce) {
+      // Trampoline & Boost Pads
+      const tileInfo = getTileInfoAt(this.x, currentFeetY);
+      if (tileInfo.bounce && currentFeetY >= groundY - 15) {
         this.vy = -780;
         this.onGround = false;
+        this.coyoteTimer = 0;
         sounds.play('bounce');
         return;
       }
       if (tileInfo.boost) {
-        this.vx = 650;
+        this.vx = 600;
       }
 
-      if (playerBottom >= groundY && this.vy >= 0) {
+      // Ground Landing
+      if (currentFeetY >= groundY - 14 && this.vy >= -50) {
         this.y = groundY - this.height / 2;
         this.vy = 0;
         this.onGround = true;
+        this.coyoteTimer = 0.15;
       } else {
         this.onGround = false;
       }
 
-      // Fall off map check
-      if (this.y > WORLD_HEIGHT + 100) {
+      // Pit Fall Check
+      if (this.y > WORLD_HEIGHT + 150) {
         this.hit('pit');
-        this.y = groundY - 100;
+        this.y = 350 - this.height / 2;
+        this.vy = 0;
       }
     }
 
     draw(ctx, cameraX, cameraY) {
-      if (this.dead) return; // Ghost / dead invisible while respawning
+      if (this.dead) return;
 
       const renderX = this.x - cameraX;
       const renderY = this.y - cameraY;
 
-      // Draw Bear / Avatar Sprite
-      const spriteW = 66;
-      const spriteH = 70;
-      const sx = 2;
-      const sy = 2 + (this.animFrame % 3) * 72; // frame strip lookup
-
       ctx.save();
       ctx.translate(renderX, renderY);
 
-      // Draw Shield Aura if active
+      // Shield Aura
       if (this.shield) {
         ctx.strokeStyle = '#00ffff';
         ctx.lineWidth = 3;
@@ -441,75 +553,43 @@
         ctx.stroke();
       }
 
-      // Draw Character Body
-      if (this.sprite.complete && this.sprite.naturalWidth > 0) {
-        ctx.drawImage(this.sprite, sx, sy, spriteW, spriteH, -spriteW / 2, -spriteH / 2, spriteW, spriteH);
+      const anim = avatarSprites && avatarSprites[this.animal];
+      if (anim) {
+        const frameIdx = this.onGround ? (this.animFrame % 7) : 3;
+        const scale = 0.42;
+        ctx.scale(scale, scale);
+
+        // Center origin within Corona sprite canvas
+        const originX = 100;
+        const originY = 190;
+
+        // 1. Draw Feet (bottom running layer)
+        drawAvatarLayer(ctx, this.feetImg, anim.Feet, frameIdx, originX, originY);
+        // 2. Draw Body (middle torso layer)
+        drawAvatarLayer(ctx, this.bodyImg, anim.BodySprite, frameIdx, originX, originY);
+        // 3. Draw Head (top face & ears layer)
+        drawAvatarLayer(ctx, this.headImg, anim.HeadSprite, frameIdx, originX, originY);
       } else {
-        // Fallback procedural avatar
+        // Fallback procedural circle
         ctx.fillStyle = this.isPlayer ? '#ff9900' : '#4488ff';
         ctx.beginPath();
         ctx.arc(0, 0, 22, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
       }
 
-      // Draw Player Name Tag
+      ctx.restore();
+
+      // Player Name Tag above head
+      ctx.save();
+      ctx.translate(renderX, renderY);
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 12px sans-serif';
+      ctx.font = 'bold 13px sans-serif';
       ctx.textAlign = 'center';
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 4;
-      ctx.fillText(this.name, 0, -32);
-
+      ctx.fillText(this.name, 0, -42);
       ctx.restore();
     }
-  }
-
-  // Terrain Query Engine using parsed tiles
-  function getGroundYAt(worldX) {
-    if (!mapData) return 450;
-    const col = Math.floor(worldX / TILE_W);
-    if (col < 0 || col >= mapData.cols) return WORLD_HEIGHT - 50;
-
-    // Scan from bottom row upward to find top ground tile
-    for (let r = 0; r < mapData.rows; r++) {
-      const cell = mapData.grid[r][col];
-      const tid = Array.isArray(cell) ? cell[0] : cell;
-      if (tid && tid !== 1) { // 1 is empty air
-        const tname = mapData.tileNames[tid - 1];
-        const tileTop = r * TILE_H;
-
-        // Check for slopes
-        if (tname && (tname.includes('1C1') || tname.includes('1D1') || tname.includes('1E1'))) {
-          const localX = (worldX % TILE_W) / TILE_W;
-          return tileTop + (1 - localX) * TILE_H;
-        } else if (tname && tname.startsWith('R1C1')) {
-          const localX = (worldX % TILE_W) / TILE_W;
-          return tileTop + localX * TILE_H;
-        }
-        return tileTop;
-      }
-    }
-    return WORLD_HEIGHT - 50;
-  }
-
-  function getTileInfoAt(worldX, worldY) {
-    if (!mapData) return {};
-    const col = Math.floor(worldX / TILE_W);
-    const row = Math.floor(worldY / TILE_H);
-    if (col < 0 || col >= mapData.cols || row < 0 || row >= mapData.rows) return {};
-
-    const cell = mapData.grid[row][col];
-    const tid = Array.isArray(cell) ? cell[0] : cell;
-    const tname = mapData.tileNames[tid - 1] || '';
-
-    return {
-      name: tname,
-      bounce: tname.includes('gele') || tname.includes('Jump'),
-      boost: tname.includes('is')
-    };
   }
 
   function updatePowerupHUD(powerup) {
@@ -524,21 +604,20 @@
     }
   }
 
-  // 4 Racers
+  // 4 Racers initialized directly on the grass running track (y = 325, feet at 350)
   let racers = [
-    new Character(1, 'You (Bear)', true, 'assets/images/game/avatar/bearBodySprite.png', 120, 300),
-    new Character(2, 'Eagle (Bot)', false, 'assets/images/game/avatar/baldeagleBodySprite.png', 80, 300),
-    new Character(3, 'Beaver (Bot)', false, 'assets/images/game/avatar/beaverBodySprite.png', 50, 300),
-    new Character(4, 'Fox (Bot)', false, 'assets/images/game/avatar/foxBodySprite.png', 20, 300)
+    new Character(1, 'You (Bear)', true, 'bear', 140, 325),
+    new Character(2, 'Eagle (Bot)', false, 'baldeagle', 100, 325),
+    new Character(3, 'Beaver (Bot)', false, 'beaver', 60, 325),
+    new Character(4, 'Fox (Bot)', false, 'fox', 20, 325)
   ];
 
-  const player = racers[0];
+  let player = racers[0];
 
   // Game States: 'lobby', 'countdown', 'racing', 'ended'
   let gameState = 'lobby';
   let countdownTimer = 3.0;
 
-  // Camera coordinates
   let cameraX = 0;
   let cameraY = 0;
 
@@ -582,58 +661,71 @@
   if (fullscreenBtn) fullscreenBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
   if (menuFullscreenBtn) menuFullscreenBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
 
+  // Input Dispatchers
+  function doJump() {
+    sounds.init();
+    if (gameState !== 'racing') return;
+    player.jump();
+    jumpBtn.classList.add('active');
+    setTimeout(() => jumpBtn.classList.remove('active'), 120);
+  }
+
+  function doPowerup() {
+    sounds.init();
+    if (gameState !== 'racing') return;
+    player.usePowerUp(racers);
+    powerupBtn.classList.add('active');
+    setTimeout(() => powerupBtn.classList.remove('active'), 120);
+  }
+
   // Keyboard Listeners
   window.addEventListener('keydown', (e) => {
     sounds.init();
-    if (e.code === 'Space' || e.code === 'ArrowUp') {
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
       e.preventDefault();
-      player.jump();
-      jumpBtn.classList.add('active');
-    } else if (e.code === 'KeyX' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+      doJump();
+    } else if (e.code === 'KeyX' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyE') {
       e.preventDefault();
-      player.usePowerUp(racers);
-      powerupBtn.classList.add('active');
+      doPowerup();
     } else if (e.code === 'KeyF') {
       toggleFullscreen();
     }
   });
 
-  window.addEventListener('keyup', (e) => {
-    if (e.code === 'Space' || e.code === 'ArrowUp') jumpBtn.classList.remove('active');
-    if (e.code === 'KeyX' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') powerupBtn.classList.remove('active');
-  });
-
   // Touch & Pointer UI Listeners
   jumpBtn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    sounds.init();
-    player.jump();
-    jumpBtn.classList.add('active');
+    e.stopPropagation();
+    doJump();
   });
-  jumpBtn.addEventListener('pointerup', () => jumpBtn.classList.remove('active'));
+  jumpBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    doJump();
+  }, { passive: false });
 
   powerupBtn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    sounds.init();
-    player.usePowerUp(racers);
-    powerupBtn.classList.add('active');
+    e.stopPropagation();
+    doPowerup();
   });
-  powerupBtn.addEventListener('pointerup', () => powerupBtn.classList.remove('active'));
+  powerupBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    doPowerup();
+  }, { passive: false });
 
-  // Mobile / Tablet Canvas Direct Tap Support (Right side = Jump, Left side = Powerup)
-  canvas.addEventListener('pointerdown', (e) => {
+  // Full Screen Tap: Tap right half to jump, tap left half for power-up
+  gameContainer.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.top-bar') || e.target.closest('.modal-screen') || e.target.closest('.control-btn')) return;
     sounds.init();
     if (gameState !== 'racing') return;
-    const rect = canvas.getBoundingClientRect();
+    const rect = gameContainer.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     if (clickX > rect.width * 0.45) {
-      player.jump();
-      jumpBtn.classList.add('active');
-      setTimeout(() => jumpBtn.classList.remove('active'), 120);
+      doJump();
     } else {
-      player.usePowerUp(racers);
-      powerupBtn.classList.add('active');
-      setTimeout(() => powerupBtn.classList.remove('active'), 120);
+      doPowerup();
     }
   });
 
@@ -652,11 +744,12 @@
 
   function resetRace() {
     racers = [
-      new Character(1, 'You (Bear)', true, 'assets/images/game/avatar/bearBodySprite.png', 120, 300),
-      new Character(2, 'Eagle (Bot)', false, 'assets/images/game/avatar/baldeagleBodySprite.png', 80, 300),
-      new Character(3, 'Beaver (Bot)', false, 'assets/images/game/avatar/beaverBodySprite.png', 50, 300),
-      new Character(4, 'Fox (Bot)', false, 'assets/images/game/avatar/foxBodySprite.png', 20, 300)
+      new Character(1, 'You (Bear)', true, 'bear', 140, 325),
+      new Character(2, 'Eagle (Bot)', false, 'baldeagle', 100, 325),
+      new Character(3, 'Beaver (Bot)', false, 'beaver', 60, 325),
+      new Character(4, 'Fox (Bot)', false, 'fox', 20, 325)
     ];
+    player = racers[0];
     activePowerupItems = [];
     particles.length = 0;
     crates.forEach(c => c.collected = false);
@@ -734,9 +827,8 @@
 
       if (item.type === 'blade') {
         item.x += item.vx * dt;
-        item.y = getGroundYAt(item.x) - 15;
+        item.y = getGroundUnder(item.x, item.y) - 15;
 
-        // Check collision with runners
         for (const r of racers) {
           if (r.id !== item.ownerId && !r.dead && Math.hypot(r.x - item.x, r.y - item.y) < 35) {
             sounds.play('blade_hit');
@@ -744,7 +836,7 @@
           }
         }
       } else if (item.type === 'trap') {
-        item.y = getGroundYAt(item.x) - 10;
+        item.y = getGroundUnder(item.x, item.y) - 10;
         for (const r of racers) {
           if (!r.dead && Math.hypot(r.x - item.x, r.y - item.y) < 30) {
             sounds.play('trap_hit');
@@ -854,7 +946,6 @@
               }
               ctx.restore();
             } else {
-              // Procedural tile fallback
               ctx.fillStyle = '#4a7c28';
               ctx.fillRect(tx, ty, TILE_W, TILE_H);
             }
@@ -911,7 +1002,7 @@
     // 6. Render Finish Line Flag
     const goalImg = images['assets/images/map/element/forest/Goal.png'];
     const gx = GOAL_X - cameraX;
-    const gy = getGroundYAt(GOAL_X) - cameraY - 140;
+    const gy = getGroundUnder(GOAL_X, 350) - cameraY - 140;
     if (gx > -100 && gx < canvas.width + 100) {
       if (goalImg && goalImg.complete) {
         ctx.drawImage(goalImg, gx, gy, 120, 160);
@@ -923,12 +1014,12 @@
       }
     }
 
-    // 7. Render Racers
+    // 7. Render Racers (All 4 with full multi-layer sprites)
     for (const r of racers) {
       r.draw(ctx, cameraX, cameraY);
     }
 
-    // 8. Render Blood and Boost Particles
+    // 8. Render Particles
     for (const p of particles) {
       ctx.fillStyle = p.color;
       ctx.beginPath();
