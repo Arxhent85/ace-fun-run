@@ -184,16 +184,19 @@
     loadImage(`assets/images/game/accessory/boots/${a}Feet.png`);
   }
 
-  // Load Map & Avatar Sprites JSON
+  // Load Map, Avatar Sprites & Box2D Tile Shapes JSON
   let mapData = null;
   let avatarSprites = null;
+  let tileShapes = null;
   try {
-    const [mResp, aResp] = await Promise.all([
+    const [mResp, aResp, sResp] = await Promise.all([
       fetch('sunset_valley.json'),
-      fetch('avatar_sprites.json')
+      fetch('avatar_sprites.json'),
+      fetch('tile_shapes.json')
     ]);
     mapData = await mResp.json();
     avatarSprites = await aResp.json();
+    tileShapes = await sResp.json();
   } catch (err) {
     console.error('Failed to load JSON data:', err);
   }
@@ -298,98 +301,86 @@
     if (tname.startsWith('veg') || tname.startsWith('Rveg') ||
         tname.startsWith('tre') || tname.startsWith('Rtre') ||
         tname.startsWith('busk') || tname.startsWith('Rbusk') ||
-        tname.startsWith('stone') || tname.startsWith('Rstone') ||
-        tname.startsWith('Stup') || tname.startsWith('RStup') ||
-        tname.startsWith('stotte') || tname.startsWith('Rstotte')) {
+        tname.startsWith('stone') || tname.startsWith('Rstone')) {
       return false;
     }
     return true;
   }
 
-  // Accurate Ground Surface Height Query under runner's feet
-  function getGroundUnder(worldX, currentFeetY) {
-    if (!mapData) return 350;
+  // Exact Box2D Polygon Surface Calculation from APK fixtures
+  function getSurfaceYFromPolygon(poly, localX80) {
+    let minY = null;
+    const numPts = poly.length / 2;
+    for (let i = 0; i < numPts; i++) {
+      const x1 = poly[i * 2];
+      const y1 = poly[i * 2 + 1];
+      const nextIdx = (i + 1) % numPts;
+      const x2 = poly[nextIdx * 2];
+      const y2 = poly[nextIdx * 2 + 1];
+
+      const minX = Math.min(x1, x2);
+      const maxX = Math.max(x1, x2);
+
+      if (localX80 >= minX - 0.001 && localX80 <= maxX + 0.001 && Math.abs(x2 - x1) > 0.001) {
+        const t = (localX80 - x1) / (x2 - x1);
+        const y = y1 + t * (y2 - y1);
+        if (minY === null || y < minY) minY = y;
+      }
+    }
+    return minY;
+  }
+
+  function getSurfacesAt(worldX) {
+    if (!mapData || !tileShapes) return [350];
     const col = Math.floor(worldX / TILE_W);
-    if (col < 0 || col >= mapData.cols) return null;
+    const localX80 = (worldX % TILE_W) - 40;
+    if (col < 0 || col >= mapData.cols) return [];
 
-    const localX = Math.max(0, Math.min(1, (worldX - col * TILE_W) / TILE_W));
-
-    // Search from top row to bottom row
+    const surfaces = [];
     for (let r = 0; r < mapData.rows; r++) {
       const cell = mapData.grid[r][col];
       if (!cell || cell === 1) continue;
-
       const tileIds = Array.isArray(cell) ? cell : [cell];
       for (const tid of tileIds) {
-        const tname = mapData.tileNames[tid - 1];
+        let tname = mapData.tileNames[tid - 1];
         if (!isSolidTile(tname)) continue;
+        if (tname === '1Av') tname = '1Av1';
 
-        const tileTop = r * TILE_H;
-        let surfaceY = tileTop;
-
-        // Slopes - Downhill (R-prefix)
-        if (tname === 'R1C1-1') surfaceY = tileTop + 37 + localX * 13;
-        else if (tname === 'R1C1-2') surfaceY = tileTop + 25 + localX * 12;
-        else if (tname === 'R1C1-3') surfaceY = tileTop + 13 + localX * 12;
-        else if (tname === 'R1C1-4') surfaceY = tileTop + 0 + localX * 13;
-        else if (tname === 'R1D1-1') surfaceY = tileTop + 25 + localX * 25;
-        else if (tname === 'R1D1-2') surfaceY = tileTop + 0 + localX * 25;
-        else if (tname.startsWith('R1') || tname.startsWith('R2') || tname.startsWith('R3')) {
-          surfaceY = tileTop + localX * TILE_H;
-        }
-        // Slopes - Uphill
-        else if (tname === '1C1-1') surfaceY = tileTop + 50 - localX * 13;
-        else if (tname === '1C1-2') surfaceY = tileTop + 37 - localX * 12;
-        else if (tname === '1C1-3') surfaceY = tileTop + 25 - localX * 12;
-        else if (tname === '1C1-4') surfaceY = tileTop + 13 - localX * 13;
-        else if (tname === '1D1-1') surfaceY = tileTop + 50 - localX * 25;
-        else if (tname === '1D1-2') surfaceY = tileTop + 25 - localX * 25;
-        else if (tname.includes('1C') || tname.includes('1D') || tname.includes('1E') ||
-                 tname.includes('1F') || tname.includes('1G') || tname.includes('1H')) {
-          surfaceY = tileTop + (1 - localX) * TILE_H;
-        }
-
-        // Return first solid surface supporting feet
-        if (surfaceY >= currentFeetY - 18) {
-          return surfaceY;
-        }
-      }
-    }
-
-    return null; // Free fall / abyss
-  }
-
-  // Horizontal Obstacle Check (Prevents walking through vertical walls & blocks)
-  function checkHorizontalObstacle(x, y, dx) {
-    if (!mapData || dx <= 0) return x + dx;
-    const targetX = x + dx;
-    const frontEdge = targetX + 16;
-    const col = Math.floor(frontEdge / TILE_W);
-    if (col < 0 || col >= mapData.cols) return targetX;
-
-    const feetY = y;
-    // Check rows spanning torso to chest
-    const startRow = Math.max(0, Math.floor((y - 32) / TILE_H));
-    const endRow = Math.min(mapData.rows - 1, Math.floor((y - 8) / TILE_H));
-
-    for (let r = startRow; r <= endRow; r++) {
-      const cell = mapData.grid[r][col];
-      if (!cell || cell === 1) continue;
-      const tileIds = Array.isArray(cell) ? cell : [cell];
-      for (const tid of tileIds) {
-        const tname = mapData.tileNames[tid - 1];
-        if (isSolidTile(tname)) {
-          // If flat block or steep step higher than feet step-up tolerance (14px)
-          const tileTop = r * TILE_H;
-          if (tileTop < feetY - 14) {
-            // Blocked by vertical wall face! Clamp to edge
-            return col * TILE_W - 17;
+        const polys = tileShapes[tname] || (tname.startsWith('R') ? tileShapes[tname.slice(1)] : null);
+        if (!polys) continue;
+        const tileCenterY = r * TILE_H + 25;
+        for (const poly of polys) {
+          let testPoly = poly;
+          if (tname.startsWith('R') && !tileShapes[tname]) {
+            testPoly = [];
+            for (let i = 0; i < poly.length; i += 2) testPoly.push(-poly[i], poly[i + 1]);
+          }
+          const py = getSurfaceYFromPolygon(testPoly, localX80);
+          if (py !== null) {
+            surfaces.push(tileCenterY + py);
           }
         }
       }
     }
+    return surfaces.sort((a, b) => a - b);
+  }
 
-    return targetX;
+  // Authentic terrain height supporting runner's feet
+  function getGroundUnder(worldX, currentFeetY = 350) {
+    const surfs = getSurfacesAt(worldX);
+    if (surfs.length === 0) return 350;
+
+    // Find topmost surface within step-up reach (up to 28px higher)
+    let best = null;
+    for (const s of surfs) {
+      if (s >= currentFeetY - 28) {
+        if (best === null || s < best) {
+          best = s;
+        }
+      }
+    }
+    if (best !== null) return best;
+    return surfs[0];
   }
 
   function getTileInfoAt(worldX, worldY) {
@@ -617,33 +608,58 @@
       this.vy += GRAVITY * dt;
       if (this.vy > 950) this.vy = 950;
 
-      // 1. Horizontal Move with Obstacle Collision (Cannot walk through walls)
-      const desiredX = this.x + this.vx * dt;
-      const allowedX = checkHorizontalObstacle(this.x, this.y, this.vx * dt);
-      if (allowedX < desiredX) {
-        this.x = allowedX;
-        this.vx = 0; // Stopped by wall!
-      } else {
-        this.x = desiredX;
-      }
-
-      // 2. Vertical Move
-      this.y += this.vy * dt;
-
       // Bot AI
       if (!this.isPlayer) {
         this.botAI(dt, racers);
       }
 
-      // Ground Collision Resolution
-      this.checkCollisions();
+      // Next Target Position
+      const targetX = this.x + this.vx * dt;
+      const targetGround = getGroundUnder(targetX, this.y);
+
+      if (this.onGround) {
+        if (targetGround !== null && targetGround <= this.y + 24) {
+          // Smoothly follow terrain slope (uphill, flat, or gentle downhill)
+          this.x = targetX;
+          this.y = targetGround;
+          this.vy = 0;
+          this.safeX = this.x;
+          this.safeY = this.y;
+        } else {
+          // Drop-off or cliff into air
+          this.x = targetX;
+          this.onGround = false;
+          this.vy = 0;
+        }
+      } else {
+        // In the air
+        this.x = targetX;
+        this.y += this.vy * dt;
+
+        // Ground landing check
+        const groundY = getGroundUnder(this.x, this.y);
+        if (groundY !== null && this.y >= groundY - 12 && this.vy >= 0) {
+          this.y = groundY;
+          this.vy = 0;
+          this.onGround = true;
+          this.coyoteTimer = 0.15;
+          this.safeX = this.x;
+          this.safeY = this.y;
+        }
+      }
+
+      // Pit Fall Check (Below bottom track level)
+      if (this.y > 850) {
+        this.hit('pit');
+        return;
+      }
 
       // Collect Crates
       for (const c of crates) {
-        if (!c.collected && Math.hypot(this.x - c.x, (this.y - 18) - c.y) < 38) {
+        if (!c.collected && Math.hypot(this.x - c.x, (this.y - 25) - c.y) < 48) {
           c.collected = true;
           c.respawnTimer = 6.0;
-          spawnSparks(c.x, c.y, 16);
+          spawnSparks(c.x, c.y, 20);
           if (!this.powerup && this.rouletteTimer <= 0) {
             this.rouletteTimer = 0.8;
             this.rouletteTick = 0.05;
@@ -677,61 +693,23 @@
 
     botAI(dt, racers) {
       this.botJumpCooldown -= dt;
-      const aheadX = this.x + 75;
+      const aheadX = this.x + 80;
       const currentGround = getGroundUnder(this.x, this.y);
       const groundAhead = getGroundUnder(aheadX, this.y);
 
-      // Check if wall obstacle or drop-off ahead
-      const wallAhead = checkHorizontalObstacle(this.x, this.y, 60) < (this.x + 55);
+      // Check if step-up or cliff ahead
+      const stepAhead = groundAhead !== null && currentGround !== null && groundAhead < currentGround - 20;
+      const dropAhead = groundAhead !== null && currentGround !== null && groundAhead > currentGround + 80;
 
       if (this.botJumpCooldown <= 0 && this.onGround) {
-        if (wallAhead || groundAhead === null || (groundAhead && currentGround && groundAhead < currentGround - 22)) {
+        if (stepAhead || dropAhead || Math.random() < 0.015) {
           this.jump();
-          this.botJumpCooldown = Math.random() * 0.5 + 0.6;
+          this.botJumpCooldown = Math.random() * 0.7 + 0.8;
         }
       }
 
-      if (this.powerup && Math.random() < 0.025) {
+      if (this.powerup && Math.random() < 0.03) {
         this.usePowerUp(racers);
-      }
-    }
-
-    checkCollisions() {
-      const groundY = getGroundUnder(this.x, this.y);
-
-      // Pit Fall Check (Below bottom track level)
-      if (this.y > 780 || (groundY === null && this.y > 650 && this.vy > 400)) {
-        this.hit('pit');
-        return;
-      }
-
-      if (groundY !== null) {
-        // Trampoline / Bounce Pads
-        const tileInfo = getTileInfoAt(this.x, this.y);
-        if (tileInfo.bounce && this.y >= groundY - 14) {
-          this.vy = -790;
-          this.onGround = false;
-          this.coyoteTimer = 0;
-          sounds.play('bounce');
-          return;
-        }
-        if (tileInfo.boost) {
-          this.vx = 580;
-        }
-
-        // Landing directly ON the grass surface (feet at ground level)
-        if (this.y >= groundY - 12 && this.vy >= -50) {
-          this.y = groundY;
-          this.vy = 0;
-          this.onGround = true;
-          this.coyoteTimer = 0.15;
-          this.safeX = this.x;
-          this.safeY = this.y;
-        } else {
-          this.onGround = false;
-        }
-      } else {
-        this.onGround = false;
       }
     }
 
@@ -1358,18 +1336,18 @@
       if (c.collected) continue;
       const cx = c.x - cameraX;
       const cy = c.y - cameraY + Math.sin(time * 0.005 + c.x) * 4;
-      if (cx > -50 && cx < canvas.width + 50) {
-        // Golden halo
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.22)';
+      if (cx > -80 && cx < canvas.width + 80) {
+        // Golden glowing halo
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.28)';
         ctx.beginPath();
-        ctx.arc(cx, cy, 24, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 30, 0, Math.PI * 2);
         ctx.fill();
 
-        if (crateImg && crateImg.complete) {
-          ctx.drawImage(crateImg, cx - 22, cy - 22, 44, 44);
+        if (crateImg && crateImg.complete && crateImg.naturalWidth > 0) {
+          ctx.drawImage(crateImg, cx - 36, cy - 23, 72, 46);
         } else {
           ctx.fillStyle = '#ffbb00';
-          ctx.fillRect(cx - 18, cy - 18, 36, 36);
+          ctx.fillRect(cx - 25, cy - 18, 50, 36);
         }
       }
     }
