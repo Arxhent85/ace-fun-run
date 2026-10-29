@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 
 const PORT = 8080;
-const BASE_DIR = path.resolve('.');
+const BASE_DIR = import.meta.dir;
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',

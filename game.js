@@ -57,6 +57,24 @@
   const markerBot3 = document.getElementById('marker-bot3');
   const fullscreenBtn = document.getElementById('fullscreen-btn');
 
+  // Enforce Clean Initial Screen Visibility
+  if (resultsScreen) {
+    resultsScreen.style.display = 'none';
+    resultsScreen.classList.add('hidden');
+  }
+  if (uiOverlay) {
+    uiOverlay.style.display = 'none';
+    uiOverlay.classList.add('hidden');
+  }
+  if (modeSelectScreen) {
+    modeSelectScreen.style.display = 'none';
+    modeSelectScreen.classList.add('hidden');
+  }
+  if (mainMenuScreen) {
+    mainMenuScreen.style.display = 'flex';
+    mainMenuScreen.classList.remove('hidden');
+  }
+
   // Game Constants from Solar2D player.lu & gamePlay.lu
   const TILE_W = 80;
   const TILE_H = 50;
@@ -878,22 +896,31 @@
   mainPlayBtn.addEventListener('click', () => {
     sounds.init();
     sounds.play('jump');
+    mainMenuScreen.style.display = 'none';
     mainMenuScreen.classList.add('hidden');
+    modeSelectScreen.style.display = 'flex';
     modeSelectScreen.classList.remove('hidden');
     gameState = 'mode_select';
   });
 
   modeHomeBtn.addEventListener('click', () => {
     sounds.play('jump');
+    modeSelectScreen.style.display = 'none';
     modeSelectScreen.classList.add('hidden');
+    mainMenuScreen.style.display = 'flex';
     mainMenuScreen.classList.remove('hidden');
     gameState = 'main_menu';
   });
 
   function startRaceFlow() {
     sounds.init();
+    mainMenuScreen.style.display = 'none';
     mainMenuScreen.classList.add('hidden');
+    modeSelectScreen.style.display = 'none';
     modeSelectScreen.classList.add('hidden');
+    resultsScreen.style.display = 'none';
+    resultsScreen.classList.add('hidden');
+    uiOverlay.style.display = 'flex';
     uiOverlay.classList.remove('hidden');
     resetRace();
     startCountdown();
@@ -907,15 +934,26 @@
   hudExitBtn.addEventListener('click', () => {
     sounds.play('jump');
     gameState = 'main_menu';
+    uiOverlay.style.display = 'none';
     uiOverlay.classList.add('hidden');
+    resultsScreen.style.display = 'none';
+    resultsScreen.classList.add('hidden');
+    modeSelectScreen.style.display = 'none';
+    modeSelectScreen.classList.add('hidden');
+    mainMenuScreen.style.display = 'flex';
     mainMenuScreen.classList.remove('hidden');
     resetRace();
   });
 
   resultsMenuBtn.addEventListener('click', () => {
     sounds.play('jump');
+    resultsScreen.style.display = 'none';
     resultsScreen.classList.add('hidden');
+    uiOverlay.style.display = 'none';
     uiOverlay.classList.add('hidden');
+    modeSelectScreen.style.display = 'none';
+    modeSelectScreen.classList.add('hidden');
+    mainMenuScreen.style.display = 'flex';
     mainMenuScreen.classList.remove('hidden');
     gameState = 'main_menu';
   });
@@ -923,33 +961,41 @@
   // Modals Management
   menuTutorialBtn.addEventListener('click', () => {
     sounds.play('jump');
+    powerupsGuideModal.style.display = 'flex';
     powerupsGuideModal.classList.remove('hidden');
   });
   guideCloseBtn.addEventListener('click', () => {
+    powerupsGuideModal.style.display = 'none';
     powerupsGuideModal.classList.add('hidden');
   });
 
   menuSettingsBtn.addEventListener('click', () => {
     sounds.play('jump');
+    settingsModal.style.display = 'flex';
     settingsModal.classList.remove('hidden');
   });
   settingsCloseBtn.addEventListener('click', () => {
+    settingsModal.style.display = 'none';
     settingsModal.classList.add('hidden');
   });
 
   menuRankingBtn.addEventListener('click', () => {
     sounds.play('jump');
+    rankingModal.style.display = 'flex';
     rankingModal.classList.remove('hidden');
   });
   rankingCloseBtn.addEventListener('click', () => {
+    rankingModal.style.display = 'none';
     rankingModal.classList.add('hidden');
   });
 
   menuCharacterBtn.addEventListener('click', () => {
     sounds.play('jump');
+    characterModal.style.display = 'flex';
     characterModal.classList.remove('hidden');
   });
   charCloseBtn.addEventListener('click', () => {
+    characterModal.style.display = 'none';
     characterModal.classList.add('hidden');
   });
 
@@ -963,6 +1009,7 @@
   });
 
   charConfirmBtn.addEventListener('click', () => {
+    characterModal.style.display = 'none';
     characterModal.classList.add('hidden');
   });
 
@@ -1020,7 +1067,10 @@
 
   restartBtn.addEventListener('click', () => {
     sounds.init();
+    resultsScreen.style.display = 'none';
     resultsScreen.classList.add('hidden');
+    uiOverlay.style.display = 'flex';
+    uiOverlay.classList.remove('hidden');
     resetRace();
     startCountdown();
   });
@@ -1061,6 +1111,7 @@
       resultsList.appendChild(li);
     });
 
+    resultsScreen.style.display = 'flex';
     resultsScreen.classList.remove('hidden');
   }
 
