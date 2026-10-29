@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ACE FUN RUN - Browser Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Sniglet:wght@800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,17 +14,30 @@
   <div id="game-container">
     <canvas id="gameCanvas" width="960" height="540"></canvas>
 
-    <!-- UI Overlay -->
-    <div id="ui-overlay">
+    <!-- Full-screen Blood Splatter Overlays (shown on player death) -->
+    <div id="blood-overlay" class="blood-overlay hidden">
+      <img src="assets/images/game/powerup/bloodScreenTL.png" class="blood-tl" alt="">
+      <img src="assets/images/game/powerup/bloodScreenTR.png" class="blood-tr" alt="">
+      <img src="assets/images/game/powerup/bloodScreenBL.png" class="blood-bl" alt="">
+    </div>
+
+    <!-- IN-GAME HUD OVERLAY -->
+    <div id="ui-overlay" class="hidden">
       <!-- Top Status Bar -->
       <div class="top-bar">
         <div class="top-left-group">
-          <div class="rank-badge" id="rank-display">1st</div>
+          <!-- Circular Wooden Exit Button (returns to menu) -->
+          <button class="wood-circle-btn" id="hud-exit-btn" title="Zurück zum Hauptmenü">
+            <img src="assets/images/gui/button/exit.png" alt="Exit">
+          </button>
           <button class="hud-btn" id="fullscreen-btn" title="Vollbildmodus (F)">
             <span class="hud-icon">⛶</span>
             <span class="hud-text">Vollbild</span>
           </button>
         </div>
+
+        <!-- Top Center Big Rank Display (Authentic Fun Run Comic Style) -->
+        <div class="comic-rank-badge" id="rank-display">1st</div>
 
         <!-- Progress Track -->
         <div class="progress-container">
@@ -37,54 +53,176 @@
         <div class="stats-badge" id="speed-display">0 km/h</div>
       </div>
 
-      <!-- Bottom Action Bar -->
+      <!-- Bottom Action Bar with Authentic Wooden Buttons -->
       <div class="bottom-bar">
-        <!-- Powerup Use Button -->
-        <div class="control-btn powerup-slot" id="powerup-btn" title="Powerup nutzen">
-          <img src="assets/images/transparent.png" id="powerup-icon" class="powerup-img" alt="Powerup">
-          <span class="btn-label" id="powerup-label">[X]</span>
+        <!-- Powerup Use Button (Wooden Frame with Powerup Icon) -->
+        <div class="wood-action-btn powerup-slot" id="powerup-btn" title="Power-Up nutzen (Taste X / Shift / Tap)">
+          <img src="assets/images/gui/button/btnPowerUp.png" class="wood-bg-img" alt="Powerup Frame">
+          <div class="powerup-icon-wrapper">
+            <img src="assets/images/transparent.png" id="powerup-icon" class="powerup-img" alt="">
+          </div>
+          <span class="wood-key-hint" id="powerup-label">[X]</span>
         </div>
 
-        <!-- Jump Button -->
-        <div class="control-btn jump-slot" id="jump-btn" title="Springen">
-          <span class="btn-icon">⬆️</span>
-          <span class="btn-label">JUMP</span>
+        <!-- Jump Button (Wooden Plank with Up Arrow) -->
+        <div class="wood-action-btn jump-slot" id="jump-btn" title="Springen (Leertaste / Pfeil Oben / Tap)">
+          <img src="assets/images/gui/button/btnJump.png" class="wood-bg-img" alt="Jump">
+          <span class="wood-key-hint">[SPACE]</span>
         </div>
       </div>
     </div>
 
-    <!-- Countdown Text -->
+    <!-- Countdown Text (3 - 2 - 1 - GO!) -->
     <div id="countdown-display">3</div>
 
-    <!-- Start / Title Screen -->
-    <div id="start-screen" class="modal-screen">
-      <h1 class="modal-title">ACE FUN RUN</h1>
-      <p style="margin-bottom: 20px; font-size: 18px; color: #ffeb3b; font-weight: bold;">
-        🌲 Sunset Valley - 4 Player Race 🌲
-      </p>
-      
-      <div class="menu-btn-group">
-        <button class="start-btn" id="start-btn">🏁 RACE STARTEN</button>
-        <button class="secondary-btn" id="menu-fullscreen-btn">⛶ VOLLBILD AN/AUS</button>
+    <!-- SCREEN 1: AUTHENTIC MAIN TITLE MENU (Fun Run Logo & Background) -->
+    <div id="main-menu-screen" class="menu-screen">
+      <img src="assets/images/gui/background/background_mainMenu.png" class="menu-bg-img" alt="Fun Run Main Menu">
+
+      <!-- Big Center Wooden Play Button -->
+      <div class="center-play-group">
+        <button class="wood-play-btn" id="main-play-btn" title="Spielen">
+          <img src="assets/images/gui/button/play.png" alt="PLAY">
+        </button>
       </div>
 
-      <div class="controls-hint">
-        <p>🎮 <strong>Steuerung PC:</strong> <span class="key-tag">LEERTASTE</span> / <span class="key-tag">⬆️</span> = Springen | <span class="key-tag">X</span> / <span class="key-tag">SHIFT</span> = Power-Up</p>
-        <p style="margin-top: 6px;">📱 <strong>Mobile & Tablet:</strong> Touch-Buttons oder rechte Bildschirmhälfte antippen</p>
+      <!-- Bottom Wooden Bar of Buttons -->
+      <div class="main-bottom-bar">
+        <div class="bottom-left-buttons">
+          <button class="menu-icon-btn" id="menu-settings-btn" title="Einstellungen">
+            <img src="assets/images/gui/button/settings.png" alt="Settings">
+          </button>
+          <button class="menu-icon-btn" id="menu-ranking-btn" title="Bestenliste">
+            <img src="assets/images/gui/button/ranking.png" alt="Ranking">
+          </button>
+          <button class="menu-icon-btn" id="menu-tutorial-btn" title="Power-Ups Anleitung">
+            <img src="assets/images/gui/button/tutorial.png" alt="Guide">
+          </button>
+        </div>
+
+        <div class="bottom-right-buttons">
+          <button class="menu-icon-btn" id="menu-character-btn" title="Figur wählen / Shop">
+            <img src="assets/images/gui/button/market.png" alt="Shop">
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Victory / Results Screen -->
+    <!-- SCREEN 2: GAME MODE SELECTION MENU (Practice / Quick Play / Friends) -->
+    <div id="mode-select-screen" class="menu-screen hidden">
+      <img src="assets/images/gui/background/background_playMenu.png" class="menu-bg-img" alt="Mode Selection">
+
+      <!-- 3 Wooden Signpost Buttons -->
+      <div class="signpost-container">
+        <!-- 1. Practice Mode -->
+        <button class="signpost-btn" id="mode-practice-btn">
+          <img src="assets/images/gui/button/singlePlayer.png" alt="Practice">
+          <span class="signpost-label">Practice</span>
+        </button>
+
+        <!-- 2. Quick Play Mode -->
+        <button class="signpost-btn quick-play" id="mode-quickplay-btn">
+          <img src="assets/images/gui/button/quickPlay.png" alt="Quick Play">
+          <span class="signpost-label">Quick Play</span>
+        </button>
+
+        <!-- 3. Friends Mode -->
+        <button class="signpost-btn" id="mode-friends-btn">
+          <img src="assets/images/gui/button/friends.png" alt="Friends">
+          <span class="signpost-label">Friends</span>
+        </button>
+      </div>
+
+      <!-- Bottom Home Back Button -->
+      <div class="mode-bottom-bar">
+        <button class="menu-icon-btn home-btn" id="mode-home-btn" title="Zurück zum Menü">
+          <img src="assets/images/gui/button/home.png" alt="Home">
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL: POWER UPS & TRAPS GUIDE (Image 5) -->
+    <div id="powerups-guide-modal" class="modal-dialog hidden">
+      <div class="guide-card">
+        <button class="modal-close-btn" id="guide-close-btn">✖</button>
+        <img src="assets/images/gui/tutorial/powerUps.png" class="guide-full-img" alt="Power Ups Guide">
+      </div>
+    </div>
+
+    <!-- MODAL: CHARACTER SELECTION (Bear, Fox, Beaver, Eagle) -->
+    <div id="character-modal" class="modal-dialog hidden">
+      <div class="character-card">
+        <button class="modal-close-btn" id="char-close-btn">✖</button>
+        <h2 class="dialog-title">WÄHLE DEINE FIGUR</h2>
+        <div class="character-grid">
+          <div class="char-choice selected" data-animal="bear">
+            <img src="assets/images/gui/market/accessories/item1Sprite.png" class="char-preview-img" alt="Bear">
+            <span class="char-name">Bär</span>
+          </div>
+          <div class="char-choice" data-animal="fox">
+            <img src="assets/images/gui/market/accessories/goldenFox.png" class="char-preview-img" alt="Fox">
+            <span class="char-name">Fuchs</span>
+          </div>
+          <div class="char-choice" data-animal="beaver">
+            <img src="assets/images/gui/market/accessories/item3Sprite.png" class="char-preview-img" alt="Beaver">
+            <span class="char-name">Biber</span>
+          </div>
+          <div class="char-choice" data-animal="baldeagle">
+            <img src="assets/images/gui/market/accessories/parrot.png" class="char-preview-img" alt="Eagle">
+            <span class="char-name">Adler</span>
+          </div>
+        </div>
+        <button class="start-btn" id="char-confirm-btn" style="margin-top: 15px;">BESTÄTIGEN</button>
+      </div>
+    </div>
+
+    <!-- MODAL: SETTINGS -->
+    <div id="settings-modal" class="modal-dialog hidden">
+      <div class="settings-card">
+        <button class="modal-close-btn" id="settings-close-btn">✖</button>
+        <h2 class="dialog-title">EINSTELLUNGEN</h2>
+        <div class="settings-row">
+          <span>🔊 Soundeffekte:</span>
+          <button class="wood-toggle-btn" id="sound-toggle-btn">AN</button>
+        </div>
+        <div class="settings-row">
+          <span>⛶ Vollbildmodus:</span>
+          <button class="wood-toggle-btn" id="settings-fullscreen-btn">VOLLBILD</button>
+        </div>
+        <div class="settings-row" style="font-size: 14px; color: #ffeb3b; text-align: center; margin-top: 15px;">
+          ACE FUN RUN - HTML5 Remastered Engine<br>Original Assets & Solar2D Lua Bytecode
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: RANKING / LEADERBOARD -->
+    <div id="ranking-modal" class="modal-dialog hidden">
+      <div class="settings-card">
+        <button class="modal-close-btn" id="ranking-close-btn">✖</button>
+        <h2 class="dialog-title">🏆 BESTENLISTE 🏆</h2>
+        <ul class="leaderboard-list">
+          <li class="leaderboard-item rank-1"><span>#1 MasterRunner</span><span>2450 pts</span></li>
+          <li class="leaderboard-item rank-2"><span>#2 SpeedBear</span><span>2100 pts</span></li>
+          <li class="leaderboard-item rank-3"><span>#3 FoxFlash</span><span>1890 pts</span></li>
+          <li class="leaderboard-item rank-4"><span>#4 EagleEye</span><span>1620 pts</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- VICTORY / RESULTS SCREEN (When race finishes) -->
     <div id="results-screen" class="modal-screen hidden">
       <div class="results-card">
-        <h2 class="modal-title" style="font-size: 34px; margin-bottom: 10px;" id="result-title">ZIEL ERREICHT!</h2>
-        <p id="result-subtitle" style="color: #aaa; margin-bottom: 15px;">Ergebnis der Runde:</p>
+        <h2 class="comic-title" id="result-title">ZIEL ERREICHT!</h2>
+        <p id="result-subtitle" style="color: #ffeb3b; font-weight: bold; margin-bottom: 15px;">ERGEBNIS DES RENNENS</p>
         
         <ul class="leaderboard-list" id="results-list">
           <!-- Dynamically populated -->
         </ul>
 
-        <button class="start-btn" id="restart-btn" style="padding: 12px 35px; font-size: 20px;">NOCHMAL SPIELEN</button>
+        <div style="display: flex; gap: 15px; margin-top: 15px;">
+          <button class="start-btn" id="restart-btn" style="padding: 12px 25px; font-size: 18px;">🏁 NOCHMAL</button>
+          <button class="secondary-btn" id="results-menu-btn" style="padding: 12px 25px; font-size: 18px;">🏠 ZUM MENÜ</button>
+        </div>
       </div>
     </div>
 

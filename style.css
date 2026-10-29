@@ -11,7 +11,7 @@ html, body {
   width: 100%;
   height: 100%;
   background: #0d0d1a;
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  font-family: 'Luckiest Guy', 'Sniglet', cursive, sans-serif;
   color: #fff;
   overflow: hidden;
   display: flex;
@@ -51,7 +51,189 @@ canvas {
   touch-action: none;
 }
 
-/* UI Overlay Layer */
+/* =========================================================
+   AUTHENTIC MENU SCREENS (Main Menu & Mode Select)
+========================================================= */
+.menu-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.menu-screen.hidden {
+  display: none !important;
+}
+
+.menu-bg-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Main Menu Center Play Button */
+.center-play-group {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.wood-play-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.wood-play-btn img {
+  width: 220px;
+  height: auto;
+  display: block;
+}
+
+.wood-play-btn:hover {
+  transform: scale(1.06);
+}
+
+.wood-play-btn:active {
+  transform: scale(0.95);
+}
+
+/* Main Menu Bottom Buttons */
+.main-bottom-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 18px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.bottom-left-buttons, .bottom-right-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+  transition: transform 0.1s ease, filter 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu-icon-btn img {
+  height: 60px;
+  width: auto;
+  display: block;
+}
+
+.menu-icon-btn:hover {
+  transform: scale(1.08) translateY(-2px);
+  filter: drop-shadow(0 6px 10px rgba(255, 200, 0, 0.4));
+}
+
+.menu-icon-btn:active {
+  transform: scale(0.92);
+}
+
+/* =========================================================
+   MODE SELECTION MENU (Practice / Quick Play / Friends)
+========================================================= */
+.signpost-container {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  width: 90%;
+  z-index: 10;
+}
+
+.signpost-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.signpost-btn img {
+  width: 150px;
+  height: auto;
+  display: block;
+}
+
+.signpost-btn.quick-play img {
+  width: 190px;
+}
+
+.signpost-label {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 20px;
+  color: #fff;
+  text-shadow: 2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+.signpost-btn:hover {
+  transform: scale(1.08) translateY(-4px);
+}
+
+.signpost-btn:active {
+  transform: scale(0.93);
+}
+
+.mode-bottom-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 18px;
+  z-index: 10;
+}
+
+.home-btn img {
+  height: 64px;
+}
+
+/* =========================================================
+   IN-GAME HUD (Top Status & Bottom Wooden Buttons)
+========================================================= */
 #ui-overlay {
   position: absolute;
   top: 0;
@@ -63,17 +245,20 @@ canvas {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
 }
 
-/* Top Bar: Progress and Ranks */
+#ui-overlay.hidden {
+  display: none !important;
+}
+
 .top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent);
   pointer-events: auto;
+  position: relative;
 }
 
 .top-left-group {
@@ -82,54 +267,57 @@ canvas {
   gap: 10px;
 }
 
-.rank-badge {
-  background: linear-gradient(135deg, #ff9900, #ff5500);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 18px;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
-  box-shadow: 0 3px 10px rgba(255, 85, 0, 0.4);
-  border: 2px solid #ffcc00;
-}
-
-.hud-btn {
-  background: rgba(0, 0, 0, 0.55);
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-radius: 18px;
-  padding: 5px 12px;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
+.wood-circle-btn {
+  background: none;
+  border: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  transition: all 0.15s ease;
+  padding: 0;
+  outline: none;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+  transition: transform 0.1s ease;
   pointer-events: auto;
 }
 
-.hud-btn:hover, .hud-btn:active {
-  background: rgba(255, 170, 0, 0.4);
-  border-color: #ffaa00;
-  transform: scale(1.05);
+.wood-circle-btn img {
+  width: 48px;
+  height: 48px;
+  display: block;
 }
 
-.hud-icon {
-  font-size: 16px;
-  line-height: 1;
+.wood-circle-btn:hover {
+  transform: scale(1.08);
+}
+
+.wood-circle-btn:active {
+  transform: scale(0.92);
+}
+
+.comic-rank-badge {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 38px;
+  color: #ffffff;
+  text-shadow:
+    3px 3px 0 #2e1503,
+   -3px -3px 0 #2e1503,
+    3px -3px 0 #2e1503,
+   -3px 3px 0 #2e1503,
+    0 4px 6px rgba(0, 0, 0, 0.8);
+  letter-spacing: 2px;
+  pointer-events: none;
 }
 
 .progress-container {
   flex: 1;
-  max-width: 440px;
+  max-width: 320px;
   margin: 0 16px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.35);
   border-radius: 12px;
-  height: 20px;
+  height: 18px;
   position: relative;
   overflow: hidden;
 }
@@ -144,11 +332,11 @@ canvas {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   border: 2px solid #fff;
-  box-shadow: 0 0 6px rgba(0,0,0,0.6);
+  box-shadow: 0 0 5px rgba(0,0,0,0.7);
   transition: left 0.1s linear;
 }
 
@@ -162,332 +350,453 @@ canvas {
   right: 4px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 14px;
+  font-size: 13px;
 }
 
-/* Speedometer / Status */
 .stats-badge {
-  font-size: 14px;
-  font-weight: bold;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 5px 12px;
+  font-size: 13px;
+  font-family: 'Luckiest Guy', cursive;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  letter-spacing: 1px;
 }
 
-/* Bottom Controls */
+.hud-btn {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 18px;
+  padding: 4px 10px;
+  color: #fff;
+  font-size: 12px;
+  font-family: sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  pointer-events: auto;
+}
+
+/* =========================================================
+   BOTTOM WOODEN ACTION BUTTONS (Power-up & Jump)
+========================================================= */
 .bottom-bar {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: 16px 20px;
-  pointer-events: none; /* Let screen touches pass through to canvas! */
+  padding: 12px 18px;
+  pointer-events: none;
   z-index: 60;
 }
 
-.control-btn {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(0, 0, 0, 0.7));
-  border: 3px solid rgba(255, 255, 255, 0.6);
-  border-radius: 50%;
-  width: 88px;
-  height: 88px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+.wood-action-btn {
+  position: relative;
+  width: 95px;
+  height: 95px;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-  transition: transform 0.08s, background 0.08s;
   pointer-events: auto;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.7));
+  transition: transform 0.08s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-.control-btn:active, .control-btn.active {
-  transform: scale(0.92);
-  background: linear-gradient(135deg, rgba(255, 200, 0, 0.5), rgba(255, 100, 0, 0.9));
-  border-color: #ffcc00;
+.wood-action-btn .wood-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
-.jump-slot {
-  background: linear-gradient(135deg, rgba(0, 230, 118, 0.4), rgba(0, 100, 50, 0.8));
-  border-color: #00e676;
-}
-
-.btn-icon {
-  font-size: 28px;
-  line-height: 1;
-}
-
-.btn-label {
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-top: 3px;
-  text-shadow: 1px 1px 2px #000;
-}
-
-.powerup-slot {
-  background: rgba(0, 0, 0, 0.65);
-  border: 3px dashed rgba(255, 255, 255, 0.4);
-  position: relative;
-  overflow: hidden;
-}
-
-.powerup-slot.ready {
-  border: 3px solid #00ffcc;
-  box-shadow: 0 0 22px rgba(0, 255, 204, 0.7);
-  background: radial-gradient(circle, rgba(0,255,204,0.35), rgba(0,0,0,0.85));
-  animation: pulseSlot 1.2s infinite alternate;
-}
-
-@keyframes pulseSlot {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.06); }
+.powerup-icon-wrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .powerup-img {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
-/* Modals */
+.wood-key-hint {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 1px 1px 2px #000;
+  letter-spacing: 0.5px;
+}
+
+.wood-action-btn:hover {
+  transform: scale(1.05);
+}
+
+.wood-action-btn:active, .wood-action-btn.active {
+  transform: scale(0.92);
+}
+
+/* Powerup Ready Pulse */
+.powerup-slot.ready {
+  filter: drop-shadow(0 0 16px rgba(0, 255, 204, 0.9));
+  animation: readyPulse 0.9s infinite alternate;
+}
+
+@keyframes readyPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+/* Powerup Roulette Rolling */
+.powerup-slot.rolling {
+  filter: drop-shadow(0 0 20px rgba(255, 200, 0, 1));
+  animation: rouletteSpin 0.08s infinite alternate;
+}
+
+@keyframes rouletteSpin {
+  0% { transform: scale(0.95); }
+  100% { transform: scale(1.06); }
+}
+
+/* =========================================================
+   BLOOD SPLATTER OVERLAY
+========================================================= */
+.blood-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 90;
+  transition: opacity 0.5s ease;
+}
+
+.blood-overlay.hidden {
+  opacity: 0;
+  display: none;
+}
+
+.blood-tl { position: absolute; top: 0; left: 0; width: 25%; max-width: 200px; }
+.blood-tr { position: absolute; top: 0; right: 0; width: 35%; max-width: 280px; }
+.blood-bl { position: absolute; bottom: 0; left: 0; width: 45%; max-width: 380px; }
+
+/* =========================================================
+   COUNTDOWN DISPLAY (3 - 2 - 1 - GO!)
+========================================================= */
+#countdown-display {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 110px;
+  color: #ffeb3b;
+  text-shadow:
+    5px 5px 0 #d84315,
+   -5px -5px 0 #d84315,
+    5px -5px 0 #d84315,
+   -5px 5px 0 #d84315,
+    0 10px 25px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  z-index: 80;
+  opacity: 0;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s ease;
+}
+
+#countdown-display.show {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+/* =========================================================
+   MODAL DIALOGS (Powerups Guide, Settings, Character Select)
+========================================================= */
+.modal-dialog {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.modal-dialog.hidden {
+  display: none !important;
+}
+
+.guide-card, .character-card, .settings-card {
+  position: relative;
+  background: #3e2723;
+  border: 4px solid #8d6e63;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
+  padding: 24px;
+  max-width: 600px;
+  width: 95%;
+  text-align: center;
+}
+
+.guide-card {
+  padding: 12px;
+  max-width: 650px;
+}
+
+.guide-full-img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: #d32f2f;
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-family: sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.6);
+  z-index: 10;
+}
+
+.modal-close-btn:hover {
+  transform: scale(1.1);
+  background: #f44336;
+}
+
+.dialog-title {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 28px;
+  color: #ffeb3b;
+  text-shadow: 2px 2px 0 #2e1503;
+  margin-bottom: 18px;
+  letter-spacing: 1px;
+}
+
+/* Character Selection Grid */
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 15px 0;
+}
+
+.char-choice {
+  background: rgba(0, 0, 0, 0.4);
+  border: 3px solid #6d4c41;
+  border-radius: 12px;
+  padding: 10px 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.char-choice:hover {
+  border-color: #ffb300;
+  transform: translateY(-3px);
+}
+
+.char-choice.selected {
+  border-color: #00e676;
+  background: rgba(0, 230, 118, 0.2);
+  box-shadow: 0 0 15px rgba(0, 230, 118, 0.6);
+}
+
+.char-preview-img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  margin-bottom: 6px;
+}
+
+.char-name {
+  font-size: 15px;
+  font-family: 'Luckiest Guy', cursive;
+  color: #fff;
+}
+
+/* Settings Rows */
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0;
+  font-size: 18px;
+  font-family: 'Luckiest Guy', cursive;
+}
+
+.wood-toggle-btn {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  border: 2px solid #ffe082;
+  border-radius: 12px;
+  padding: 8px 18px;
+  color: #fff;
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.5);
+}
+
+/* =========================================================
+   RESULTS & VICTORY SCREEN
+========================================================= */
 .modal-screen {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(5px);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   pointer-events: auto;
-  z-index: 100;
+  z-index: 150;
   padding: 20px;
 }
 
-.modal-screen.hidden {
-  display: none;
-}
-
-.modal-title {
-  font-size: 44px;
-  font-weight: 900;
-  color: #ffcc00;
-  text-shadow: 3px 3px 0 #ff3300, 6px 6px 15px rgba(0,0,0,0.8);
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-align: center;
-}
-
-.menu-btn-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-}
-
-.start-btn {
-  background: linear-gradient(135deg, #00e676, #00b0ff);
-  border: none;
-  border-radius: 30px;
-  padding: 14px 42px;
-  font-size: 22px;
-  font-weight: 900;
-  color: #fff;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  cursor: pointer;
-  box-shadow: 0 8px 25px rgba(0, 230, 118, 0.5);
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-
-.start-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 10px 30px rgba(0, 230, 118, 0.7);
-}
-
-.secondary-btn {
-  background: rgba(255, 255, 255, 0.15);
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 25px;
-  padding: 10px 26px;
-  font-size: 15px;
-  font-weight: 700;
-  color: #fff;
-  cursor: pointer;
-  letter-spacing: 1px;
-  transition: transform 0.15s, background 0.15s;
-}
-
-.secondary-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.04);
-}
-
-.controls-hint {
-  margin-top: 20px;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.75);
-  text-align: center;
-  line-height: 1.5;
-  max-width: 600px;
-}
-
-.key-tag {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  padding: 2px 7px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-weight: bold;
-}
-
-/* Countdown Overlay */
-#countdown-display {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 110px;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 4px 4px 0 #ff3300, 8px 8px 25px rgba(0,0,0,0.8);
-  pointer-events: none;
-  opacity: 0;
-  transition: transform 0.25s ease-out, opacity 0.25s ease-out;
-  z-index: 50;
-}
-
-#countdown-display.show {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1.2);
-}
-
-/* Results Podiums */
 .results-card {
-  background: rgba(20, 20, 40, 0.95);
-  border: 2px solid rgba(255, 200, 0, 0.5);
+  background: #3e2723;
+  border: 4px solid #8d6e63;
   border-radius: 16px;
-  padding: 20px 30px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  padding: 25px 35px;
+  max-width: 480px;
   width: 90%;
-  max-width: 420px;
   text-align: center;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85);
+}
+
+.comic-title {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 34px;
+  color: #ffeb3b;
+  text-shadow: 3px 3px 0 #2e1503;
+  margin-bottom: 8px;
 }
 
 .leaderboard-list {
   list-style: none;
-  margin: 16px 0;
+  margin: 15px 0 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .leaderboard-item {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   padding: 8px 14px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  font-weight: bold;
-  font-size: 16px;
+  border-radius: 10px;
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 18px;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
-.leaderboard-item.rank-1 {
-  background: linear-gradient(90deg, rgba(255, 215, 0, 0.35), rgba(255, 215, 0, 0.08));
-  border: 1px solid gold;
-  color: #ffd700;
+.rank-1 { background: linear-gradient(135deg, #ffd700, #ff9900); color: #000; text-shadow: none; font-size: 20px; }
+.rank-2 { background: linear-gradient(135deg, #e0e0e0, #9e9e9e); color: #000; text-shadow: none; }
+.rank-3 { background: linear-gradient(135deg, #cd7f32, #8d5524); color: #fff; }
+.rank-4 { background: rgba(255, 255, 255, 0.15); color: #ccc; }
+
+.start-btn {
+  background: linear-gradient(135deg, #00e676, #00a152);
+  border: 3px solid #b9f6ca;
+  border-radius: 30px;
+  color: #fff;
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 20px;
+  padding: 10px 28px;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(0, 230, 118, 0.5);
+  transition: transform 0.1s ease;
 }
 
-.leaderboard-item.rank-2 { border: 1px solid silver; color: #e0e0e0; }
-.leaderboard-item.rank-3 { border: 1px solid #cd7f32; color: #cd7f32; }
+.start-btn:hover { transform: scale(1.05); }
+.start-btn:active { transform: scale(0.95); }
 
-/* Orientation Warning Screen (Portrait on Mobile) */
+.secondary-btn {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  border: 3px solid #ffe082;
+  border-radius: 30px;
+  color: #fff;
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 20px;
+  padding: 10px 24px;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(255, 152, 0, 0.5);
+  transition: transform 0.1s ease;
+}
+
+.secondary-btn:hover { transform: scale(1.05); }
+.secondary-btn:active { transform: scale(0.95); }
+
+/* Orientation Warning */
 #orientation-warning {
-  display: none;
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(13, 13, 26, 0.98);
-  z-index: 200;
+  background: #111;
+  color: #fff;
+  display: none;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 30px;
+  padding: 20px;
+  z-index: 1000;
 }
 
-.phone-rotate-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-  animation: rotatePhone 2.2s infinite ease-in-out;
-}
-
-@keyframes rotatePhone {
-  0%, 20% { transform: rotate(0deg); }
-  60%, 80% { transform: rotate(90deg); }
-  100% { transform: rotate(0deg); }
-}
-
-#orientation-warning h2 {
-  font-size: 24px;
-  color: #ffaa00;
-  margin-bottom: 12px;
-}
-
-#orientation-warning p {
-  font-size: 15px;
-  color: #ccc;
-  max-width: 320px;
-  line-height: 1.4;
-}
-
-/* Media Queries for Mobile & Tablet */
-@media screen and (orientation: portrait) and (max-width: 800px) {
+@media screen and (orientation: portrait) and (max-width: 768px) {
   #orientation-warning {
     display: flex;
   }
 }
 
-@media (max-width: 768px) {
-  .hud-text {
-    display: none;
-  }
-  .hud-btn {
-    padding: 5px 8px;
-  }
-  .rank-badge {
-    font-size: 15px;
-    padding: 4px 10px;
-  }
-  .stats-badge {
-    font-size: 12px;
-    padding: 4px 8px;
-  }
-  .control-btn {
-    width: 78px;
-    height: 78px;
-  }
-  .btn-icon {
-    font-size: 22px;
-  }
-  .powerup-img {
-    width: 36px;
-    height: 36px;
-  }
-  .modal-title {
-    font-size: 32px;
-  }
-  .start-btn {
-    font-size: 18px;
-    padding: 12px 30px;
-  }
+.phone-rotate-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+  animation: rotatePhone 2s infinite ease-in-out;
+}
+
+@keyframes rotatePhone {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+  100% { transform: rotate(0deg); }
 }

@@ -6,7 +6,39 @@
   const ctx = canvas.getContext('2d');
   const gameContainer = document.getElementById('game-container');
 
-  // DOM HUD Elements
+  // DOM Elements - Menus & Modals
+  const mainMenuScreen = document.getElementById('main-menu-screen');
+  const mainPlayBtn = document.getElementById('main-play-btn');
+  const menuSettingsBtn = document.getElementById('menu-settings-btn');
+  const menuRankingBtn = document.getElementById('menu-ranking-btn');
+  const menuTutorialBtn = document.getElementById('menu-tutorial-btn');
+  const menuCharacterBtn = document.getElementById('menu-character-btn');
+
+  const modeSelectScreen = document.getElementById('mode-select-screen');
+  const modePracticeBtn = document.getElementById('mode-practice-btn');
+  const modeQuickplayBtn = document.getElementById('mode-quickplay-btn');
+  const modeFriendsBtn = document.getElementById('mode-friends-btn');
+  const modeHomeBtn = document.getElementById('mode-home-btn');
+
+  const powerupsGuideModal = document.getElementById('powerups-guide-modal');
+  const guideCloseBtn = document.getElementById('guide-close-btn');
+
+  const characterModal = document.getElementById('character-modal');
+  const charCloseBtn = document.getElementById('char-close-btn');
+  const charConfirmBtn = document.getElementById('char-confirm-btn');
+  const charChoices = document.querySelectorAll('.char-choice');
+
+  const settingsModal = document.getElementById('settings-modal');
+  const settingsCloseBtn = document.getElementById('settings-close-btn');
+  const soundToggleBtn = document.getElementById('sound-toggle-btn');
+  const settingsFullscreenBtn = document.getElementById('settings-fullscreen-btn');
+
+  const rankingModal = document.getElementById('ranking-modal');
+  const rankingCloseBtn = document.getElementById('ranking-close-btn');
+
+  // DOM Elements - In-Game HUD
+  const uiOverlay = document.getElementById('ui-overlay');
+  const hudExitBtn = document.getElementById('hud-exit-btn');
   const rankDisplay = document.getElementById('rank-display');
   const speedDisplay = document.getElementById('speed-display');
   const powerupBtn = document.getElementById('powerup-btn');
@@ -14,31 +46,34 @@
   const powerupLabel = document.getElementById('powerup-label');
   const jumpBtn = document.getElementById('jump-btn');
   const countdownDisplay = document.getElementById('countdown-display');
-  const startScreen = document.getElementById('start-screen');
-  const startBtn = document.getElementById('start-btn');
   const resultsScreen = document.getElementById('results-screen');
   const resultsList = document.getElementById('results-list');
   const restartBtn = document.getElementById('restart-btn');
+  const resultsMenuBtn = document.getElementById('results-menu-btn');
+  const bloodOverlay = document.getElementById('blood-overlay');
   const markerPlayer = document.getElementById('marker-player');
   const markerBot1 = document.getElementById('marker-bot1');
   const markerBot2 = document.getElementById('marker-bot2');
   const markerBot3 = document.getElementById('marker-bot3');
   const fullscreenBtn = document.getElementById('fullscreen-btn');
-  const menuFullscreenBtn = document.getElementById('menu-fullscreen-btn');
 
-  // Game Constants from player.lu & gamePlay.lu
+  // Game Constants from Solar2D player.lu & gamePlay.lu
   const TILE_W = 80;
   const TILE_H = 50;
   const GRAVITY = 980;
   const DEFAULT_TOP_SPEED = 350;
-  const ACCELERATE_X = 250;
-  const JUMP_FORCE = -520;
-  const RESPAWN_DELAY = 2.5;
+  const ACCELERATE_X = 260;
+  const JUMP_FORCE = -530;
+  const RESPAWN_DELAY = 2.2;
+
+  // Selected Player Character
+  let selectedAnimal = 'bear';
 
   // Sound Engine (Web Audio API)
   class SoundManager {
     constructor() {
       this.ctx = null;
+      this.enabled = true;
       this.buffers = {};
       this.soundFiles = {
         jump: 'assets/sound/sfx_jump.wav',
@@ -50,7 +85,7 @@
         lightning_act: 'assets/sound/sfx_lightning_activate.wav',
         lightning_hit: 'assets/sound/sfx_lightning_hit.wav',
         speed_act: 'assets/sound/sfx_speed_activate.wav',
-        shield_act: 'assets/sound/sfx_armor_activate.wav',
+        shield_act: 'assets/sound/sfx_invul_activate.wav',
         blood: 'assets/sound/sfx_blood.wav',
         countdown: 'assets/sound/sfx_countdown.wav',
         start: 'assets/sound/sfx_start.wav',
@@ -81,7 +116,7 @@
     }
 
     play(name) {
-      if (!this.ctx || !this.buffers[name]) return;
+      if (!this.enabled || !this.ctx || !this.buffers[name]) return;
       try {
         const src = this.ctx.createBufferSource();
         src.buffer = this.buffers[name];
@@ -103,29 +138,33 @@
     return img;
   }
 
-  // Preload graphics (Backgrounds & Tiles)
-  loadImage('assets/images/map/background/forest/bkg_sundown.png');
+  // Preload Backgrounds & Tiles
+  loadImage('assets/images/map/background/forest/bkg_day.png');
   loadImage('assets/images/map/background/forest/bkg_mountains.png');
-  loadImage('assets/images/map/background/forest/cloud1.png');
   loadImage('assets/images/map/element/forest/crate.png');
   loadImage('assets/images/map/element/forest/Goal.png');
 
-  // Preload All Avatar Body, Head, and Feet Sprites
-  const ANIMALS = ['bear', 'fox', 'beaver', 'baldeagle'];
-  for (const a of ANIMALS) {
+  // Preload Power-Up graphics
+  loadImage('assets/images/game/powerup/blade/blade.png');
+  loadImage('assets/images/game/powerup/blade/blade_blood.png');
+  loadImage('assets/images/game/powerup/trap/sprite.png');
+  loadImage('assets/images/game/powerup/lightning/lightningBoltSprite.png');
+  loadImage('assets/images/game/powerup/lightning/cloudTop.png');
+  loadImage('assets/images/game/powerup/lightning/cloudBottom.png');
+  loadImage('assets/images/game/powerup/shield/sprite.png');
+  loadImage('assets/images/game/powerup/blade/icon.png');
+  loadImage('assets/images/game/powerup/trap/icon.png');
+  loadImage('assets/images/game/powerup/lightning/icon.png');
+  loadImage('assets/images/game/powerup/speed/icon.png');
+  loadImage('assets/images/game/powerup/shield/icon.png');
+
+  // Preload Avatar Multi-Layer Sprites
+  const ALL_ANIMALS = ['bear', 'fox', 'beaver', 'baldeagle'];
+  for (const a of ALL_ANIMALS) {
     loadImage(`assets/images/game/avatar/${a}BodySprite.png`);
     loadImage(`assets/images/game/accessory/hat/${a}/${a}HeadSprite.png`);
     loadImage(`assets/images/game/accessory/boots/${a}Feet.png`);
   }
-
-  // Preload Powerup items
-  loadImage('assets/images/game/powerup/blade/blade.png');
-  loadImage('assets/images/game/powerup/trap/sprite.png');
-  loadImage('assets/images/game/powerup/trap/icon.png');
-  loadImage('assets/images/game/powerup/blade/icon.png');
-  loadImage('assets/images/game/powerup/lightning/icon.png');
-  loadImage('assets/images/game/powerup/speed/icon.png');
-  loadImage('assets/images/game/powerup/shield/icon.png');
 
   // Load Map & Avatar Sprites JSON
   let mapData = null;
@@ -156,30 +195,45 @@
 
   // Particle System
   const particles = [];
-  function spawnBlood(x, y, count = 25) {
+  function spawnBlood(x, y, count = 35) {
     for (let i = 0; i < count; i++) {
       particles.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 400,
-        vy: (Math.random() - 0.8) * 450,
+        x, y: y - 10,
+        vx: (Math.random() - 0.5) * 450,
+        vy: (Math.random() - 0.8) * 480,
         size: Math.random() * 6 + 3,
-        color: '#cc0000',
+        color: Math.random() > 0.3 ? '#cc0000' : '#880000',
         life: 1.0,
-        decay: Math.random() * 0.8 + 0.6
+        decay: Math.random() * 0.7 + 0.6
       });
     }
   }
 
-  function spawnSpeedPuff(x, y) {
-    for (let i = 0; i < 3; i++) {
+  function spawnSpeedFlame(x, y) {
+    for (let i = 0; i < 4; i++) {
       particles.push({
-        x: x - 15, y: y + 20,
-        vx: (Math.random() - 1.2) * 150,
-        vy: (Math.random() - 0.5) * 60,
-        size: Math.random() * 8 + 4,
-        color: 'rgba(255, 180, 0, 0.8)',
-        life: 0.4,
-        decay: 1.5
+        x: x - 14,
+        y: y - 14 + (Math.random() - 0.5) * 10,
+        vx: -(Math.random() * 220 + 120),
+        vy: (Math.random() - 0.5) * 50,
+        size: Math.random() * 7 + 4,
+        color: i % 2 === 0 ? '#ffea00' : '#ff3d00',
+        life: 0.35,
+        decay: 2.2
+      });
+    }
+  }
+
+  function spawnSparks(x, y, count = 25) {
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x, y: y - 15,
+        vx: (Math.random() - 0.5) * 400,
+        vy: (Math.random() - 0.5) * 400,
+        size: Math.random() * 5 + 2,
+        color: Math.random() > 0.5 ? '#00e5ff' : '#ffffff',
+        life: 0.45,
+        decay: 2.0
       });
     }
   }
@@ -188,6 +242,18 @@
   let activePowerupItems = [];
   let crates = [];
 
+  // Global Storm Effect for Lightning
+  let stormEffect = {
+    active: false,
+    timer: 0,
+    strikeTimer: 0,
+    targets: []
+  };
+
+  // Fullscreen Blood Flash Timer
+  let bloodFlashTimer = 0;
+
+  // Initialize Crates from mapData
   if (mapData) {
     for (let r = 0; r < mapData.rows; r++) {
       for (let c = 0; c < mapData.cols; c++) {
@@ -210,7 +276,7 @@
 
   // Solid Tile Filter: Ignore decorative background trees, bushes, vegetation & structures
   function isSolidTile(tname) {
-    if (!tname || tname === 'powerUp' || tname === 'Goal') return false;
+    if (!tname || tname === 'powerUp' || tname === 'Goal' || tname === 'null') return false;
     if (tname.startsWith('veg') || tname.startsWith('Rveg') ||
         tname.startsWith('tre') || tname.startsWith('Rtre') ||
         tname.startsWith('busk') || tname.startsWith('Rbusk') ||
@@ -222,15 +288,16 @@
     return true;
   }
 
-  // Multi-Level Ground Height Query under player's feet
+  // Accurate Ground Surface Height Query under runner's feet
   function getGroundUnder(worldX, currentFeetY) {
     if (!mapData) return 350;
     const col = Math.floor(worldX / TILE_W);
-    if (col < 0 || col >= mapData.cols) return WORLD_HEIGHT - 50;
+    if (col < 0 || col >= mapData.cols) return null;
 
-    const startRow = Math.max(0, Math.floor((currentFeetY - 20) / TILE_H));
+    const localX = Math.max(0, Math.min(1, (worldX - col * TILE_W) / TILE_W));
 
-    for (let r = startRow; r < mapData.rows; r++) {
+    // Search from top row to bottom row
+    for (let r = 0; r < mapData.rows; r++) {
       const cell = mapData.grid[r][col];
       if (!cell || cell === 1) continue;
 
@@ -241,26 +308,70 @@
 
         const tileTop = r * TILE_H;
         let surfaceY = tileTop;
-        const localX = Math.max(0, Math.min(1, (worldX % TILE_W) / TILE_W));
 
-        // Downhill slopes (R-prefix)
-        if (tname.startsWith('R1') || tname.startsWith('R2') || tname.startsWith('R3')) {
+        // Slopes - Downhill (R-prefix)
+        if (tname === 'R1C1-1') surfaceY = tileTop + 37 + localX * 13;
+        else if (tname === 'R1C1-2') surfaceY = tileTop + 25 + localX * 12;
+        else if (tname === 'R1C1-3') surfaceY = tileTop + 13 + localX * 12;
+        else if (tname === 'R1C1-4') surfaceY = tileTop + 0 + localX * 13;
+        else if (tname === 'R1D1-1') surfaceY = tileTop + 25 + localX * 25;
+        else if (tname === 'R1D1-2') surfaceY = tileTop + 0 + localX * 25;
+        else if (tname.startsWith('R1') || tname.startsWith('R2') || tname.startsWith('R3')) {
           surfaceY = tileTop + localX * TILE_H;
         }
-        // Uphill slopes
+        // Slopes - Uphill
+        else if (tname === '1C1-1') surfaceY = tileTop + 50 - localX * 13;
+        else if (tname === '1C1-2') surfaceY = tileTop + 37 - localX * 12;
+        else if (tname === '1C1-3') surfaceY = tileTop + 25 - localX * 12;
+        else if (tname === '1C1-4') surfaceY = tileTop + 13 - localX * 13;
+        else if (tname === '1D1-1') surfaceY = tileTop + 50 - localX * 25;
+        else if (tname === '1D1-2') surfaceY = tileTop + 25 - localX * 25;
         else if (tname.includes('1C') || tname.includes('1D') || tname.includes('1E') ||
                  tname.includes('1F') || tname.includes('1G') || tname.includes('1H')) {
           surfaceY = tileTop + (1 - localX) * TILE_H;
         }
 
-        // Return first solid platform supporting the character's feet
-        if (surfaceY >= currentFeetY - 25) {
+        // Return first solid surface supporting feet
+        if (surfaceY >= currentFeetY - 18) {
           return surfaceY;
         }
       }
     }
 
-    return WORLD_HEIGHT - 50;
+    return null; // Free fall / abyss
+  }
+
+  // Horizontal Obstacle Check (Prevents walking through vertical walls & blocks)
+  function checkHorizontalObstacle(x, y, dx) {
+    if (!mapData || dx <= 0) return x + dx;
+    const targetX = x + dx;
+    const frontEdge = targetX + 16;
+    const col = Math.floor(frontEdge / TILE_W);
+    if (col < 0 || col >= mapData.cols) return targetX;
+
+    const feetY = y;
+    // Check rows spanning torso to chest
+    const startRow = Math.max(0, Math.floor((y - 32) / TILE_H));
+    const endRow = Math.min(mapData.rows - 1, Math.floor((y - 8) / TILE_H));
+
+    for (let r = startRow; r <= endRow; r++) {
+      const cell = mapData.grid[r][col];
+      if (!cell || cell === 1) continue;
+      const tileIds = Array.isArray(cell) ? cell : [cell];
+      for (const tid of tileIds) {
+        const tname = mapData.tileNames[tid - 1];
+        if (isSolidTile(tname)) {
+          // If flat block or steep step higher than feet step-up tolerance (14px)
+          const tileTop = r * TILE_H;
+          if (tileTop < feetY - 14) {
+            // Blocked by vertical wall face! Clamp to edge
+            return col * TILE_W - 17;
+          }
+        }
+      }
+    }
+
+    return targetX;
   }
 
   function getTileInfoAt(worldX, worldY) {
@@ -276,7 +387,7 @@
     return {
       name: tname,
       bounce: tname.includes('gele') || tname.includes('Jump'),
-      boost: tname.includes('is')
+      boost: tname.includes('is') || tname.includes('Slide')
     };
   }
 
@@ -306,22 +417,38 @@
       this.y = startY;
       this.vx = 0;
       this.vy = 0;
-      this.width = 44;
-      this.height = 50;
       this.onGround = true;
       this.coyoteTimer = 0.15;
       this.jumpBuffer = 0;
       this.dead = false;
       this.deathTimer = 0;
+      this.invulnerableTimer = 0;
       this.shield = false;
       this.speedBoostTimer = 0;
       this.powerup = null;
+
+      // Roulette Rolling State
+      this.rouletteTimer = 0;
+      this.rouletteTick = 0;
+      this.rouletteCandidate = null;
+
       this.animFrame = 0;
       this.animTime = 0;
       this.finished = false;
       this.finishTime = 0;
       this.botJumpCooldown = 0;
       this.rank = 1;
+
+      // Safe Respawn Anchor
+      this.safeX = startX;
+      this.safeY = startY;
+    }
+
+    setAnimal(newAnimal) {
+      this.animal = newAnimal;
+      this.bodyImg = loadImage(`assets/images/game/avatar/${newAnimal}BodySprite.png`);
+      this.headImg = loadImage(`assets/images/game/accessory/hat/${newAnimal}/${newAnimal}HeadSprite.png`);
+      this.feetImg = loadImage(`assets/images/game/accessory/boots/${newAnimal}Feet.png`);
     }
 
     jump() {
@@ -334,15 +461,15 @@
         if (this.isPlayer) sounds.play('jump');
         return true;
       }
-      // Buffer jump for 180ms
       this.jumpBuffer = 0.18;
       return false;
     }
 
     usePowerUp(racers) {
-      if (this.dead || !this.powerup) return;
+      if (this.dead || !this.powerup || this.rouletteTimer > 0) return;
       const p = this.powerup;
       this.powerup = null;
+
       if (this.isPlayer) {
         sounds.play(p.sfx);
         updatePowerupHUD(null);
@@ -352,60 +479,97 @@
         activePowerupItems.push({
           type: 'blade',
           ownerId: this.id,
-          x: this.x + 35,
-          y: this.y + 10,
+          x: this.x + 28,
+          y: this.y - 12,
           vx: 650,
-          vy: 0,
-          life: 5.0
+          rotation: 0,
+          hit: false,
+          life: 5.5
         });
       } else if (p.id === 2) { // Bear Trap
         activePowerupItems.push({
           type: 'trap',
           ownerId: this.id,
-          x: this.x - 40,
-          y: this.y + 15,
-          active: true,
-          life: 15.0
+          x: this.x - 28,
+          y: this.y,
+          snapped: false,
+          snapTimer: 0,
+          life: 20.0
         });
-      } else if (p.id === 3) { // Lightning
-        sounds.play('lightning_hit');
-        const leader = racers.slice().sort((a, b) => b.x - a.x)[0];
-        if (leader && leader.id !== this.id) {
-          leader.hit('lightning');
-        }
+      } else if (p.id === 3) { // Lightning Storm
+        const opponentsAhead = racers.filter(r => r.id !== this.id && !r.dead && r.x > this.x - 100);
+        const targets = opponentsAhead.length > 0 ? opponentsAhead : racers.filter(r => r.id !== this.id && !r.dead);
+        stormEffect.active = true;
+        stormEffect.timer = 1.6;
+        stormEffect.strikeTimer = 0.45;
+        stormEffect.targets = targets;
       } else if (p.id === 4) { // Rocket Speed
-        this.speedBoostTimer = 2.8;
-      } else if (p.id === 5) { // Shield
+        this.speedBoostTimer = 3.0;
+      } else if (p.id === 5) { // Shield Bubble
         this.shield = true;
       }
     }
 
     hit(cause = 'generic') {
-      if (this.dead) return;
+      if (this.dead || this.invulnerableTimer > 0) return;
       if (this.shield) {
         this.shield = false;
         sounds.play('shield_act');
+        spawnSparks(this.x, this.y - 15, 20);
         return;
       }
+
       this.dead = true;
       this.deathTimer = RESPAWN_DELAY;
       this.speedBoostTimer = 0;
       sounds.play('blood');
-      spawnBlood(this.x, this.y, 35);
+      spawnBlood(this.x, this.y, 40);
+
+      if (this.isPlayer) {
+        bloodFlashTimer = 1.5;
+        if (bloodOverlay) bloodOverlay.classList.remove('hidden');
+      }
     }
 
     update(dt, racers) {
+      if (this.invulnerableTimer > 0) {
+        this.invulnerableTimer -= dt;
+      }
+
+      // Handle Death & Respawn
       if (this.dead) {
         this.deathTimer -= dt;
         if (this.deathTimer <= 0) {
           this.dead = false;
+          this.x = Math.max(80, this.safeX - 35);
+          this.y = this.safeY;
+          this.vx = DEFAULT_TOP_SPEED * 0.45;
           this.vy = 0;
-          this.vx = DEFAULT_TOP_SPEED * 0.5;
+          this.invulnerableTimer = 1.5;
         }
         return;
       }
 
-      // Check jump buffer
+      // Handle Crate Roulette Roll
+      if (this.rouletteTimer > 0) {
+        this.rouletteTimer -= dt;
+        this.rouletteTick -= dt;
+        if (this.rouletteTick <= 0) {
+          this.rouletteTick = 0.06;
+          this.rouletteCandidate = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
+          if (this.isPlayer) {
+            powerupIcon.src = this.rouletteCandidate.icon;
+          }
+        }
+        if (this.rouletteTimer <= 0) {
+          this.powerup = this.rouletteCandidate;
+          if (this.isPlayer) {
+            updatePowerupHUD(this.powerup);
+          }
+        }
+      }
+
+      // Jump Buffer
       if (this.jumpBuffer > 0) {
         this.jumpBuffer -= dt;
         if (this.onGround) {
@@ -417,26 +581,35 @@
         this.coyoteTimer -= dt;
       }
 
-      // Horizontal acceleration
+      // Horizontal Acceleration & Speed Boost
       let targetSpeed = DEFAULT_TOP_SPEED;
       if (this.speedBoostTimer > 0) {
         this.speedBoostTimer -= dt;
-        targetSpeed *= 1.5;
-        if (this.isPlayer) spawnSpeedPuff(this.x, this.y);
+        targetSpeed *= 1.65;
+        spawnSpeedFlame(this.x, this.y);
       }
 
       if (this.vx < targetSpeed) {
-        this.vx = Math.min(targetSpeed, this.vx + ACCELERATE_X * dt * 2.5);
+        this.vx = Math.min(targetSpeed, this.vx + ACCELERATE_X * dt * 2.8);
       } else if (this.vx > targetSpeed) {
-        this.vx = Math.max(targetSpeed, this.vx - ACCELERATE_X * dt);
+        this.vx = Math.max(targetSpeed, this.vx - ACCELERATE_X * dt * 1.5);
       }
 
       // Gravity
       this.vy += GRAVITY * dt;
-      if (this.vy > 900) this.vy = 900;
+      if (this.vy > 950) this.vy = 950;
 
-      // Position update
-      this.x += this.vx * dt;
+      // 1. Horizontal Move with Obstacle Collision (Cannot walk through walls)
+      const desiredX = this.x + this.vx * dt;
+      const allowedX = checkHorizontalObstacle(this.x, this.y, this.vx * dt);
+      if (allowedX < desiredX) {
+        this.x = allowedX;
+        this.vx = 0; // Stopped by wall!
+      } else {
+        this.x = desiredX;
+      }
+
+      // 2. Vertical Move
       this.y += this.vy * dt;
 
       // Bot AI
@@ -444,19 +617,22 @@
         this.botAI(dt, racers);
       }
 
-      // Collision Resolution
+      // Ground Collision Resolution
       this.checkCollisions();
 
       // Collect Crates
       for (const c of crates) {
-        if (!c.collected && Math.hypot(this.x - c.x, this.y - c.y) < 40) {
+        if (!c.collected && Math.hypot(this.x - c.x, (this.y - 18) - c.y) < 38) {
           c.collected = true;
           c.respawnTimer = 6.0;
-          if (!this.powerup) {
-            this.powerup = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
+          spawnSparks(c.x, c.y, 16);
+          if (!this.powerup && this.rouletteTimer <= 0) {
+            this.rouletteTimer = 0.8;
+            this.rouletteTick = 0.05;
             if (this.isPlayer) {
               sounds.play('pickup');
-              updatePowerupHUD(this.powerup);
+              powerupBtn.classList.add('rolling');
+              powerupBtn.classList.remove('ready');
             }
           }
         }
@@ -474,64 +650,70 @@
 
       // Animation Cycle
       if (this.onGround) {
-        this.animTime += dt * (this.vx / 45);
+        this.animTime += dt * (this.vx / 42);
         this.animFrame = Math.floor(this.animTime) % 7;
       } else {
-        this.animFrame = 3; // jump tuck frame
+        this.animFrame = 3; // jump frame
       }
     }
 
     botAI(dt, racers) {
       this.botJumpCooldown -= dt;
-      const aheadX = this.x + 90;
-      const currentFeetY = this.y + this.height / 2;
-      const groundAhead = getGroundUnder(aheadX, currentFeetY);
-      const groundCurrent = getGroundUnder(this.x, currentFeetY);
+      const aheadX = this.x + 75;
+      const currentGround = getGroundUnder(this.x, this.y);
+      const groundAhead = getGroundUnder(aheadX, this.y);
+
+      // Check if wall obstacle or drop-off ahead
+      const wallAhead = checkHorizontalObstacle(this.x, this.y, 60) < (this.x + 55);
 
       if (this.botJumpCooldown <= 0 && this.onGround) {
-        if (groundAhead < groundCurrent - 25 || groundAhead > groundCurrent + 100) {
+        if (wallAhead || groundAhead === null || (groundAhead && currentGround && groundAhead < currentGround - 22)) {
           this.jump();
-          this.botJumpCooldown = Math.random() * 0.6 + 0.5;
+          this.botJumpCooldown = Math.random() * 0.5 + 0.6;
         }
       }
 
-      if (this.powerup && Math.random() < 0.02) {
+      if (this.powerup && Math.random() < 0.025) {
         this.usePowerUp(racers);
       }
     }
 
     checkCollisions() {
-      const currentFeetY = this.y + this.height / 2;
-      const groundY = getGroundUnder(this.x, currentFeetY);
+      const groundY = getGroundUnder(this.x, this.y);
 
-      // Trampoline & Boost Pads
-      const tileInfo = getTileInfoAt(this.x, currentFeetY);
-      if (tileInfo.bounce && currentFeetY >= groundY - 15) {
-        this.vy = -780;
-        this.onGround = false;
-        this.coyoteTimer = 0;
-        sounds.play('bounce');
+      // Pit Fall Check (Below bottom track level)
+      if (this.y > 780 || (groundY === null && this.y > 650 && this.vy > 400)) {
+        this.hit('pit');
         return;
       }
-      if (tileInfo.boost) {
-        this.vx = 600;
-      }
 
-      // Ground Landing
-      if (currentFeetY >= groundY - 14 && this.vy >= -50) {
-        this.y = groundY - this.height / 2;
-        this.vy = 0;
-        this.onGround = true;
-        this.coyoteTimer = 0.15;
+      if (groundY !== null) {
+        // Trampoline / Bounce Pads
+        const tileInfo = getTileInfoAt(this.x, this.y);
+        if (tileInfo.bounce && this.y >= groundY - 14) {
+          this.vy = -790;
+          this.onGround = false;
+          this.coyoteTimer = 0;
+          sounds.play('bounce');
+          return;
+        }
+        if (tileInfo.boost) {
+          this.vx = 580;
+        }
+
+        // Landing directly ON the grass surface (feet at ground level)
+        if (this.y >= groundY - 12 && this.vy >= -50) {
+          this.y = groundY;
+          this.vy = 0;
+          this.onGround = true;
+          this.coyoteTimer = 0.15;
+          this.safeX = this.x;
+          this.safeY = this.y;
+        } else {
+          this.onGround = false;
+        }
       } else {
         this.onGround = false;
-      }
-
-      // Pit Fall Check
-      if (this.y > WORLD_HEIGHT + 150) {
-        this.hit('pit');
-        this.y = 350 - this.height / 2;
-        this.vy = 0;
       }
     }
 
@@ -544,50 +726,75 @@
       ctx.save();
       ctx.translate(renderX, renderY);
 
-      // Shield Aura
-      if (this.shield) {
-        ctx.strokeStyle = '#00ffff';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(0, 0, 36, 0, Math.PI * 2);
-        ctx.stroke();
+      // Invulnerability Blinking
+      if (this.invulnerableTimer > 0 && Math.floor(performance.now() / 80) % 2 === 0) {
+        ctx.globalAlpha = 0.4;
       }
 
+      // Scale & Origin: originX = 100, originY = 200 puts feet precisely on the grass line!
       const anim = avatarSprites && avatarSprites[this.animal];
       if (anim) {
         const frameIdx = this.onGround ? (this.animFrame % 7) : 3;
-        const scale = 0.42;
+        const scale = 0.30;
         ctx.scale(scale, scale);
 
-        // Center origin within Corona sprite canvas
         const originX = 100;
-        const originY = 190;
+        const originY = 200;
 
         // 1. Draw Feet (bottom running layer)
         drawAvatarLayer(ctx, this.feetImg, anim.Feet, frameIdx, originX, originY);
         // 2. Draw Body (middle torso layer)
         drawAvatarLayer(ctx, this.bodyImg, anim.BodySprite, frameIdx, originX, originY);
-        // 3. Draw Head (top face & ears layer)
-        drawAvatarLayer(ctx, this.headImg, anim.HeadSprite, frameIdx, originX, originY);
+        // 3. Draw Head (top face layer)
+        drawAvatarLayer(ctx, this.headImg, anim.HeadSprite, frameIdx, originX, originY - 12);
       } else {
-        // Fallback procedural circle
+        // Fallback procedural avatar
         ctx.fillStyle = this.isPlayer ? '#ff9900' : '#4488ff';
         ctx.beginPath();
-        ctx.arc(0, 0, 22, 0, Math.PI * 2);
+        ctx.arc(0, -22, 22, 0, Math.PI * 2);
         ctx.fill();
+      }
+
+      // Draw Rotating Shield Bubble
+      if (this.shield) {
+        const shieldImg = images['assets/images/game/powerup/shield/sprite.png'];
+        if (shieldImg && shieldImg.complete) {
+          const sFrames = [272, 182, 92, 2];
+          const sIdx = Math.floor(performance.now() * 0.012) % 4;
+          const sy = sFrames[sIdx];
+          ctx.drawImage(shieldImg, 2, sy, 88, 88, -44, -135, 88, 88);
+        }
       }
 
       ctx.restore();
 
-      // Player Name Tag above head
+      // Floating Player Arrow Marker (matching Image 2)
+      if (this.isPlayer) {
+        ctx.save();
+        ctx.translate(renderX, renderY - 55);
+        ctx.fillStyle = '#00e676';
+        ctx.strokeStyle = '#003300';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-7, -10);
+        ctx.lineTo(7, -10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Player Name Tag
       ctx.save();
-      ctx.translate(renderX, renderY);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 13px sans-serif';
+      ctx.translate(renderX, renderY - 62);
+      ctx.font = "bold 13px 'Luckiest Guy', sans-serif";
       ctx.textAlign = 'center';
-      ctx.shadowColor = '#000';
-      ctx.shadowBlur = 4;
-      ctx.fillText(this.name, 0, -42);
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(this.name, 0, 0);
+      ctx.fillText(this.name, 0, 0);
       ctx.restore();
     }
   }
@@ -595,27 +802,29 @@
   function updatePowerupHUD(powerup) {
     if (powerup) {
       powerupIcon.src = powerup.icon;
+      powerupBtn.classList.remove('rolling');
       powerupBtn.classList.add('ready');
       powerupLabel.textContent = '[X]';
     } else {
       powerupIcon.src = 'assets/images/transparent.png';
+      powerupBtn.classList.remove('rolling');
       powerupBtn.classList.remove('ready');
       powerupLabel.textContent = '';
     }
   }
 
-  // 4 Racers initialized directly on the grass running track (y = 325, feet at 350)
+  // 4 Racers initialized directly on the grass running track (feet at 350)
   let racers = [
-    new Character(1, 'You (Bear)', true, 'bear', 140, 325),
-    new Character(2, 'Eagle (Bot)', false, 'baldeagle', 100, 325),
-    new Character(3, 'Beaver (Bot)', false, 'beaver', 60, 325),
-    new Character(4, 'Fox (Bot)', false, 'fox', 20, 325)
+    new Character(1, 'You', true, selectedAnimal, 140, 350),
+    new Character(2, 'Eagle', false, 'baldeagle', 100, 350),
+    new Character(3, 'Beaver', false, 'beaver', 60, 350),
+    new Character(4, 'Fox', false, 'fox', 20, 350)
   ];
 
   let player = racers[0];
 
-  // Game States: 'lobby', 'countdown', 'racing', 'ended'
-  let gameState = 'lobby';
+  // Game States: 'main_menu', 'mode_select', 'countdown', 'racing', 'ended'
+  let gameState = 'main_menu';
   let countdownTimer = 3.0;
 
   let cameraX = 0;
@@ -630,8 +839,6 @@
         container.requestFullscreen().catch(() => {});
       } else if (container.webkitRequestFullscreen) {
         container.webkitRequestFullscreen();
-      } else if (container.msRequestFullscreen) {
-        container.msRequestFullscreen();
       }
     } else {
       if (document.exitFullscreen) {
@@ -645,13 +852,11 @@
   function updateFullscreenUI() {
     const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
     if (fullscreenBtn) {
-      const icon = fullscreenBtn.querySelector('.hud-icon');
       const text = fullscreenBtn.querySelector('.hud-text');
-      if (icon) icon.textContent = isFs ? '🗗' : '⛶';
       if (text) text.textContent = isFs ? 'Fenster' : 'Vollbild';
     }
-    if (menuFullscreenBtn) {
-      menuFullscreenBtn.textContent = isFs ? '🗗 VOLLBILD BEENDEN' : '⛶ VOLLBILD AN/AUS';
+    if (settingsFullscreenBtn) {
+      settingsFullscreenBtn.textContent = isFs ? 'FENSTER' : 'VOLLBILD';
     }
   }
 
@@ -659,9 +864,109 @@
   document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
 
   if (fullscreenBtn) fullscreenBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
-  if (menuFullscreenBtn) menuFullscreenBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
+  if (settingsFullscreenBtn) settingsFullscreenBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFullscreen(); });
 
-  // Input Dispatchers
+  // Sound Toggle
+  if (soundToggleBtn) {
+    soundToggleBtn.addEventListener('click', () => {
+      sounds.enabled = !sounds.enabled;
+      soundToggleBtn.textContent = sounds.enabled ? 'AN' : 'AUS';
+    });
+  }
+
+  // Navigation: Main Menu -> Mode Select -> Race
+  mainPlayBtn.addEventListener('click', () => {
+    sounds.init();
+    sounds.play('jump');
+    mainMenuScreen.classList.add('hidden');
+    modeSelectScreen.classList.remove('hidden');
+    gameState = 'mode_select';
+  });
+
+  modeHomeBtn.addEventListener('click', () => {
+    sounds.play('jump');
+    modeSelectScreen.classList.add('hidden');
+    mainMenuScreen.classList.remove('hidden');
+    gameState = 'main_menu';
+  });
+
+  function startRaceFlow() {
+    sounds.init();
+    mainMenuScreen.classList.add('hidden');
+    modeSelectScreen.classList.add('hidden');
+    uiOverlay.classList.remove('hidden');
+    resetRace();
+    startCountdown();
+  }
+
+  modePracticeBtn.addEventListener('click', startRaceFlow);
+  modeQuickplayBtn.addEventListener('click', startRaceFlow);
+  modeFriendsBtn.addEventListener('click', startRaceFlow);
+
+  // In-game Exit Button (returns to main menu)
+  hudExitBtn.addEventListener('click', () => {
+    sounds.play('jump');
+    gameState = 'main_menu';
+    uiOverlay.classList.add('hidden');
+    mainMenuScreen.classList.remove('hidden');
+    resetRace();
+  });
+
+  resultsMenuBtn.addEventListener('click', () => {
+    sounds.play('jump');
+    resultsScreen.classList.add('hidden');
+    uiOverlay.classList.add('hidden');
+    mainMenuScreen.classList.remove('hidden');
+    gameState = 'main_menu';
+  });
+
+  // Modals Management
+  menuTutorialBtn.addEventListener('click', () => {
+    sounds.play('jump');
+    powerupsGuideModal.classList.remove('hidden');
+  });
+  guideCloseBtn.addEventListener('click', () => {
+    powerupsGuideModal.classList.add('hidden');
+  });
+
+  menuSettingsBtn.addEventListener('click', () => {
+    sounds.play('jump');
+    settingsModal.classList.remove('hidden');
+  });
+  settingsCloseBtn.addEventListener('click', () => {
+    settingsModal.classList.add('hidden');
+  });
+
+  menuRankingBtn.addEventListener('click', () => {
+    sounds.play('jump');
+    rankingModal.classList.remove('hidden');
+  });
+  rankingCloseBtn.addEventListener('click', () => {
+    rankingModal.classList.add('hidden');
+  });
+
+  menuCharacterBtn.addEventListener('click', () => {
+    sounds.play('jump');
+    characterModal.classList.remove('hidden');
+  });
+  charCloseBtn.addEventListener('click', () => {
+    characterModal.classList.add('hidden');
+  });
+
+  charChoices.forEach(choice => {
+    choice.addEventListener('click', () => {
+      charChoices.forEach(c => c.classList.remove('selected'));
+      choice.classList.add('selected');
+      selectedAnimal = choice.getAttribute('data-animal');
+      player.setAnimal(selectedAnimal);
+    });
+  });
+
+  charConfirmBtn.addEventListener('click', () => {
+    characterModal.classList.add('hidden');
+  });
+
+  // Action Inputs: Jump & Power-up
   function doJump() {
     sounds.init();
     if (gameState !== 'racing') return;
@@ -692,32 +997,16 @@
     }
   });
 
-  // Touch & Pointer UI Listeners
-  jumpBtn.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    doJump();
-  });
-  jumpBtn.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    doJump();
-  }, { passive: false });
+  // Touch / Pointer Listeners
+  jumpBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); doJump(); });
+  jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); doJump(); }, { passive: false });
 
-  powerupBtn.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    doPowerup();
-  });
-  powerupBtn.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    doPowerup();
-  }, { passive: false });
+  powerupBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); doPowerup(); });
+  powerupBtn.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); doPowerup(); }, { passive: false });
 
-  // Full Screen Tap: Tap right half to jump, tap left half for power-up
+  // Full Screen Tap Controls: Right half = jump, Left half = powerup
   gameContainer.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('.top-bar') || e.target.closest('.modal-screen') || e.target.closest('.control-btn')) return;
+    if (e.target.closest('.top-bar') || e.target.closest('.modal-dialog') || e.target.closest('.menu-screen') || e.target.closest('.wood-action-btn')) return;
     sounds.init();
     if (gameState !== 'racing') return;
     const rect = gameContainer.getBoundingClientRect();
@@ -729,12 +1018,6 @@
     }
   });
 
-  startBtn.addEventListener('click', () => {
-    sounds.init();
-    startScreen.classList.add('hidden');
-    startCountdown();
-  });
-
   restartBtn.addEventListener('click', () => {
     sounds.init();
     resultsScreen.classList.add('hidden');
@@ -744,14 +1027,17 @@
 
   function resetRace() {
     racers = [
-      new Character(1, 'You (Bear)', true, 'bear', 140, 325),
-      new Character(2, 'Eagle (Bot)', false, 'baldeagle', 100, 325),
-      new Character(3, 'Beaver (Bot)', false, 'beaver', 60, 325),
-      new Character(4, 'Fox (Bot)', false, 'fox', 20, 325)
+      new Character(1, 'You', true, selectedAnimal, 140, 350),
+      new Character(2, 'Eagle', false, 'baldeagle', 100, 350),
+      new Character(3, 'Beaver', false, 'beaver', 60, 350),
+      new Character(4, 'Fox', false, 'fox', 20, 350)
     ];
     player = racers[0];
     activePowerupItems = [];
     particles.length = 0;
+    stormEffect.active = false;
+    bloodFlashTimer = 0;
+    if (bloodOverlay) bloodOverlay.classList.add('hidden');
     crates.forEach(c => c.collected = false);
     updatePowerupHUD(null);
   }
@@ -792,6 +1078,14 @@
   }
 
   function update(dt) {
+    // Blood Overlay Fade
+    if (bloodFlashTimer > 0) {
+      bloodFlashTimer -= dt;
+      if (bloodFlashTimer <= 0 && bloodOverlay) {
+        bloodOverlay.classList.add('hidden');
+      }
+    }
+
     if (gameState === 'countdown') {
       countdownTimer -= dt;
       if (countdownTimer > 2) {
@@ -811,6 +1105,24 @@
 
     if (gameState !== 'racing') return;
 
+    // Update Storm Effect (Lightning)
+    if (stormEffect.active) {
+      stormEffect.timer -= dt;
+      if (stormEffect.strikeTimer > 0) {
+        stormEffect.strikeTimer -= dt;
+        if (stormEffect.strikeTimer <= 0) {
+          sounds.play('lightning_hit');
+          for (const target of stormEffect.targets) {
+            spawnSparks(target.x, target.y - 15, 30);
+            target.hit('lightning');
+          }
+        }
+      }
+      if (stormEffect.timer <= 0) {
+        stormEffect.active = false;
+      }
+    }
+
     // Update Racers
     for (const r of racers) {
       r.update(dt, racers);
@@ -827,22 +1139,40 @@
 
       if (item.type === 'blade') {
         item.x += item.vx * dt;
-        item.y = getGroundUnder(item.x, item.y) - 15;
+        const gY = getGroundUnder(item.x, item.y + 10);
+        if (gY !== null) {
+          item.y = gY - 14;
+        }
+        item.rotation += item.vx * 0.04 * dt;
 
         for (const r of racers) {
-          if (r.id !== item.ownerId && !r.dead && Math.hypot(r.x - item.x, r.y - item.y) < 35) {
+          if (r.id !== item.ownerId && !r.dead && Math.hypot(r.x - item.x, (r.y - 18) - item.y) < 32) {
             sounds.play('blade_hit');
+            item.hit = true;
             r.hit('blade');
           }
         }
       } else if (item.type === 'trap') {
-        item.y = getGroundUnder(item.x, item.y) - 10;
-        for (const r of racers) {
-          if (!r.dead && Math.hypot(r.x - item.x, r.y - item.y) < 30) {
-            sounds.play('trap_hit');
-            r.hit('trap');
+        const gY = getGroundUnder(item.x, item.y + 10);
+        if (gY !== null) {
+          item.y = gY;
+        }
+
+        if (item.snapped) {
+          item.snapTimer -= dt;
+          if (item.snapTimer <= 0) {
             activePowerupItems.splice(i, 1);
-            break;
+            continue;
+          }
+        } else {
+          for (const r of racers) {
+            if (!r.dead && Math.hypot(r.x - item.x, r.y - item.y) < 28) {
+              item.snapped = true;
+              item.snapTimer = 1.2;
+              sounds.play('trap_hit');
+              r.hit('trap');
+              break;
+            }
           }
         }
       }
@@ -869,8 +1199,8 @@
     // Smooth Camera Following Player
     const targetCamX = player.x - 300;
     const targetCamY = player.y - 320;
-    cameraX += (targetCamX - cameraX) * 0.1;
-    cameraY += (targetCamY - cameraY) * 0.1;
+    cameraX += (targetCamX - cameraX) * 0.12;
+    cameraY += (targetCamY - cameraY) * 0.12;
 
     cameraX = Math.max(0, Math.min(WORLD_WIDTH - 960, cameraX));
     cameraY = Math.max(0, Math.min(WORLD_HEIGHT - 540, cameraY));
@@ -880,7 +1210,7 @@
     const myRank = sorted.findIndex(r => r.isPlayer) + 1;
     const suffixes = ['th', 'st', 'nd', 'rd', 'th'];
     rankDisplay.textContent = myRank + (suffixes[myRank] || 'th');
-    speedDisplay.textContent = Math.round(player.vx * 0.15) + ' km/h';
+    speedDisplay.textContent = Math.round(player.vx * 0.16) + ' km/h';
 
     // Update Marker dots
     const markers = [markerPlayer, markerBot1, markerBot2, markerBot3];
@@ -893,16 +1223,32 @@
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Parallax Sundown Background
-    const skyImg = images['assets/images/map/background/forest/bkg_sundown.png'];
+    // 1. Sunny Day Sky Background (matching Image 2)
+    const skyImg = images['assets/images/map/background/forest/bkg_day.png'];
     if (skyImg && skyImg.complete) {
       ctx.drawImage(skyImg, 0, 0, canvas.width, canvas.height);
     } else {
-      ctx.fillStyle = '#ff7733';
+      ctx.fillStyle = '#64b5f6';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 2. Parallax Mountain Range (moves at 0.18x speed)
+    // Storm Overlay (Lightning activate)
+    if (stormEffect.active) {
+      ctx.fillStyle = 'rgba(15, 20, 50, 0.65)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Storm clouds swooping across top
+      const cTop = images['assets/images/game/powerup/lightning/cloudTop.png'];
+      const cBot = images['assets/images/game/powerup/lightning/cloudBottom.png'];
+      if (cTop && cTop.complete) {
+        ctx.drawImage(cTop, 0, 0, canvas.width, 90);
+      }
+      if (cBot && cBot.complete) {
+        ctx.drawImage(cBot, 0, 30, canvas.width, 90);
+      }
+    }
+
+    // 2. Parallax Mountain Range (moves smoothly at 0.18x speed)
     const mountainImg = images['assets/images/map/background/forest/bkg_mountains.png'];
     if (mountainImg && mountainImg.complete) {
       const mOffset = -(cameraX * 0.18) % 1050;
@@ -954,31 +1300,40 @@
       }
     }
 
-    // 4. Render Powerup Crates
+    // 4. Render Powerup Crates with floating bob & halo
     const crateImg = images['assets/images/map/element/forest/crate.png'];
+    const time = performance.now();
     for (const c of crates) {
       if (c.collected) continue;
       const cx = c.x - cameraX;
-      const cy = c.y - cameraY;
+      const cy = c.y - cameraY + Math.sin(time * 0.005 + c.x) * 4;
       if (cx > -50 && cx < canvas.width + 50) {
+        // Golden halo
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.22)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 24, 0, Math.PI * 2);
+        ctx.fill();
+
         if (crateImg && crateImg.complete) {
-          ctx.drawImage(crateImg, cx - 25, cy - 25, 50, 50);
+          ctx.drawImage(crateImg, cx - 22, cy - 22, 44, 44);
         } else {
           ctx.fillStyle = '#ffbb00';
-          ctx.fillRect(cx - 20, cy - 20, 40, 40);
+          ctx.fillRect(cx - 18, cy - 18, 36, 36);
         }
       }
     }
 
-    // 5. Render Active Powerup Traps & Sawblades
+    // 5. Render Active Powerup Traps & Sawblades on Track
     for (const item of activePowerupItems) {
       const ix = item.x - cameraX;
       const iy = item.y - cameraY;
       if (item.type === 'blade') {
-        const bImg = images['assets/images/game/powerup/blade/blade.png'];
+        const bImg = item.hit
+          ? images['assets/images/game/powerup/blade/blade_blood.png']
+          : images['assets/images/game/powerup/blade/blade.png'];
         ctx.save();
         ctx.translate(ix, iy);
-        ctx.rotate(performance.now() * 0.02);
+        ctx.rotate(item.rotation);
         if (bImg && bImg.complete) {
           ctx.drawImage(bImg, -20, -20, 40, 40);
         } else {
@@ -991,18 +1346,43 @@
       } else if (item.type === 'trap') {
         const trImg = images['assets/images/game/powerup/trap/sprite.png'];
         if (trImg && trImg.complete) {
-          ctx.drawImage(trImg, ix - 20, iy - 15, 40, 30);
+          if (!item.snapped) {
+            // Frame 1: Open Jaws (74x18 at {x:2, y:50})
+            ctx.drawImage(trImg, 2, 50, 74, 18, ix - 21, iy - 14, 42, 18);
+          } else {
+            // Frame 4: Snapped Jaws (20x38 at {x:78, y:46})
+            ctx.drawImage(trImg, 78, 46, 20, 38, ix - 10, iy - 30, 20, 36);
+          }
         } else {
           ctx.fillStyle = '#555';
-          ctx.fillRect(ix - 15, iy - 8, 30, 16);
+          ctx.fillRect(ix - 15, iy - 8, 30, 14);
         }
       }
     }
 
-    // 6. Render Finish Line Flag
+    // 6. Lightning Strike Bolts (from Sky to Target Heads)
+    if (stormEffect.active && stormEffect.strikeTimer <= 0) {
+      const boltImg = images['assets/images/game/powerup/lightning/lightningBoltSprite.png'];
+      for (const target of stormEffect.targets) {
+        const tx = target.x - cameraX;
+        const ty = target.y - cameraY;
+        if (boltImg && boltImg.complete) {
+          ctx.drawImage(boltImg, 2, 2, 240, 368, tx - 32, 0, 64, ty);
+        } else {
+          ctx.strokeStyle = '#00e5ff';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.moveTo(tx, 0);
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 7. Render Finish Line Flag
     const goalImg = images['assets/images/map/element/forest/Goal.png'];
     const gx = GOAL_X - cameraX;
-    const gy = getGroundUnder(GOAL_X, 350) - cameraY - 140;
+    const gy = (getGroundUnder(GOAL_X, 350) || 350) - cameraY - 140;
     if (gx > -100 && gx < canvas.width + 100) {
       if (goalImg && goalImg.complete) {
         ctx.drawImage(goalImg, gx, gy, 120, 160);
@@ -1014,16 +1394,16 @@
       }
     }
 
-    // 7. Render Racers (All 4 with full multi-layer sprites)
+    // 8. Render Racers (All 4 with multi-layer sprites directly ON grass)
     for (const r of racers) {
       r.draw(ctx, cameraX, cameraY);
     }
 
-    // 8. Render Particles
+    // 9. Render Particles
     for (const p of particles) {
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(p.x - cameraX, p.y - cameraY, p.size * p.life, 0, Math.PI * 2);
+      ctx.arc(p.x - cameraX, p.y - cameraY, Math.max(1, p.size * p.life), 0, Math.PI * 2);
       ctx.fill();
     }
   }
