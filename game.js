@@ -108,7 +108,12 @@
         countdown: 'assets/sound/sfx_countdown.wav',
         start: 'assets/sound/sfx_start.wav',
         coins: 'assets/sound/sfx_coins.wav',
-        bounce: 'assets/sound/sfx_bounce_activate.wav'
+        bounce: 'assets/sound/sfx_bounce_activate.wav',
+        bounce_act: 'assets/sound/sfx_bounce_activate.wav',
+        bounce_hit: 'assets/sound/sfx_bounce_hit.wav',
+        armor_act: 'assets/sound/sfx_armor_activate.wav',
+        magnet_act: 'assets/sound/sfx_magnet_activate.wav',
+        laser: 'assets/sound/sfx_laser.wav'
       };
     }
 
@@ -175,6 +180,11 @@
   loadImage('assets/images/game/powerup/lightning/icon.png');
   loadImage('assets/images/game/powerup/speed/icon.png');
   loadImage('assets/images/game/powerup/shield/icon.png');
+  loadImage('assets/images/game/powerup/armor/icon.png');
+  loadImage('assets/images/game/powerup/jump/icon.png');
+  loadImage('assets/images/game/powerup/magnet/icon.png');
+  loadImage('assets/images/game/powerup/bounceTrap/icon.png');
+  loadImage('assets/images/game/powerup/ninja/icon.png');
 
   // Preload Avatar Multi-Layer Sprites
   const ALL_ANIMALS = ['bear', 'fox', 'beaver', 'baldeagle'];
@@ -205,13 +215,18 @@
   const WORLD_WIDTH = mapData ? mapData.cols * TILE_W : 24720;
   const WORLD_HEIGHT = mapData ? mapData.rows * TILE_H : 900;
 
-  // Powerup definitions
+  // 10 Authentic Powerup definitions matching the tutorial guide
   const POWERUPS = [
     { id: 1, name: 'Sawblade', icon: 'assets/images/game/powerup/blade/icon.png', sfx: 'blade_act' },
     { id: 2, name: 'Bear Trap', icon: 'assets/images/game/powerup/trap/icon.png', sfx: 'trap_act' },
     { id: 3, name: 'Lightning', icon: 'assets/images/game/powerup/lightning/icon.png', sfx: 'lightning_act' },
-    { id: 4, name: 'Rocket Speed', icon: 'assets/images/game/powerup/speed/icon.png', sfx: 'speed_act' },
-    { id: 5, name: 'Shield', icon: 'assets/images/game/powerup/shield/icon.png', sfx: 'shield_act' }
+    { id: 4, name: 'Speed Boost', icon: 'assets/images/game/powerup/speed/icon.png', sfx: 'speed_act' },
+    { id: 5, name: 'Shield', icon: 'assets/images/game/powerup/shield/icon.png', sfx: 'shield_act' },
+    { id: 6, name: 'Heart Armor', icon: 'assets/images/game/powerup/armor/icon.png', sfx: 'armor_act' },
+    { id: 7, name: 'Rocket Jump', icon: 'assets/images/game/powerup/jump/icon.png', sfx: 'jump' },
+    { id: 8, name: 'Magnet', icon: 'assets/images/game/powerup/magnet/icon.png', sfx: 'magnet_act' },
+    { id: 9, name: 'Punch-in-Box', icon: 'assets/images/game/powerup/bounceTrap/icon.png', sfx: 'bounce_act' },
+    { id: 10, name: 'Katana Slash', icon: 'assets/images/game/powerup/ninja/icon.png', sfx: 'laser' }
   ];
 
   // Particle System
@@ -301,7 +316,6 @@
     if (tname.startsWith('veg') || tname.startsWith('Rveg') ||
         tname.startsWith('tre') || tname.startsWith('Rtre') ||
         tname.startsWith('busk') || tname.startsWith('Rbusk') ||
-        tname.startsWith('stone') || tname.startsWith('Rstone') ||
         tname.startsWith('3H1') || tname.startsWith('R3H1')) {
       return false;
     }
@@ -348,6 +362,7 @@
       if (tname === '0Av') tname = '0Av1';
       if (tname === '0Dv') tname = '0Dv1';
       if (tname === '0Fv') tname = '0Fv1';
+      if (tname === '0Bv') tname = '0Bv1';
       if (tname === 'R0Dv') tname = 'R0Dv1';
       const polys = tileShapes[tname] || (tname.startsWith('R') ? tileShapes[tname.slice(1)] : null);
       if (!polys) return true;
@@ -390,6 +405,7 @@
         if (tname === '0Av') tname = '0Av1';
         if (tname === '0Dv') tname = '0Dv1';
         if (tname === '0Fv') tname = '0Fv1';
+        if (tname === '0Bv') tname = '0Bv1';
         if (tname === 'R0Dv') tname = 'R0Dv1';
 
         const polys = tileShapes[tname] || (tname.startsWith('R') ? tileShapes[tname.slice(1)] : null);
@@ -495,6 +511,8 @@
       this.deathTimer = 0;
       this.invulnerableTimer = 0;
       this.shield = false;
+      this.shieldTimer = 0;
+      this.hasArmor = false;
       this.speedBoostTimer = 0;
       this.powerup = null;
 
@@ -555,7 +573,7 @@
           vx: 650,
           rotation: 0,
           hit: false,
-          life: 5.5
+          life: 6.0
         });
       } else if (p.id === 2) { // Bear Trap
         activePowerupItems.push({
@@ -574,10 +592,57 @@
         stormEffect.timer = 1.6;
         stormEffect.strikeTimer = 0.45;
         stormEffect.targets = targets;
-      } else if (p.id === 4) { // Rocket Speed
-        this.speedBoostTimer = 3.0;
-      } else if (p.id === 5) { // Shield Bubble
+      } else if (p.id === 4) { // Speed Boost (Paw)
+        this.speedBoostTimer = 3.5;
+      } else if (p.id === 5) { // Shield (Invincible for 6 sec)
         this.shield = true;
+        this.shieldTimer = 6.0;
+      } else if (p.id === 6) { // Heart Armor (Absorbs one hit)
+        this.hasArmor = true;
+        spawnSparks(this.x, this.y - 20, 20);
+      } else if (p.id === 7) { // Rocket Jump (Jump high)
+        this.vy = -820;
+        this.onGround = false;
+        this.coyoteTimer = 0;
+        sounds.play('jump');
+        for (let i = 0; i < 14; i++) {
+          particles.push({
+            x: this.x + (Math.random() - 0.5) * 16,
+            y: this.y + (Math.random() - 0.5) * 8,
+            vx: (Math.random() - 0.5) * 100,
+            vy: Math.random() * 80 + 40,
+            size: Math.random() * 5 + 4,
+            color: '#ffffff',
+            life: 1.0,
+            decay: 2.5
+          });
+        }
+      } else if (p.id === 8) { // Magnet (Pull opponent ahead)
+        const opponentsAhead = racers.filter(r => r.id !== this.id && !r.dead && r.x > this.x).sort((a, b) => a.x - b.x);
+        if (opponentsAhead.length > 0) {
+          const target = opponentsAhead[0];
+          target.vx = Math.max(60, target.vx * 0.4);
+          target.x = Math.max(this.x + 35, target.x - 220);
+          spawnSparks(target.x, target.y - 20, 22);
+          this.vx = Math.min(DEFAULT_TOP_SPEED * 1.45, this.vx + 140);
+        }
+      } else if (p.id === 9) { // Punch-in-a-Box (Bounce Trap)
+        activePowerupItems.push({
+          type: 'bounceTrap',
+          ownerId: this.id,
+          x: this.x - 28,
+          y: this.y,
+          triggered: false,
+          triggerTimer: 0,
+          life: 25.0
+        });
+      } else if (p.id === 10) { // Katana Slash (Target Leader)
+        const leader = racers.filter(r => r.id !== this.id && !r.dead).sort((a, b) => b.x - a.x)[0];
+        if (leader) {
+          sounds.play('laser');
+          spawnSparks(leader.x, leader.y - 20, 30);
+          leader.hit('ninja');
+        }
       }
     }
 
@@ -587,6 +652,12 @@
         this.shield = false;
         sounds.play('shield_act');
         spawnSparks(this.x, this.y - 15, 20);
+        return;
+      }
+      if (this.hasArmor) {
+        this.hasArmor = false;
+        sounds.play('shield_act');
+        spawnSparks(this.x, this.y - 15, 25);
         return;
       }
 
@@ -605,6 +676,12 @@
     update(dt, racers) {
       if (this.invulnerableTimer > 0) {
         this.invulnerableTimer -= dt;
+      }
+      if (this.shield && this.shieldTimer > 0) {
+        this.shieldTimer -= dt;
+        if (this.shieldTimer <= 0) {
+          this.shield = false;
+        }
       }
 
       // Handle Death & Respawn
@@ -826,18 +903,34 @@
         ctx.fill();
       }
 
-      // Draw Rotating Shield Bubble
+      ctx.restore();
+
+      // Draw Full-Sized Rotating Shield Bubble (enclosing the character)
       if (this.shield) {
         const shieldImg = images['assets/images/game/powerup/shield/sprite.png'];
         if (shieldImg && shieldImg.complete) {
           const sFrames = [272, 182, 92, 2];
           const sIdx = Math.floor(performance.now() * 0.012) % 4;
           const sy = sFrames[sIdx];
-          ctx.drawImage(shieldImg, 2, sy, 88, 88, -44, -135, 88, 88);
+          ctx.save();
+          ctx.fillStyle = 'rgba(0, 229, 255, 0.22)';
+          ctx.beginPath();
+          ctx.arc(renderX, renderY - 24, 34, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.drawImage(shieldImg, 2, sy, 88, 88, renderX - 36, renderY - 60, 72, 72);
+          ctx.restore();
         }
       }
 
-      ctx.restore();
+      // Draw Floating Heart Armor
+      if (this.hasArmor) {
+        const heartImg = images['assets/images/game/powerup/armor/icon.png'];
+        if (heartImg && heartImg.complete) {
+          const hoverY = Math.sin(performance.now() * 0.007) * 4;
+          ctx.drawImage(heartImg, renderX - 14, renderY - 68 + hoverY, 28, 28);
+        }
+      }
 
       // Floating Player Arrow Marker (matching Image 2)
       if (this.isPlayer) {
@@ -1144,14 +1237,24 @@
   });
 
   // Modals Management
+  function closeGuideModal() {
+    sounds.play('jump');
+    powerupsGuideModal.style.display = 'none';
+    powerupsGuideModal.classList.add('hidden');
+  }
+
   menuTutorialBtn.addEventListener('click', () => {
     sounds.play('jump');
     powerupsGuideModal.style.display = 'flex';
     powerupsGuideModal.classList.remove('hidden');
   });
-  guideCloseBtn.addEventListener('click', () => {
-    powerupsGuideModal.style.display = 'none';
-    powerupsGuideModal.classList.add('hidden');
+  guideCloseBtn.addEventListener('click', closeGuideModal);
+  const guideBottomCloseBtn = document.getElementById('guide-bottom-close-btn');
+  if (guideBottomCloseBtn) guideBottomCloseBtn.addEventListener('click', closeGuideModal);
+  powerupsGuideModal.addEventListener('click', (e) => {
+    if (e.target === powerupsGuideModal || e.target.closest('.guide-back-btn') || e.target.closest('.modal-close-btn')) {
+      closeGuideModal();
+    }
   });
 
   menuSettingsBtn.addEventListener('click', () => {
@@ -1159,9 +1262,13 @@
     settingsModal.style.display = 'flex';
     settingsModal.classList.remove('hidden');
   });
-  settingsCloseBtn.addEventListener('click', () => {
+  function closeSettingsModal() {
     settingsModal.style.display = 'none';
     settingsModal.classList.add('hidden');
+  }
+  settingsCloseBtn.addEventListener('click', closeSettingsModal);
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) closeSettingsModal();
   });
 
   menuRankingBtn.addEventListener('click', () => {
@@ -1169,9 +1276,13 @@
     rankingModal.style.display = 'flex';
     rankingModal.classList.remove('hidden');
   });
-  rankingCloseBtn.addEventListener('click', () => {
+  function closeRankingModal() {
     rankingModal.style.display = 'none';
     rankingModal.classList.add('hidden');
+  }
+  rankingCloseBtn.addEventListener('click', closeRankingModal);
+  rankingModal.addEventListener('click', (e) => {
+    if (e.target === rankingModal) closeRankingModal();
   });
 
   menuCharacterBtn.addEventListener('click', () => {
@@ -1182,6 +1293,12 @@
   charCloseBtn.addEventListener('click', () => {
     characterModal.style.display = 'none';
     characterModal.classList.add('hidden');
+  });
+  characterModal.addEventListener('click', (e) => {
+    if (e.target === characterModal) {
+      characterModal.style.display = 'none';
+      characterModal.classList.add('hidden');
+    }
   });
 
   charChoices.forEach(choice => {
@@ -1375,7 +1492,17 @@
       }
 
       if (item.type === 'blade') {
-        item.x += item.vx * dt;
+        const nextBladeX = item.x + item.vx * dt;
+        const checkWallX = nextBladeX + (item.vx > 0 ? 16 : -16);
+        // Bounce off solid stone obstacles or cliff walls!
+        if (isPointSolid(checkWallX, item.y) || isPointSolid(checkWallX, item.y - 14)) {
+          item.vx = -item.vx * 0.95;
+          sounds.play('blade_hit');
+          spawnSparks(checkWallX, item.y - 6, 16);
+        } else {
+          item.x = nextBladeX;
+        }
+
         const gY = getGroundUnder(item.x, item.y + 10);
         if (gY !== null) {
           item.y = gY - 14;
@@ -1408,6 +1535,30 @@
               item.snapTimer = 1.2;
               sounds.play('trap_hit');
               r.hit('trap');
+              break;
+            }
+          }
+        }
+      } else if (item.type === 'bounceTrap') {
+        const gY = getGroundUnder(item.x, item.y + 10);
+        if (gY !== null) item.y = gY;
+
+        if (item.triggered) {
+          item.triggerTimer -= dt;
+          if (item.triggerTimer <= 0) {
+            activePowerupItems.splice(i, 1);
+            continue;
+          }
+        } else {
+          for (const r of racers) {
+            if (!r.dead && Math.hypot(r.x - item.x, r.y - item.y) < 30) {
+              item.triggered = true;
+              item.triggerTimer = 1.0;
+              sounds.play('bounce_hit');
+              r.vy = -720;
+              r.vx = -160;
+              r.onGround = false;
+              spawnSparks(r.x, r.y - 15, 20);
               break;
             }
           }
@@ -1518,11 +1669,14 @@
               if (r > lowestSolidRow) lowestSolidRow = r;
             }
 
-            if (tname === '1Av') tname = '1Av1';
-            let tileImgSrc = `assets/images/map/element/forest/${tname}.png`;
-            if (tname.startsWith('R')) {
-              tileImgSrc = `assets/images/map/element/forest/${tname.slice(1)}.png`;
-            }
+            let drawName = tname;
+            if (drawName.startsWith('R')) drawName = drawName.slice(1);
+            if (drawName === '1Av') drawName = '1Av1';
+            if (drawName === '0Av') drawName = '0Av1';
+            if (drawName === '0Dv') drawName = '0Dv1';
+            if (drawName === '0Fv') drawName = '0Fv1';
+            if (drawName === '0Bv') drawName = '0Bv1';
+            let tileImgSrc = `assets/images/map/element/forest/${drawName}.png`;
 
             const timg = loadImage(tileImgSrc);
             if (timg.complete && timg.naturalWidth > 0) {
@@ -1624,6 +1778,14 @@
         } else {
           ctx.fillStyle = '#555';
           ctx.fillRect(ix - 15, iy - 8, 30, 14);
+        }
+      } else if (item.type === 'bounceTrap') {
+        const btImg = images['assets/images/game/powerup/bounceTrap/icon.png'];
+        if (btImg && btImg.complete) {
+          ctx.drawImage(btImg, ix - 16, iy - 26, 32, 28);
+        } else {
+          ctx.fillStyle = '#d32f2f';
+          ctx.fillRect(ix - 14, iy - 22, 28, 22);
         }
       }
     }
