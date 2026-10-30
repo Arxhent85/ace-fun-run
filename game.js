@@ -301,7 +301,8 @@
     if (tname.startsWith('veg') || tname.startsWith('Rveg') ||
         tname.startsWith('tre') || tname.startsWith('Rtre') ||
         tname.startsWith('busk') || tname.startsWith('Rbusk') ||
-        tname.startsWith('stone') || tname.startsWith('Rstone')) {
+        tname.startsWith('stone') || tname.startsWith('Rstone') ||
+        tname.startsWith('3H1') || tname.startsWith('R3H1')) {
       return false;
     }
     return true;
@@ -330,6 +331,47 @@
     return minY;
   }
 
+  function isPointSolid(worldX, worldY) {
+    if (!mapData || !tileShapes) return false;
+    const col = Math.floor(worldX / TILE_W);
+    const row = Math.floor(worldY / TILE_H);
+    if (col < 0 || col >= mapData.cols || row < 0 || row >= mapData.rows) return false;
+    const cell = mapData.grid[row][col];
+    if (!cell || cell === 1) return false;
+    const tileIds = Array.isArray(cell) ? cell : [cell];
+    const localX80 = (worldX % TILE_W) - 40;
+    const localY50 = (worldY % TILE_H) - 25;
+    for (const tid of tileIds) {
+      let tname = mapData.tileNames[tid - 1];
+      if (!isSolidTile(tname)) continue;
+      if (tname === '1Av') tname = '1Av1';
+      if (tname === '0Av') tname = '0Av1';
+      if (tname === '0Dv') tname = '0Dv1';
+      if (tname === '0Fv') tname = '0Fv1';
+      if (tname === 'R0Dv') tname = 'R0Dv1';
+      const polys = tileShapes[tname] || (tname.startsWith('R') ? tileShapes[tname.slice(1)] : null);
+      if (!polys) return true;
+      for (const poly of polys) {
+        let testPoly = poly;
+        if (tname.startsWith('R') && !tileShapes[tname]) {
+          testPoly = [];
+          for (let i = 0; i < poly.length; i += 2) testPoly.push(-poly[i], poly[i + 1]);
+        }
+        let inside = true;
+        const numPts = testPoly.length / 2;
+        for (let i = 0; i < numPts; i++) {
+          const x1 = testPoly[i * 2], y1 = testPoly[i * 2 + 1];
+          const nextIdx = (i + 1) % numPts;
+          const x2 = testPoly[nextIdx * 2], y2 = testPoly[nextIdx * 2 + 1];
+          const cross = (x2 - x1) * (localY50 - y1) - (y2 - y1) * (localX80 - x1);
+          if (cross < -0.001) { inside = false; break; }
+        }
+        if (inside) return true;
+      }
+    }
+    return false;
+  }
+
   function getSurfacesAt(worldX) {
     if (!mapData || !tileShapes) return [350];
     const col = Math.floor(worldX / TILE_W);
@@ -345,6 +387,10 @@
         let tname = mapData.tileNames[tid - 1];
         if (!isSolidTile(tname)) continue;
         if (tname === '1Av') tname = '1Av1';
+        if (tname === '0Av') tname = '0Av1';
+        if (tname === '0Dv') tname = '0Dv1';
+        if (tname === '0Fv') tname = '0Fv1';
+        if (tname === 'R0Dv') tname = 'R0Dv1';
 
         const polys = tileShapes[tname] || (tname.startsWith('R') ? tileShapes[tname.slice(1)] : null);
         if (!polys) continue;
@@ -362,25 +408,41 @@
         }
       }
     }
-    return surfaces.sort((a, b) => a - b);
+    return surfaces.filter(s => !isPointSolid(worldX, s - 6)).sort((a, b) => a - b);
   }
+
+  const bouncePads = [
+    { x: 173 * 80 + 40, y: 500, radius: 50, force: -750 },
+    { x: 224 * 80 + 40, y: 700, radius: 50, force: -830 }
+  ];
 
   // Authentic terrain height supporting runner's feet
   function getGroundUnder(worldX, currentFeetY = 350) {
     const surfs = getSurfacesAt(worldX);
-    if (surfs.length === 0) return 350;
+    if (surfs.length === 0) return null;
 
-    // Find topmost surface within step-up reach (up to 28px higher)
+    // 1. Connected slope (running up to 26px step up, down to 48px slope down)
     let best = null;
+    let minDiff = Infinity;
     for (const s of surfs) {
-      if (s >= currentFeetY - 28) {
-        if (best === null || s < best) {
+      const diff = s - currentFeetY;
+      if (diff >= -26 && diff <= 48) {
+        if (Math.abs(diff) < minDiff) {
+          minDiff = Math.abs(diff);
           best = s;
         }
       }
     }
     if (best !== null) return best;
-    return surfs[0];
+
+    // 2. Nearest solid surface below current feet
+    for (const s of surfs) {
+      if (s >= currentFeetY - 15) {
+        return s;
+      }
+    }
+
+    return surfs[surfs.length - 1];
   }
 
   function getTileInfoAt(worldX, worldY) {
@@ -604,47 +666,65 @@
         this.vx = Math.max(targetSpeed, this.vx - ACCELERATE_X * dt * 1.5);
       }
 
-      // Gravity
-      this.vy += GRAVITY * dt;
-      if (this.vy > 950) this.vy = 950;
+      // Check bounce pads
+      for (const bp of bouncePads) {
+        if (Math.abs(this.x - bp.x) < bp.radius && Math.abs(this.y - bp.y) < 30) {
+          this.vy = bp.force;
+          this.onGround = false;
+          this.coyoteTimer = 0;
+          sounds.play('jump');
+          spawnSparks(bp.x, bp.y - 10, 15);
+        }
+      }
 
       // Bot AI
       if (!this.isPlayer) {
         this.botAI(dt, racers);
       }
 
-      // Next Target Position
-      const targetX = this.x + this.vx * dt;
-      const targetGround = getGroundUnder(targetX, this.y);
+      // Horizontal movement & wall check
+      const nextX = this.x + this.vx * dt;
+      const wallAhead = isPointSolid(nextX + 12, this.y - 18) || isPointSolid(nextX + 12, this.y - 34);
+      if (wallAhead) {
+        this.vx = 0;
+      } else {
+        this.x = nextX;
+      }
 
       if (this.onGround) {
-        if (targetGround !== null && targetGround <= this.y + 24) {
-          // Smoothly follow terrain slope (uphill, flat, or gentle downhill)
-          this.x = targetX;
-          this.y = targetGround;
+        const gY = getGroundUnder(this.x, this.y);
+        if (gY !== null && gY >= this.y - 26 && gY <= this.y + 48) {
+          this.y = gY;
           this.vy = 0;
           this.safeX = this.x;
           this.safeY = this.y;
         } else {
-          // Drop-off or cliff into air
-          this.x = targetX;
           this.onGround = false;
           this.vy = 0;
         }
       } else {
-        // In the air
-        this.x = targetX;
-        this.y += this.vy * dt;
-
-        // Ground landing check
-        const groundY = getGroundUnder(this.x, this.y);
-        if (groundY !== null && this.y >= groundY - 12 && this.vy >= 0) {
-          this.y = groundY;
-          this.vy = 0;
-          this.onGround = true;
-          this.coyoteTimer = 0.15;
-          this.safeX = this.x;
-          this.safeY = this.y;
+        this.vy += GRAVITY * dt;
+        if (this.vy > 950) this.vy = 950;
+        const prevY = this.y;
+        const nextY = this.y + this.vy * dt;
+        const surfs = getSurfacesAt(this.x);
+        let landed = false;
+        if (this.vy >= 0) {
+          for (const s of surfs) {
+            if (s >= prevY - 14 && s <= nextY + 10) {
+              this.y = s;
+              this.vy = 0;
+              this.onGround = true;
+              this.coyoteTimer = 0.15;
+              this.safeX = this.x;
+              this.safeY = this.y;
+              landed = true;
+              break;
+            }
+          }
+        }
+        if (!landed) {
+          this.y = nextY;
         }
       }
 
@@ -693,18 +773,13 @@
 
     botAI(dt, racers) {
       this.botJumpCooldown -= dt;
-      const aheadX = this.x + 80;
-      const currentGround = getGroundUnder(this.x, this.y);
-      const groundAhead = getGroundUnder(aheadX, this.y);
-
-      // Check if step-up or cliff ahead
-      const stepAhead = groundAhead !== null && currentGround !== null && groundAhead < currentGround - 20;
-      const dropAhead = groundAhead !== null && currentGround !== null && groundAhead > currentGround + 80;
-
       if (this.botJumpCooldown <= 0 && this.onGround) {
-        if (stepAhead || dropAhead || Math.random() < 0.015) {
+        const isObstacleAhead = isPointSolid(this.x + 30, this.y - 18) || isPointSolid(this.x + 30, this.y - 34);
+        const surfsAhead = getSurfacesAt(this.x + 35);
+        const isStepUpAhead = surfsAhead.some(s => s >= this.y - 60 && s < this.y - 15);
+        if (isObstacleAhead || isStepUpAhead || this.vx < 120) {
           this.jump();
-          this.botJumpCooldown = Math.random() * 0.7 + 0.8;
+          this.botJumpCooldown = 0.5 + Math.random() * 0.3;
         }
       }
 
@@ -1289,9 +1364,12 @@
     if (mapData) {
       const startCol = Math.max(0, Math.floor(cameraX / TILE_W));
       const endCol = Math.min(mapData.cols, Math.ceil((cameraX + canvas.width) / TILE_W) + 1);
+      const dirtImg = loadImage('assets/images/map/element/forest/1B.png');
+      const maxScreenRow = Math.ceil((cameraY + canvas.height) / TILE_H) + 2;
 
-      for (let r = 0; r < mapData.rows; r++) {
-        for (let c = startCol; c < endCol; c++) {
+      for (let c = startCol; c < endCol; c++) {
+        let lowestSolidRow = -1;
+        for (let r = 0; r < mapData.rows; r++) {
           const cell = mapData.grid[r][c];
           if (!cell || cell === 1) continue;
 
@@ -1302,6 +1380,10 @@
           for (const tid of tileIds) {
             let tname = mapData.tileNames[tid - 1];
             if (!tname || tname === 'powerUp') continue;
+
+            if (isSolidTile(tname)) {
+              if (r > lowestSolidRow) lowestSolidRow = r;
+            }
 
             if (tname === '1Av') tname = '1Av1';
             let tileImgSrc = `assets/images/map/element/forest/${tname}.png`;
@@ -1324,6 +1406,30 @@
               ctx.fillStyle = '#4a7c28';
               ctx.fillRect(tx, ty, TILE_W, TILE_H);
             }
+          }
+        }
+
+        // Fill downward dirt so background mountain/sky never shows underneath ground
+        if (lowestSolidRow !== -1 && dirtImg && dirtImg.complete) {
+          const tx = c * TILE_W - cameraX;
+          for (let fillR = lowestSolidRow + 1; fillR < maxScreenRow; fillR++) {
+            const ty = fillR * TILE_H - cameraY;
+            ctx.drawImage(dirtImg, tx, ty, TILE_W, TILE_H);
+          }
+        }
+      }
+
+      // Render Bounce Pads / Springboards
+      const jumpPadImg = images['assets/images/map/element/forest/Jump1.png'];
+      for (const bp of bouncePads) {
+        const bx = bp.x - cameraX;
+        const by = bp.y - cameraY;
+        if (bx > -60 && bx < canvas.width + 60) {
+          if (jumpPadImg && jumpPadImg.complete && jumpPadImg.naturalWidth > 0) {
+            ctx.drawImage(jumpPadImg, bx - 30, by - 22, 60, 24);
+          } else {
+            ctx.fillStyle = '#ff9800';
+            ctx.fillRect(bx - 25, by - 12, 50, 16);
           }
         }
       }
