@@ -94,13 +94,98 @@ canvas {
   pointer-events: none;
 }
 
-/* Main Menu Center Play Button */
+/* Main Menu Center Play Buttons (2D & 3D) */
 .center-play-group {
   position: absolute;
-  top: 55%;
+  top: 56%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+
+.play-choice-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Prominent Top 3D Mode Header Banner */
+.top-mode-banner {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.top-mode-banner-btn {
+  background: linear-gradient(135deg, #ff9e00 0%, #e85d04 50%, #9d0208 100%);
+  border: 3px solid #ffea00;
+  border-radius: 30px;
+  padding: 8px 22px;
+  color: #fff;
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 16px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6), 0 0 15px rgba(255, 234, 0, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: pulse3dBanner 2s infinite ease-in-out;
+  outline: none;
+}
+
+.top-mode-banner-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.7), 0 0 25px rgba(255, 234, 0, 0.8);
+}
+
+.mode-pulse-dot {
+  font-size: 18px;
+  animation: spinStar 3s linear infinite;
+}
+
+@keyframes spinStar {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse3dBanner {
+  0% { transform: scale(1); box-shadow: 0 6px 18px rgba(0,0,0,0.6), 0 0 12px rgba(255, 234, 0, 0.3); }
+  50% { transform: scale(1.04); box-shadow: 0 6px 20px rgba(0,0,0,0.7), 0 0 22px rgba(255, 234, 0, 0.7); }
+  100% { transform: scale(1); box-shadow: 0 6px 18px rgba(0,0,0,0.6), 0 0 12px rgba(255, 234, 0, 0.3); }
+}
+
+.mode-action-pill {
+  background: #ffea00;
+  color: #000;
+  padding: 3px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.mode-tag-label {
+  display: block;
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 16px;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  margin-top: 6px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.mode-tag-label.special-tag {
+  color: #ffea00;
+  text-shadow: 2px 2px 0 #8b4513, 0 0 10px rgba(255, 234, 0, 0.7);
 }
 
 .wood-play-btn {
@@ -814,4 +899,221 @@ canvas {
   0% { transform: rotate(0deg); }
   50% { transform: rotate(90deg); }
   100% { transform: rotate(0deg); }
+}
+
+/* =========================================================
+   3D POCKET RACER EDITION STYLES
+========================================================= */
+
+/* 3D Canvas */
+#gameCanvas3d {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: #0b1510;
+  display: block;
+}
+
+#gameCanvas3d.hidden {
+  display: none !important;
+}
+
+/* 3D Main Menu Button */
+.play-3d-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.badge-3d-wood {
+  width: 210px;
+  height: 98px;
+  background: linear-gradient(135deg, #a05a2c 0%, #6d3a17 50%, #4a240d 100%);
+  border: 4px solid #ffd166;
+  border-radius: 20px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.badge-3d-wood:hover {
+  transform: scale(1.06);
+  border-color: #ffffff;
+}
+
+.badge-3d-glow {
+  font-size: 13px;
+  color: #ffeb3b;
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(255,235,59,0.8);
+  font-family: 'Luckiest Guy', cursive;
+}
+
+.badge-3d-title {
+  font-size: 28px;
+  color: #ffffff;
+  font-family: 'Luckiest Guy', Impact, cursive;
+  letter-spacing: 2px;
+  text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+  margin-top: 2px;
+}
+
+/* 3D Signpost in Mode Selection */
+.signpost-3d-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.signpost-3d-wood-frame {
+  width: 160px;
+  height: 110px;
+  background: linear-gradient(135deg, #b06d3b 0%, #7d441f 50%, #542b10 100%);
+  border: 4px solid #ffea00;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.signpost-3d-btn:hover .signpost-3d-wood-frame {
+  transform: scale(1.08) translateY(-4px);
+  border-color: #fff;
+}
+
+.sparkle-star {
+  font-size: 20px;
+  color: #ffea00;
+  text-shadow: 0 0 10px rgba(255,234,0,0.9);
+}
+
+.signpost-3d-text {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 26px;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+  letter-spacing: 1px;
+}
+
+.special-glow {
+  color: #ffea00 !important;
+  text-shadow: 0 0 8px rgba(255, 234, 0, 0.8), 2px 2px 0 #000 !important;
+}
+
+/* 3D Level Selection Screen */
+.level3d-modal-card {
+  background: radial-gradient(circle at center, #2e1a0e, #140b06);
+  border: 4px solid #ffd166;
+  border-radius: 26px;
+  padding: 26px 20px;
+  max-width: 620px;
+  width: 95%;
+  text-align: center;
+  box-shadow: 0 15px 45px rgba(0,0,0,0.85);
+}
+
+.level3d-grid {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.level3d-card {
+  flex: 1 1 160px;
+  max-width: 180px;
+  background: rgba(255,255,255,0.08);
+  border: 3px solid rgba(255,255,255,0.3);
+  border-radius: 18px;
+  padding: 14px 10px;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.level3d-card:hover {
+  transform: translateY(-4px);
+  border-color: #ffea00;
+  background: rgba(255, 234, 0, 0.15);
+}
+
+.level3d-card.selected {
+  border-color: #00ff88;
+  background: rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.4);
+}
+
+.level3d-badge {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 14px;
+  color: #ffd166;
+  margin-bottom: 4px;
+}
+
+.level3d-name {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 18px;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.level3d-desc {
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  color: #ddd;
+  line-height: 1.3;
+}
+
+.level3d-tips {
+  background: rgba(0,0,0,0.5);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  color: #eee;
+  line-height: 1.5;
+  margin-top: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+/* 3D Countdown Display */
+#countdown3d-display {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Luckiest Guy', Impact, cursive;
+  font-size: 130px;
+  color: #ffd166;
+  text-shadow: 4px 4px 0 #000, 0 0 35px rgba(255, 209, 102, 0.9);
+  z-index: 150;
+  pointer-events: none;
+}
+
+/* 3D UI Overlay */
+#ui3d-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+#ui3d-overlay.hidden {
+  display: none !important;
 }

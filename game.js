@@ -983,6 +983,84 @@
   modeQuickplayBtn.addEventListener('click', startRaceFlow);
   modeFriendsBtn.addEventListener('click', startRaceFlow);
 
+  // 3D POCKET RACER MODE INTEGRATION
+  const top3dBtn = document.getElementById('top-3d-btn');
+  const main3dBtn = document.getElementById('main-3d-btn');
+  const mode3dSignpost = document.getElementById('mode-3d-signpost');
+  const levelSelect3dScreen = document.getElementById('levelselect3d-screen');
+  const btn3dStartTouch = document.getElementById('btn3d-start-touch');
+  const btn3dCancel = document.getElementById('btn3d-cancel');
+  const btn3dFullscreen = document.getElementById('btn3d-fullscreen');
+
+  let selectedLevel3d = 1;
+
+  function open3dLevelSelect() {
+    sounds.init();
+    sounds.play('jump');
+    mainMenuScreen.style.display = 'none';
+    mainMenuScreen.classList.add('hidden');
+    modeSelectScreen.style.display = 'none';
+    modeSelectScreen.classList.add('hidden');
+    if (levelSelect3dScreen) {
+      levelSelect3dScreen.style.display = 'flex';
+      levelSelect3dScreen.classList.remove('hidden');
+    }
+  }
+
+  if (top3dBtn) top3dBtn.addEventListener('click', open3dLevelSelect);
+  if (main3dBtn) main3dBtn.addEventListener('click', open3dLevelSelect);
+  if (mode3dSignpost) mode3dSignpost.addEventListener('click', open3dLevelSelect);
+
+  const lvlCards = [
+    document.getElementById('card3d-lvl1'),
+    document.getElementById('card3d-lvl2'),
+    document.getElementById('card3d-lvl3')
+  ];
+  lvlCards.forEach((card, idx) => {
+    if (card) {
+      card.addEventListener('click', () => {
+        sounds.play('jump');
+        lvlCards.forEach(c => c && c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedLevel3d = idx + 1;
+      });
+    }
+  });
+
+  if (btn3dStartTouch) {
+    btn3dStartTouch.addEventListener('click', () => {
+      sounds.init();
+      sounds.play('start');
+      if (levelSelect3dScreen) {
+        levelSelect3dScreen.style.display = 'none';
+        levelSelect3dScreen.classList.add('hidden');
+      }
+      canvas.classList.add('hidden');
+      gameState = 'racing_3d';
+      if (window.funRun3D) {
+        window.funRun3D.setPlayerAnimal(selectedAnimal);
+        window.funRun3D.startRace('touch', selectedLevel3d);
+      }
+    });
+  }
+
+  if (btn3dCancel) {
+    btn3dCancel.addEventListener('click', () => {
+      sounds.play('jump');
+      if (levelSelect3dScreen) {
+        levelSelect3dScreen.style.display = 'none';
+        levelSelect3dScreen.classList.add('hidden');
+      }
+      mainMenuScreen.style.display = 'flex';
+      mainMenuScreen.classList.remove('hidden');
+      gameState = 'main_menu';
+    });
+  }
+
+  if (btn3dFullscreen) {
+    btn3dFullscreen.addEventListener('click', toggleFullscreen);
+  }
+
   // In-game Exit Button (returns to main menu)
   hudExitBtn.addEventListener('click', () => {
     sounds.play('jump');
@@ -1058,6 +1136,7 @@
       choice.classList.add('selected');
       selectedAnimal = choice.getAttribute('data-animal');
       player.setAnimal(selectedAnimal);
+      if (window.funRun3D) window.funRun3D.setPlayerAnimal(selectedAnimal);
     });
   });
 

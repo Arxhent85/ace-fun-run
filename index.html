@@ -13,6 +13,7 @@
 
   <div id="game-container">
     <canvas id="gameCanvas" width="960" height="540"></canvas>
+    <canvas id="gameCanvas3d" class="hidden" width="960" height="540"></canvas>
 
     <!-- Full-screen Blood Splatter Overlays (shown on player death) -->
     <div id="blood-overlay" class="blood-overlay hidden">
@@ -74,16 +75,86 @@
 
     <!-- Countdown Text (3 - 2 - 1 - GO!) -->
     <div id="countdown-display">3</div>
+    <div id="countdown3d-display" style="display: none;">3</div>
+
+    <!-- 3D IN-GAME HUD OVERLAY -->
+    <div id="ui3d-overlay" class="hidden">
+      <!-- Top Status Bar -->
+      <div class="top-bar">
+        <div class="top-left-group">
+          <button class="wood-circle-btn" id="btn3d-exit" title="Zurück zum Hauptmenü">
+            <img src="assets/images/gui/button/exit.png" alt="Exit">
+          </button>
+          <button class="hud-btn" id="btn3d-fullscreen" title="Vollbildmodus">
+            <span class="hud-icon">⛶</span>
+            <span class="hud-text">Vollbild</span>
+          </button>
+        </div>
+
+        <!-- 3D Comic Rank Display -->
+        <div class="comic-rank-badge" id="rank3d-display">1st</div>
+
+        <!-- 3D Progress Track -->
+        <div class="progress-container">
+          <div class="progress-track" id="progress3d-track">
+            <div class="progress-marker marker-player" id="marker3d-player" title="You"></div>
+            <div class="progress-marker marker-bot1" id="marker3d-bot1" title="Fox"></div>
+            <div class="progress-marker marker-bot2" id="marker3d-bot2" title="Beaver"></div>
+            <div class="progress-marker marker-bot3" id="marker3d-bot3" title="Eagle"></div>
+            <div class="finish-flag">🏁</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Action Bar with Authentic Wooden Buttons -->
+      <div class="bottom-bar">
+        <!-- Powerup Slot -->
+        <div class="wood-action-btn powerup-slot" id="btn3d-powerup" style="display:none;" title="Power-Up nutzen (Taste X / Shift / Tap)">
+          <img src="assets/images/gui/button/btnPowerUp.png" class="wood-bg-img" alt="Powerup Frame">
+          <div class="powerup-icon-wrapper">
+            <img src="assets/images/game/powerup/blade/icon.png" id="icon3d-powerup" class="powerup-img" alt="">
+          </div>
+          <span class="wood-key-hint">[X]</span>
+        </div>
+
+        <!-- Jump Button -->
+        <div class="wood-action-btn jump-slot" id="btn3d-jump" title="Springen (Leertaste / Pfeil Oben / Tap)">
+          <img src="assets/images/gui/button/btnJump.png" class="wood-bg-img" alt="Jump">
+          <span class="wood-key-hint">[SPACE]</span>
+        </div>
+      </div>
+    </div>
 
     <!-- SCREEN 1: AUTHENTIC MAIN TITLE MENU (Fun Run Logo & Background) -->
     <div id="main-menu-screen" class="menu-screen">
       <img src="assets/images/gui/background/background_mainMenu.png" class="menu-bg-img" alt="Fun Run Main Menu">
 
-      <!-- Big Center Wooden Play Button -->
-      <div class="center-play-group">
-        <button class="wood-play-btn" id="main-play-btn" title="Spielen">
-          <img src="assets/images/gui/button/play.png" alt="PLAY">
+      <!-- Prominent 3D Mode Header Banner -->
+      <div class="top-mode-banner">
+        <button class="top-mode-banner-btn" id="top-3d-btn" title="3D Pocket Edition starten">
+          <span class="mode-pulse-dot">✨</span>
+          <span class="mode-title-text">NEU: 3D POCKET RACER</span>
+          <span class="mode-action-pill">HIER SPIELEN ➜</span>
         </button>
+      </div>
+
+      <!-- Big Center Mode Play Buttons: 2D Classic & 3D Pocket Edition -->
+      <div class="center-play-group">
+        <div class="play-choice-col">
+          <button class="wood-play-btn" id="main-play-btn" title="Klassisches 2D Spiel">
+            <img src="assets/images/gui/button/play.png" alt="PLAY 2D">
+          </button>
+          <span class="mode-tag-label">2D KLASSIK</span>
+        </div>
+        <div class="play-choice-col">
+          <button class="wood-play-btn play-3d-btn" id="main-3d-btn" title="Neues 3D Pocket Spiel">
+            <div class="badge-3d-wood">
+              <span class="badge-3d-glow">★ 3D RACER ★</span>
+              <span class="badge-3d-title">3D SPIELEN</span>
+            </div>
+          </button>
+          <span class="mode-tag-label special-tag">🌟 NEU: 3D POCKET</span>
+        </div>
       </div>
 
       <!-- Bottom Wooden Bar of Buttons -->
@@ -130,6 +201,15 @@
         <button class="signpost-btn" id="mode-friends-btn">
           <img src="assets/images/gui/button/friends.png" alt="Friends">
           <span class="signpost-label">Friends</span>
+        </button>
+
+        <!-- 4. POCKET 3D RACER Mode (Neu) -->
+        <button class="signpost-btn signpost-3d-btn" id="mode-3d-signpost">
+          <div class="signpost-3d-wood-frame">
+            <span class="sparkle-star">★</span>
+            <span class="signpost-3d-text">3D RUN</span>
+          </div>
+          <span class="signpost-label special-glow">POCKET 3D</span>
         </button>
       </div>
 
@@ -226,6 +306,63 @@
       </div>
     </div>
 
+    <!-- 3D LEVEL & STEUERUNG WAHL SCREEN -->
+    <div id="levelselect3d-screen" class="modal-screen hidden" style="display: none;">
+      <div class="level3d-modal-card">
+        <h2 class="comic-title" style="margin-bottom: 6px;">3D POCKET RACER</h2>
+        <p style="color: #ffd166; font-size: 14px; margin-bottom: 18px; text-shadow: 1px 1px 2px #000;">WÄHLE DEINE 3D FUN RUN STRECKE</p>
+
+        <div class="level3d-grid">
+          <!-- Level 1 -->
+          <div class="level3d-card selected" data-level="1" id="card3d-lvl1">
+            <div class="level3d-badge">LEVEL 1</div>
+            <div class="level3d-name">🌲 Sunset Valley</div>
+            <div class="level3d-desc">Kreissägen, Sägewerk & Wald</div>
+          </div>
+          <!-- Level 2 -->
+          <div class="level3d-card" data-level="2" id="card3d-lvl2">
+            <div class="level3d-badge">LEVEL 2</div>
+            <div class="level3d-name">❄️ Snowset Peaks</div>
+            <div class="level3d-desc">Eishöhlen & rasante Bergabfahrt</div>
+          </div>
+          <!-- Level 3 -->
+          <div class="level3d-card" data-level="3" id="card3d-lvl3">
+            <div class="level3d-badge">LEVEL 3</div>
+            <div class="level3d-name">🍭 Sugar Slope</div>
+            <div class="level3d-desc">Speed-Pads & Candy-Wahnsinn</div>
+          </div>
+        </div>
+
+        <!-- Controls explanation -->
+        <div class="level3d-tips">
+          ⌨️ <b>Tasten:</b> Pfeile/A/D = Spur • Leertaste/W/Oben = Sprung • X/Shift = Power-Up<br>
+          📱 <b>Touch:</b> Wischen = Spur • Antippen = Sprung • Button = Power-Up
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-top: 18px; justify-content: center; flex-wrap: wrap;">
+          <button class="start-btn" id="btn3d-start-touch" style="padding: 12px 30px; font-size: 18px;">🏁 STARTEN</button>
+          <button class="secondary-btn" id="btn3d-cancel" style="padding: 12px 25px; font-size: 18px;">⬅️ ZURÜCK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D VICTORY / RESULTS SCREEN -->
+    <div id="results3d-screen" class="modal-screen hidden" style="display: none;">
+      <div class="results-card">
+        <h2 class="comic-title" id="result3d-title">ZIEL ERREICHT!</h2>
+        <p id="result3d-subtitle" style="color: #ffeb3b; font-weight: bold; margin-bottom: 15px;">ERGEBNIS DES 3D RENNENS</p>
+        
+        <ul class="leaderboard-list" id="results3d-list">
+          <!-- Dynamically populated -->
+        </ul>
+
+        <div style="display: flex; gap: 15px; margin-top: 15px;">
+          <button class="start-btn" id="btn3d-restart" style="padding: 12px 25px; font-size: 18px;">🏁 NOCHMAL</button>
+          <button class="secondary-btn" id="btn3d-menu" style="padding: 12px 25px; font-size: 18px;">🏠 ZUM MENÜ</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Mobile Portrait Warning (only shows when phone is in portrait) -->
     <div id="orientation-warning">
       <div class="phone-rotate-icon">📱</div>
@@ -235,5 +372,6 @@
   </div>
 
   <script src="game.js"></script>
+  <script src="funrun3d.js"></script>
 </body>
 </html>
