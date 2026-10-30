@@ -125,36 +125,15 @@
       </div>
     </div>
 
-    <!-- SCREEN 1: AUTHENTIC MAIN TITLE MENU (Fun Run Logo & Background) -->
+    <!-- SCREEN 1: AUTHENTIC MAIN TITLE MENU (Exact match with user screenshot) -->
     <div id="main-menu-screen" class="menu-screen">
       <img src="assets/images/gui/background/background_mainMenu.png" class="menu-bg-img" alt="Fun Run Main Menu">
 
-      <!-- Prominent 3D Mode Header Banner -->
-      <div class="top-mode-banner">
-        <button class="top-mode-banner-btn" id="top-3d-btn" title="3D Pocket Edition starten">
-          <span class="mode-pulse-dot">✨</span>
-          <span class="mode-title-text">NEU: 3D POCKET RACER</span>
-          <span class="mode-action-pill">HIER SPIELEN ➜</span>
-        </button>
-      </div>
-
-      <!-- Big Center Mode Play Buttons: 2D Classic & 3D Pocket Edition -->
+      <!-- Big Center Wooden Play Button -->
       <div class="center-play-group">
-        <div class="play-choice-col">
-          <button class="wood-play-btn" id="main-play-btn" title="Klassisches 2D Spiel">
-            <img src="assets/images/gui/button/play.png" alt="PLAY 2D">
-          </button>
-          <span class="mode-tag-label">2D KLASSIK</span>
-        </div>
-        <div class="play-choice-col">
-          <button class="wood-play-btn play-3d-btn" id="main-3d-btn" title="Neues 3D Pocket Spiel">
-            <div class="badge-3d-wood">
-              <span class="badge-3d-glow">★ 3D RACER ★</span>
-              <span class="badge-3d-title">3D SPIELEN</span>
-            </div>
-          </button>
-          <span class="mode-tag-label special-tag">🌟 NEU: 3D POCKET</span>
-        </div>
+        <button class="wood-play-btn" id="main-play-btn" title="Spielen">
+          <img src="assets/images/gui/button/play.png" alt="PLAY">
+        </button>
       </div>
 
       <!-- Bottom Wooden Bar of Buttons -->
@@ -176,6 +155,37 @@
             <img src="assets/images/gui/button/market.png" alt="Shop">
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- SCREEN: GAME SELECTION (Opened when clicking Play: POCKET RUN vs CLASSIC) -->
+    <div id="game-select-screen" class="modal-screen hidden" style="display: none;">
+      <div class="game-select-card">
+        <h2 class="comic-title" style="margin-bottom: 22px; font-size: 32px; color: #ffd166;">WÄHLE DEINEN MODUS</h2>
+        
+        <div class="game-select-options">
+          <!-- 1. POCKET RUN (3D) -->
+          <button class="game-option-btn" id="opt-pocket-btn" title="Pocket Run 3D starten">
+            <div class="option-glow-badge">★ NEU 3D ★</div>
+            <div class="option-wood-box">
+              <span class="option-icon">🚀</span>
+              <span class="option-title">POCKET RUN</span>
+              <span class="option-desc">3D Perspektive • Fallen & Sägen</span>
+            </div>
+          </button>
+
+          <!-- 2. CLASSIC (2D) -->
+          <button class="game-option-btn" id="opt-classic-btn" title="Classic 2D starten">
+            <div class="option-glow-badge badge-classic">2D ORIGINAL</div>
+            <div class="option-wood-box">
+              <span class="option-icon">🌲</span>
+              <span class="option-title">CLASSIC</span>
+              <span class="option-desc">Klassischer 2D Sidescroller</span>
+            </div>
+          </button>
+        </div>
+
+        <button class="secondary-btn" id="game-select-back-btn" style="margin-top: 24px; padding: 10px 32px; font-size: 18px;">⬅️ ZURÜCK</button>
       </div>
     </div>
 

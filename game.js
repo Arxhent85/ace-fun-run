@@ -945,16 +945,70 @@
     });
   }
 
-  // Navigation: Main Menu -> Mode Select -> Race
+  // Game Selection Modal (Pocket Run vs Classic)
+  const gameSelectScreen = document.getElementById('game-select-screen');
+  const optPocketBtn = document.getElementById('opt-pocket-btn');
+  const optClassicBtn = document.getElementById('opt-classic-btn');
+  const gameSelectBackBtn = document.getElementById('game-select-back-btn');
+
+  // Navigation: Main Menu -> Click PLAY -> Choose Pocket Run or Classic
   mainPlayBtn.addEventListener('click', () => {
     sounds.init();
     sounds.play('jump');
     mainMenuScreen.style.display = 'none';
     mainMenuScreen.classList.add('hidden');
-    modeSelectScreen.style.display = 'flex';
-    modeSelectScreen.classList.remove('hidden');
-    gameState = 'mode_select';
+    if (gameSelectScreen) {
+      gameSelectScreen.style.display = 'flex';
+      gameSelectScreen.classList.remove('hidden');
+    } else {
+      modeSelectScreen.style.display = 'flex';
+      modeSelectScreen.classList.remove('hidden');
+    }
+    gameState = 'game_select';
   });
+
+  // 1. Choose Classic (2D Original)
+  if (optClassicBtn) {
+    optClassicBtn.addEventListener('click', () => {
+      sounds.play('jump');
+      if (gameSelectScreen) {
+        gameSelectScreen.style.display = 'none';
+        gameSelectScreen.classList.add('hidden');
+      }
+      modeSelectScreen.style.display = 'flex';
+      modeSelectScreen.classList.remove('hidden');
+      gameState = 'mode_select';
+    });
+  }
+
+  // 2. Choose Pocket Run (3D Edition)
+  if (optPocketBtn) {
+    optPocketBtn.addEventListener('click', () => {
+      sounds.play('jump');
+      if (gameSelectScreen) {
+        gameSelectScreen.style.display = 'none';
+        gameSelectScreen.classList.add('hidden');
+      }
+      if (levelSelect3dScreen) {
+        levelSelect3dScreen.style.display = 'flex';
+        levelSelect3dScreen.classList.remove('hidden');
+      }
+    });
+  }
+
+  // Back from Game Select to Main Menu
+  if (gameSelectBackBtn) {
+    gameSelectBackBtn.addEventListener('click', () => {
+      sounds.play('jump');
+      if (gameSelectScreen) {
+        gameSelectScreen.style.display = 'none';
+        gameSelectScreen.classList.add('hidden');
+      }
+      mainMenuScreen.style.display = 'flex';
+      mainMenuScreen.classList.remove('hidden');
+      gameState = 'main_menu';
+    });
+  }
 
   modeHomeBtn.addEventListener('click', () => {
     sounds.play('jump');

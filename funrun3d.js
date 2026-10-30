@@ -1585,6 +1585,11 @@
       if (this.resultsScreen) this.resultsScreen.classList.add('hidden');
       if (this.levelSelectScreen) this.levelSelectScreen.classList.add('hidden');
       if (this.bloodOverlay) this.bloodOverlay.classList.add('hidden');
+      const gameSelectScreen = document.getElementById('game-select-screen');
+      if (gameSelectScreen) {
+        gameSelectScreen.style.display = 'none';
+        gameSelectScreen.classList.add('hidden');
+      }
 
       // Restore 2D Main Menu
       const mainMenuScreen = document.getElementById('main-menu-screen');
