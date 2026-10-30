@@ -335,9 +335,10 @@
       this.isPlayer = isPlayer;
       this.name = name;
 
-      this.baseSpeed = isPlayer ? 760 : 720 + Math.random() * 65;
+      // 20% reduced speed for optimal reaction & playability
+      this.baseSpeed = isPlayer ? 600 : 570 + Math.random() * 50;
       this.speed = this.baseSpeed;
-      this.size = 52;
+      this.size = 54;
       this.baseY = 0;
       this.vy = 0;
       this.isJumping = false;
@@ -391,7 +392,7 @@
 
     jump(engine) {
       if (!this.isJumping && this.stunTimer <= 0 && !this.dead) {
-        this.vy = 720;
+        this.vy = 620;
         this.isJumping = true;
         if (this.isPlayer) sfx.play('jump');
         engine.particles.spawnDust(this.x, engine.getHillY(this.z), this.z);
@@ -519,7 +520,7 @@
       // Jump Physics
       if (this.isJumping) {
         this.baseY += this.vy * dt;
-        this.vy -= 1850 * dt;
+        this.vy -= 1450 * dt;
         if (this.baseY <= 0) {
           this.baseY = 0;
           this.isJumping = false;
@@ -743,7 +744,7 @@
       this.z = z;
       this.target = target;
       this.owner = owner;
-      this.speed = 1850;
+      this.speed = 1450;
       this.active = true;
       this.angle = 0;
     }
@@ -874,13 +875,13 @@
       // 2.5D Camera & Road Parameters
       this.cameraZ = 0;
       this.cameraX = 0;
-      this.currentCameraY = 350;
-      this.cameraHeight = 350;
+      this.currentCameraY = 260;
+      this.cameraHeight = 260;
       this.focalLength = 320;
       this.drawDistance = 46;
       this.segmentLength = 120;
       this.roadWidth = 1000;
-      this.finishLineZ = 75000;
+      this.finishLineZ = 60000;
 
       this.globalFlashAlpha = 0;
       this.cameraShake = 0;
@@ -938,7 +939,7 @@
       let shakeY = (Math.random() - 0.5) * this.cameraShake;
 
       let screenX = (this.width / 2) + ((realX - this.cameraX + shakeX) * scale);
-      let screenY = (this.height / 2) + ((this.currentCameraY - worldY + shakeY) * scale) + (this.height * 0.05);
+      let screenY = (this.height / 2) + ((this.currentCameraY - worldY + shakeY) * scale);
       return { x: screenX, y: screenY, scale };
     }
 
@@ -1078,14 +1079,14 @@
           // Powerup Mystery Crate
           this.hazards.push({ x, z, type: 'crate', active: true, respawnTimer: 0 });
         } else if (rand > 0.6) {
-          // Rotating Sawblade (Pendular across lanes)
+          // Rotating Sawblade (Pendular across lanes - 20% slower for balanced gameplay)
           this.hazards.push({
             x, z,
             type: 'sawblade',
             active: true,
             origX: x,
             angle: 0,
-            speed: (Math.random() > 0.5 ? 1 : -1) * (200 + Math.random() * 150)
+            speed: (Math.random() > 0.5 ? 1 : -1) * (160 + Math.random() * 110)
           });
         } else if (rand > 0.42) {
           // Bear Trap
@@ -1287,8 +1288,8 @@
       // Camera Shake decay
       if (this.cameraShake > 0) this.cameraShake = Math.max(0, this.cameraShake - 42 * dt);
 
-      // Camera Follow Player
-      this.cameraZ = this.player.z - 490;
+      // Camera Follow Player (Positioned so the entire character & feet are fully visible)
+      this.cameraZ = this.player.z - 580;
       let targetCamX = this.getCurve(this.player.z) + this.player.x * 0.85;
       this.cameraX += (targetCamX - this.cameraX) * 6 * dt;
       this.currentCameraY = this.getHillY(this.player.z) + this.cameraHeight;
