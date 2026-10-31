@@ -1,0 +1,252 @@
+[
+  {
+    "id": 1,
+    "name": "Sunset Valley",
+    "key": "sunset_valley",
+    "file": "maps/sunset_valley.json",
+    "cols": 309,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 2,
+    "name": "Green Hills",
+    "key": "green_hills",
+    "file": "maps/green_hills.json",
+    "cols": 344,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 3,
+    "name": "Cliff Climber",
+    "key": "cliff_climber",
+    "file": "maps/cliff_climber.json",
+    "cols": 196,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 4,
+    "name": "Cloud Road",
+    "key": "cloud_road",
+    "file": "maps/cloud_road.json",
+    "cols": 242,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 5,
+    "name": "Broken Bridge",
+    "key": "broken_bridge",
+    "file": "maps/broken_bridge.json",
+    "cols": 204,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 6,
+    "name": "Mountain View",
+    "key": "mountain_view",
+    "file": "maps/mountain_view.json",
+    "cols": 248,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 7,
+    "name": "Sugar Slope",
+    "key": "sugar_slope",
+    "file": "maps/sugar_slope.json",
+    "cols": 294,
+    "rows": 27,
+    "theme": "candy",
+    "themeName": "Süßigkeiten"
+  },
+  {
+    "id": 8,
+    "name": "Jelly Cave",
+    "key": "jelly_cave",
+    "file": "maps/jelly_cave.json",
+    "cols": 213,
+    "rows": 18,
+    "theme": "candy",
+    "themeName": "Süßigkeiten"
+  },
+  {
+    "id": 9,
+    "name": "Candy Shop",
+    "key": "candy_shop",
+    "file": "maps/candy_shop.json",
+    "cols": 343,
+    "rows": 18,
+    "theme": "candy",
+    "themeName": "Süßigkeiten"
+  },
+  {
+    "id": 10,
+    "name": "Chocolate Tops",
+    "key": "chocolate_tops",
+    "file": "maps/chocolate_tops.json",
+    "cols": 155,
+    "rows": 18,
+    "theme": "candy",
+    "themeName": "Süßigkeiten"
+  },
+  {
+    "id": 11,
+    "name": "Frosting Fields",
+    "key": "frosting_fields",
+    "file": "maps/frosting_fields.json",
+    "cols": 196,
+    "rows": 27,
+    "theme": "candy",
+    "themeName": "Süßigkeiten"
+  },
+  {
+    "id": 12,
+    "name": "Lollipop Road",
+    "key": "lollipop_road",
+    "file": "maps/lollipop_road.json",
+    "cols": 196,
+    "rows": 37,
+    "theme": "candy",
+    "themeName": "Süßigkeiten"
+  },
+  {
+    "id": 13,
+    "name": "Bridgetown",
+    "key": "bridgetown",
+    "file": "maps/bridgetown.json",
+    "cols": 279,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 14,
+    "name": "Forest Jump",
+    "key": "forest_jump",
+    "file": "maps/forest_jump.json",
+    "cols": 312,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 15,
+    "name": "High Peak",
+    "key": "high_peak",
+    "file": "maps/high_peak.json",
+    "cols": 262,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 16,
+    "name": "Twig Peaks",
+    "key": "twig_peaks",
+    "file": "maps/twig_peaks.json",
+    "cols": 229,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 17,
+    "name": "Jumping Bluffs",
+    "key": "jumping_bluffs",
+    "file": "maps/jumping_bluffs.json",
+    "cols": 235,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 18,
+    "name": "Hidden Caves",
+    "key": "hidden_caves",
+    "file": "maps/hidden_caves.json",
+    "cols": 235,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 19,
+    "name": "Bridge Pass",
+    "key": "bridge_pass",
+    "file": "maps/bridge_pass.json",
+    "cols": 229,
+    "rows": 18,
+    "theme": "forest",
+    "themeName": "Wald"
+  },
+  {
+    "id": 20,
+    "name": "Sand Castle",
+    "key": "sand_castle",
+    "file": "maps/sand_castle.json",
+    "cols": 187,
+    "rows": 18,
+    "theme": "beach",
+    "themeName": "Strand"
+  },
+  {
+    "id": 21,
+    "name": "Treacherous Pits",
+    "key": "treacherous_pits",
+    "file": "maps/treacherous_pits.json",
+    "cols": 196,
+    "rows": 27,
+    "theme": "beach",
+    "themeName": "Strand"
+  },
+  {
+    "id": 22,
+    "name": "Sand Storm",
+    "key": "sand_storm",
+    "file": "maps/sand_storm.json",
+    "cols": 349,
+    "rows": 18,
+    "theme": "beach",
+    "themeName": "Strand"
+  },
+  {
+    "id": 23,
+    "name": "Beach Part-A",
+    "key": "beach_part_a",
+    "file": "maps/beach_part_a.json",
+    "cols": 201,
+    "rows": 18,
+    "theme": "beach",
+    "themeName": "Strand"
+  },
+  {
+    "id": 24,
+    "name": "Buried Treasure",
+    "key": "buried_treasure",
+    "file": "maps/buried_treasure.json",
+    "cols": 250,
+    "rows": 25,
+    "theme": "beach",
+    "themeName": "Strand"
+  },
+  {
+    "id": 25,
+    "name": "Sliding Beaches",
+    "key": "sliding_beaches",
+    "file": "maps/sliding_beaches.json",
+    "cols": 277,
+    "rows": 18,
+    "theme": "beach",
+    "themeName": "Strand"
+  }
+]

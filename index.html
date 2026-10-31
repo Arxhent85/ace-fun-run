@@ -129,6 +129,14 @@
     <div id="main-menu-screen" class="menu-screen">
       <img src="assets/images/gui/background/background_mainMenu.png" class="menu-bg-img" alt="Fun Run Main Menu">
 
+      <!-- Top Bar: Prominent Fullscreen Button right in Main Menu -->
+      <div class="menu-top-bar" style="position: absolute; top: 18px; right: 20px; z-index: 10;">
+        <button class="wood-action-btn-small" id="main-fullscreen-btn" title="Vollbildmodus (F)" style="background: rgba(80, 45, 20, 0.9); border: 2px solid #ffcc00; border-radius: 8px; color: #fff; font-family: 'Fredoka One', cursive, sans-serif; font-size: 15px; padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">
+          <span style="font-size: 18px;">⛶</span>
+          <span>VOLLBILD</span>
+        </button>
+      </div>
+
       <!-- Big Center Wooden Play Button -->
       <div class="center-play-group">
         <button class="wood-play-btn" id="main-play-btn" title="Spielen">
@@ -151,6 +159,10 @@
         </div>
 
         <div class="bottom-right-buttons">
+          <!-- Level / Map Selection Button -->
+          <button class="menu-icon-btn" id="menu-map-btn" title="Level / Strecke wählen">
+            <img src="assets/images/gui/button/map.png" alt="Level">
+          </button>
           <button class="menu-icon-btn" id="menu-character-btn" title="Figur wählen / Shop">
             <img src="assets/images/gui/button/market.png" alt="Shop">
           </button>
@@ -266,6 +278,23 @@
           </div>
         </div>
         <button class="start-btn" id="char-confirm-btn" style="margin-top: 15px;">BESTÄTIGEN</button>
+      </div>
+    </div>
+
+    <!-- MODAL: LEVEL / MAP SELECTION (25 Authentic Fun Run Maps) -->
+    <div id="map-modal" class="modal-dialog hidden">
+      <div class="character-card map-select-card" style="max-width: 660px; max-height: 88vh; display: flex; flex-direction: column;">
+        <button class="modal-close-btn" id="map-close-btn">✖</button>
+        <h2 class="dialog-title" style="margin-bottom: 2px;">WÄHLE DAS LEVEL</h2>
+        <p style="color: #ffd166; font-size: 13px; margin-top: 0; margin-bottom: 12px; text-shadow: 1px 1px 2px #000; text-align: center;">
+          25 Originale Level aus dem Fun Run APK
+        </p>
+        <div class="map-grid" id="map-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 52vh; overflow-y: auto; padding: 6px;">
+          <!-- Dynamically populated from maps_catalog.json -->
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 15px;">
+          <button class="start-btn" id="map-confirm-btn" style="padding: 10px 28px; font-size: 18px;">LEVEL STARTEN</button>
+        </div>
       </div>
     </div>
 

@@ -10,12 +10,23 @@
   const VIEW_W = 960;
   const VIEW_H = 540;
 
-  // High-DPI Crisp Resolution Scaling
+  // Ultra-HD Crisp Resolution Scaling for PC, Tablets and Mobile
   function updateCanvasResolution() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    canvas.width = Math.round(VIEW_W * dpr);
-    canvas.height = Math.round(VIEW_H * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const rect = canvas.getBoundingClientRect();
+    const displayW = Math.max(VIEW_W, Math.round(rect.width || VIEW_W));
+    const displayH = Math.max(VIEW_H, Math.round(rect.height || VIEW_H));
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+    // Native hardware screen pixels (eliminates pixelation on PC monitors)
+    const targetW = Math.round(displayW * dpr);
+    const targetH = Math.round(displayH * dpr);
+
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+    // Set 2D transform to fill screen natively using VIEW_W / VIEW_H virtual units
+    ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
   }
@@ -26,10 +37,17 @@
   // DOM Elements - Menus & Modals
   const mainMenuScreen = document.getElementById('main-menu-screen');
   const mainPlayBtn = document.getElementById('main-play-btn');
+  const mainFullscreenBtn = document.getElementById('main-fullscreen-btn');
   const menuSettingsBtn = document.getElementById('menu-settings-btn');
   const menuRankingBtn = document.getElementById('menu-ranking-btn');
   const menuTutorialBtn = document.getElementById('menu-tutorial-btn');
   const menuCharacterBtn = document.getElementById('menu-character-btn');
+  const menuMapBtn = document.getElementById('menu-map-btn');
+
+  const mapModal = document.getElementById('map-modal');
+  const mapCloseBtn = document.getElementById('map-close-btn');
+  const mapConfirmBtn = document.getElementById('map-confirm-btn');
+  const mapGridContainer = document.getElementById('map-grid-container');
 
   const modeSelectScreen = document.getElementById('mode-select-screen');
   const modePracticeBtn = document.getElementById('mode-practice-btn');
@@ -229,16 +247,24 @@
     loadImage(`assets/images/game/accessory/boots/${a}Feet.png`);
   }
 
-  // Load Map, Avatar Sprites & Box2D Tile Shapes JSON
+  // Load Maps Catalog, Map Data, Avatar Sprites & Box2D Tile Shapes JSON
+  let mapsCatalog = [];
+  let currentMapKey = 'sunset_valley';
+  let currentMapName = 'Sunset Valley';
+  let selectedMapKey = 'sunset_valley';
+  let selectedMapName = 'Sunset Valley';
+
   let mapData = null;
   let avatarSprites = null;
   let tileShapes = null;
   try {
-    const [mResp, aResp, sResp] = await Promise.all([
-      fetch('sunset_valley.json'),
+    const [cResp, mResp, aResp, sResp] = await Promise.all([
+      fetch('maps_catalog.json'),
+      fetch('maps/sunset_valley.json'),
       fetch('avatar_sprites.json'),
       fetch('tile_shapes.json')
     ]);
+    if (cResp.ok) mapsCatalog = await cResp.json();
     mapData = await mResp.json();
     avatarSprites = await aResp.json();
     tileShapes = await sResp.json();
@@ -246,9 +272,9 @@
     console.error('Failed to load JSON data:', err);
   }
 
-  const GOAL_X = 23635;
-  const WORLD_WIDTH = mapData ? mapData.cols * TILE_W : 24720;
-  const WORLD_HEIGHT = mapData ? mapData.rows * TILE_H : 900;
+  let GOAL_X = mapData ? (mapData.cols - 14) * TILE_W : 23635;
+  let WORLD_WIDTH = mapData ? mapData.cols * TILE_W : 24720;
+  let WORLD_HEIGHT = mapData ? mapData.rows * TILE_H : 900;
 
   // 10 Authentic Powerup definitions matching the tutorial guide
   const POWERUPS = [
@@ -309,6 +335,36 @@
     }
   }
 
+  function spawnJumpPuff(x, y) {
+    for (let i = 0; i < 9; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 24,
+        y: y - 2 + (Math.random() - 0.5) * 6,
+        vx: (Math.random() - 0.5) * 90,
+        vy: Math.random() * 30 + 15,
+        size: Math.random() * 5 + 3,
+        color: '#ffffff',
+        life: 0.6,
+        decay: 1.8
+      });
+    }
+  }
+
+  function spawnDust(x, y) {
+    for (let i = 0; i < 5; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 14,
+        y: y,
+        vx: (Math.random() - 0.5) * 60,
+        vy: -(Math.random() * 25 + 10),
+        size: Math.random() * 4 + 2,
+        color: '#8d6e63',
+        life: 0.4,
+        decay: 2.2
+      });
+    }
+  }
+
   // Active World Entities
   let activePowerupItems = [];
   let crates = [];
@@ -324,11 +380,28 @@
   // Fullscreen Blood Flash Timer
   let bloodFlashTimer = 0;
 
-  // Initialize Crates from mapData
-  if (mapData) {
+  // Initialize Crates, Bounce Pads & Level Goal
+  let bouncePads = [];
+
+  function initLevelEntities() {
+    crates = [];
+    activePowerupItems = [];
+    particles.length = 0;
+    bouncePads = [];
+
+    if (!mapData) return;
+
+    GOAL_X = (mapData.cols - 14) * TILE_W;
+    WORLD_WIDTH = mapData.cols * TILE_W;
+    WORLD_HEIGHT = mapData.rows * TILE_H;
+
+    const jumpIdx = mapData.tileNames ? mapData.tileNames.findIndex(n => n && n.includes('Jump')) : -1;
+    const targetJumpId = jumpIdx !== -1 ? jumpIdx + 1 : -1;
+
     for (let r = 0; r < mapData.rows; r++) {
       for (let c = 0; c < mapData.cols; c++) {
         let cell = mapData.grid[r][c];
+        if (!cell || cell === 1) continue;
         let tileIds = Array.isArray(cell) ? cell : [cell];
         for (let tid of tileIds) {
           const tname = mapData.tileNames[tid - 1];
@@ -339,11 +412,29 @@
               collected: false,
               respawnTimer: 0
             });
+          } else if (tid === targetJumpId || tname === 'Jump1') {
+            bouncePads.push({
+              x: c * TILE_W + 40,
+              y: r * TILE_H + 25,
+              radius: 55,
+              force: -920,
+              boostVx: 380,
+              animTimer: 0
+            });
           }
         }
       }
     }
+
+    // Authentic bounce pads for Sunset Valley
+    if (currentMapKey === 'sunset_valley') {
+      bouncePads.push(
+        { x: 173 * 80 + 40, y: 500, radius: 55, force: -900, boostVx: 400, animTimer: 0 },
+        { x: 224 * 80 + 40, y: 700, radius: 60, force: -1220, boostVx: 480, animTimer: 0 }
+      );
+    }
   }
+  initLevelEntities();
 
   // Solid Tile Filter: Ignore decorative background trees, bushes, vegetation & structures
   function isSolidTile(tname) {
@@ -462,11 +553,6 @@
     return surfaces.filter(s => !isPointSolid(worldX, s - 6)).sort((a, b) => a - b);
   }
 
-  const bouncePads = [
-    { x: 173 * 80 + 40, y: 500, radius: 55, force: -900, boostVx: 400, animTimer: 0 },
-    { x: 224 * 80 + 40, y: 700, radius: 60, force: -1220, boostVx: 480, animTimer: 0 }
-  ];
-
   // Authentic terrain height supporting runner's feet
   function getGroundUnder(worldX, currentFeetY = 350) {
     const surfs = getSurfacesAt(worldX);
@@ -540,6 +626,7 @@
       this.vx = 0;
       this.vy = 0;
       this.onGround = true;
+      this.jumpCount = 0;
       this.coyoteTimer = 0.15;
       this.jumpBuffer = 0;
       this.dead = false;
@@ -582,7 +669,16 @@
         this.onGround = false;
         this.coyoteTimer = 0;
         this.jumpBuffer = 0;
+        this.jumpCount = 1;
         if (this.isPlayer) sounds.play('jump');
+        spawnDust(this.x, this.y);
+        return true;
+      } else if (this.jumpCount === 1) {
+        // Authentic mid-air double jump
+        this.vy = JUMP_FORCE * 0.94;
+        this.jumpCount = 2;
+        if (this.isPlayer) sounds.play('jump');
+        spawnJumpPuff(this.x, this.y);
         return true;
       }
       this.jumpBuffer = 0.18;
@@ -797,14 +893,31 @@
         this.botAI(dt, racers);
       }
 
-      // Horizontal movement & wall check
+      // Horizontal movement & wall check (tunnel safe)
       const nextX = this.x + this.vx * dt;
-      // Step up check: only stop forward motion if both chest & head hit a wall higher than climbable 50px step
-      const wallAhead = isPointSolid(nextX + 12, this.y - 30) && isPointSolid(nextX + 12, this.y - 45);
+      // In narrow tunnels, runner ducks under low ceiling without stopping horizontal run.
+      // A wall only blocks forward movement if solid at waist & knee height in front,
+      // and is not a climbable step.
+      const isLowCeil = isPointSolid(this.x, this.y - 30);
+      const waistY = isLowCeil ? this.y - 12 : this.y - 18;
+      const kneeY = isLowCeil ? this.y - 6 : this.y - 10;
+      const wallAhead = isPointSolid(nextX + 14, waistY) && isPointSolid(nextX + 14, kneeY);
+
       if (wallAhead) {
-        this.vx = 0;
+        const stepSurfs = getSurfacesAt(nextX + 14);
+        const canStepUp = stepSurfs.some(s => s >= this.y - 35 && s < this.y - 4);
+        if (canStepUp) {
+          this.x = nextX;
+        } else {
+          this.vx = Math.min(this.vx, 30);
+        }
       } else {
         this.x = nextX;
+      }
+
+      // Smooth ceiling bounce inside low tunnels
+      if (isPointSolid(this.x, this.y - 34) && this.vy < 0) {
+        this.vy = 20;
       }
 
       if (this.onGround) {
@@ -812,6 +925,7 @@
         if (gY !== null && gY >= this.y - 52 && gY <= this.y + 55) {
           this.y = gY;
           this.vy = 0;
+          this.jumpCount = 0;
           this.safeX = this.x;
           this.safeY = this.y;
         } else {
@@ -827,10 +941,11 @@
         let landed = false;
         if (this.vy >= 0) {
           for (const s of surfs) {
-            if (s >= prevY - 14 && s <= nextY + 10) {
+            if (s >= prevY - 14 && s <= nextY + 12) {
               this.y = s;
               this.vy = 0;
               this.onGround = true;
+              this.jumpCount = 0;
               this.coyoteTimer = 0.15;
               this.safeX = this.x;
               this.safeY = this.y;
@@ -889,13 +1004,19 @@
 
     botAI(dt, racers) {
       this.botJumpCooldown -= dt;
-      if (this.botJumpCooldown <= 0 && this.onGround) {
-        const isObstacleAhead = (isPointSolid(this.x + 35, this.y - 25) && isPointSolid(this.x + 35, this.y - 42));
-        const surfsAhead = getSurfacesAt(this.x + 40);
-        const isStepUpAhead = surfsAhead.some(s => s >= this.y - 65 && s < this.y - 10);
-        if (isObstacleAhead || isStepUpAhead || this.vx < 110) {
+      if (this.botJumpCooldown <= 0) {
+        if (this.onGround) {
+          const isObstacleAhead = (isPointSolid(this.x + 35, this.y - 25) && isPointSolid(this.x + 35, this.y - 42));
+          const surfsAhead = getSurfacesAt(this.x + 40);
+          const isStepUpAhead = surfsAhead.some(s => s >= this.y - 65 && s < this.y - 10);
+          if (isObstacleAhead || isStepUpAhead || this.vx < 110) {
+            this.jump();
+            this.botJumpCooldown = 0.45 + Math.random() * 0.3;
+          }
+        } else if (this.jumpCount === 1 && this.vy > 140 && Math.random() < 0.25) {
+          // Double jump over deep drops
           this.jump();
-          this.botJumpCooldown = 0.45 + Math.random() * 0.3;
+          this.botJumpCooldown = 0.6;
         }
       }
 
@@ -918,20 +1039,19 @@
         ctx.globalAlpha = 0.4;
       }
 
-      // Scale & Origin: Authentic Corona SDK composite alignment
-      // Ground level is at y = 100 in 200x200 sprite space
+      // Unified 200x200 sprite space origin (100, 200):
+      // - Feet: y = 166..200 -> dy = -34..0 (bottom rests perfectly on grass)
+      // - Body: y = 95..165 -> dy = -105..-35 (belly, chest & arms 100% visible)
+      // - Head: y = 53..147 -> dy = -147..-53 (sits proudly on shoulders)
       const anim = avatarSprites && avatarSprites[this.animal];
       if (anim) {
         const frameIdx = this.onGround ? (this.animFrame % 7) : 3;
         const scale = 0.28;
         ctx.scale(scale, scale);
 
-        // 1. Draw Feet (bottom running layer: originY = 100 puts feet bottom on the ground)
-        drawAvatarLayer(ctx, this.feetImg, anim.Feet, frameIdx, 100, 100);
-        // 2. Draw Body (middle torso layer: originY = 100 reveals full belly, arms and body)
-        drawAvatarLayer(ctx, this.bodyImg, anim.BodySprite, frameIdx, 100, 100);
-        // 3. Draw Head (top face layer: originY = 150 sits chin right above chest)
-        drawAvatarLayer(ctx, this.headImg, anim.HeadSprite, frameIdx, 100, 150);
+        drawAvatarLayer(ctx, this.feetImg, anim.Feet, frameIdx, 100, 200);
+        drawAvatarLayer(ctx, this.bodyImg, anim.BodySprite, frameIdx, 100, 200);
+        drawAvatarLayer(ctx, this.headImg, anim.HeadSprite, frameIdx, 100, 200);
       } else {
         // Fallback procedural avatar
         ctx.fillStyle = this.isPlayer ? '#ff9900' : '#4488ff';
@@ -1289,9 +1409,8 @@
   const guideBottomCloseBtn = document.getElementById('guide-bottom-close-btn');
   if (guideBottomCloseBtn) guideBottomCloseBtn.addEventListener('click', closeGuideModal);
   powerupsGuideModal.addEventListener('click', (e) => {
-    if (e.target === powerupsGuideModal || e.target.closest('.guide-back-btn') || e.target.closest('.modal-close-btn')) {
-      closeGuideModal();
-    }
+    // Closes on click anywhere (including background or card)
+    closeGuideModal();
   });
 
   menuSettingsBtn.addEventListener('click', () => {
@@ -1351,6 +1470,104 @@
   charConfirmBtn.addEventListener('click', () => {
     characterModal.style.display = 'none';
     characterModal.classList.add('hidden');
+  });
+
+  // Map / Level Selection Modal (25 Maps)
+  function populateMapGrid() {
+    if (!mapGridContainer) return;
+    mapGridContainer.innerHTML = '';
+    mapsCatalog.forEach((m) => {
+      const item = document.createElement('div');
+      item.className = 'map-choice' + (m.key === selectedMapKey ? ' selected' : '');
+      item.setAttribute('data-map', m.key);
+      item.innerHTML = `
+        <span class="map-choice-num">#${m.id}</span>
+        <span class="map-choice-name">${m.name}</span>
+        <span class="map-choice-theme">${m.themeName || 'Wald'}</span>
+      `;
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.map-choice').forEach(c => c.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedMapKey = m.key;
+        selectedMapName = m.name;
+        sounds.play('jump');
+      });
+      mapGridContainer.appendChild(item);
+    });
+  }
+
+  async function loadMap(mapKey, mapName) {
+    try {
+      const resp = await fetch(`maps/${mapKey}.json`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      mapData = await resp.json();
+      currentMapKey = mapKey;
+      currentMapName = mapName;
+      selectedMapKey = mapKey;
+      selectedMapName = mapName;
+      initLevelEntities();
+      resetRace();
+      console.log(`Loaded map: ${mapName} (${mapKey})`);
+    } catch (err) {
+      console.error('Failed to load map:', err);
+    }
+  }
+
+  function openMapModal() {
+    sounds.play('jump');
+    populateMapGrid();
+    if (mapModal) {
+      mapModal.style.display = 'flex';
+      mapModal.classList.remove('hidden');
+    }
+  }
+
+  function closeMapModal() {
+    if (mapModal) {
+      mapModal.style.display = 'none';
+      mapModal.classList.add('hidden');
+    }
+  }
+
+  if (menuMapBtn) menuMapBtn.addEventListener('click', openMapModal);
+  if (mapCloseBtn) mapCloseBtn.addEventListener('click', closeMapModal);
+  if (mapModal) {
+    mapModal.addEventListener('click', (e) => {
+      if (e.target === mapModal) closeMapModal();
+    });
+  }
+  if (mapConfirmBtn) {
+    mapConfirmBtn.addEventListener('click', async () => {
+      closeMapModal();
+      await loadMap(selectedMapKey, selectedMapName);
+      mainMenuScreen.style.display = 'none';
+      mainMenuScreen.classList.add('hidden');
+      uiOverlay.style.display = 'flex';
+      uiOverlay.classList.remove('hidden');
+      startCountdown();
+    });
+  }
+
+  // Main Menu Fullscreen Button
+  if (mainFullscreenBtn) {
+    mainFullscreenBtn.addEventListener('click', () => {
+      sounds.play('jump');
+      toggleFullscreen();
+    });
+  }
+
+  // Global Escape to Close Any Modal
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeGuideModal();
+      closeSettingsModal();
+      closeRankingModal();
+      closeMapModal();
+      if (characterModal) {
+        characterModal.style.display = 'none';
+        characterModal.classList.add('hidden');
+      }
+    }
   });
 
   // Action Inputs: Jump & Power-up
@@ -1416,13 +1633,19 @@
   });
 
   function resetRace() {
+    const startY1 = getGroundUnder(140, 350) || 350;
+    const startY2 = getGroundUnder(100, 350) || 350;
+    const startY3 = getGroundUnder(60, 350) || 350;
+    const startY4 = getGroundUnder(20, 350) || 350;
     racers = [
-      new Character(1, 'You', true, selectedAnimal, 140, 350),
-      new Character(2, 'Eagle', false, 'baldeagle', 100, 350),
-      new Character(3, 'Beaver', false, 'beaver', 60, 350),
-      new Character(4, 'Fox', false, 'fox', 20, 350)
+      new Character(1, 'You', true, selectedAnimal, 140, startY1),
+      new Character(2, 'Eagle', false, 'baldeagle', 100, startY2),
+      new Character(3, 'Beaver', false, 'beaver', 60, startY3),
+      new Character(4, 'Fox', false, 'fox', 20, startY4)
     ];
     player = racers[0];
+    cameraX = 0;
+    cameraY = Math.max(0, startY1 - 320);
     activePowerupItems = [];
     particles.length = 0;
     stormEffect.active = false;
@@ -1441,13 +1664,22 @@
 
   function showResults(allRacers) {
     gameState = 'ended';
-    const sorted = allRacers.slice().sort((a, b) => b.x - a.x);
+    const list = (allRacers && allRacers.length > 0) ? allRacers : racers;
+    const sorted = list.slice().sort((a, b) => {
+      const aScore = (a.finished ? 1000000 : 0) + a.x;
+      const bScore = (b.finished ? 1000000 : 0) + b.x;
+      return bScore - aScore;
+    });
     resultsList.innerHTML = '';
 
+    const medals = ['🥇', '🥈', '🥉', '🎖️'];
     sorted.forEach((r, idx) => {
       const li = document.createElement('li');
       li.className = `leaderboard-item rank-${idx + 1}`;
-      li.innerHTML = `<span>#${idx + 1} ${r.name}</span><span>${(r.x / 100).toFixed(0)}m</span>`;
+      const medal = medals[idx] || '🎖️';
+      const isYou = r.isPlayer ? ' (Du)' : '';
+      const dist = r.finished ? 'ZIEL! 🏆' : `${(r.x / 100).toFixed(0)}m`;
+      li.innerHTML = `<span>${medal} #${idx + 1} ${r.name}${isYou}</span><span style="font-weight: bold;">${dist}</span>`;
       resultsList.appendChild(li);
     });
 
@@ -1649,14 +1881,24 @@
   }
 
   function render() {
+    // Ultra-HD Crisp Canvas Scaling on every frame (eliminates PC pixelation)
+    ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
-    // 1. Sunny Day Sky Background (matching Image 2)
-    const skyImg = images['assets/images/map/background/forest/bkg_day.png'];
-    if (skyImg && skyImg.complete) {
+    // Dynamic Theme based on Selected Map
+    const theme = (mapData && mapData.theme) || (currentMapKey.includes('beach') || currentMapKey.includes('sand') || currentMapKey.includes('treasure') || currentMapKey.includes('pits') ? 'beach' : (currentMapKey.includes('sugar') || currentMapKey.includes('jelly') || currentMapKey.includes('candy') || currentMapKey.includes('chocolate') || currentMapKey.includes('frosting') || currentMapKey.includes('lollipop') ? 'candy' : 'forest'));
+
+    // 1. Sky Background (theme specific)
+    const skySrc = theme === 'candy'
+      ? 'assets/images/map/background/candy/bakgrunn1.png'
+      : (theme === 'beach' ? 'assets/images/map/background/beach/bkg_day.png' : 'assets/images/map/background/forest/bkg_day.png');
+    const skyImg = loadImage(skySrc);
+    if (skyImg && skyImg.complete && skyImg.naturalWidth > 0) {
       ctx.drawImage(skyImg, 0, 0, VIEW_W, VIEW_H);
     } else {
-      ctx.fillStyle = '#64b5f6';
+      ctx.fillStyle = theme === 'candy' ? '#f8bbd0' : (theme === 'beach' ? '#81d4fa' : '#64b5f6');
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     }
 
@@ -1676,9 +1918,12 @@
       }
     }
 
-    // 2. Parallax Mountain Range (moves smoothly at 0.18x speed)
-    const mountainImg = images['assets/images/map/background/forest/bkg_mountains.png'];
-    if (mountainImg && mountainImg.complete) {
+    // 2. Parallax Mountain / Landscape Range
+    const mountainSrc = theme === 'candy'
+      ? 'assets/images/map/background/candy/bakgrunn2.png'
+      : (theme === 'beach' ? 'assets/images/map/background/beach/bkg_mountains.png' : 'assets/images/map/background/forest/bkg_mountains.png');
+    const mountainImg = loadImage(mountainSrc);
+    if (mountainImg && mountainImg.complete && mountainImg.naturalWidth > 0) {
       const mOffset = -(cameraX * 0.18) % 1050;
       ctx.drawImage(mountainImg, mOffset, 120, 1050, 375);
       ctx.drawImage(mountainImg, mOffset + 1050, 120, 1050, 375);
@@ -1688,7 +1933,7 @@
     if (mapData) {
       const startCol = Math.max(0, Math.floor(cameraX / TILE_W));
       const endCol = Math.min(mapData.cols, Math.ceil((cameraX + VIEW_W) / TILE_W) + 1);
-      const dirtImg = loadImage('assets/images/map/element/forest/1B.png');
+      const dirtImg = loadImage(`assets/images/map/element/${theme}/1B.png`) || loadImage('assets/images/map/element/forest/1B.png');
       const maxScreenRow = Math.ceil((cameraY + VIEW_H) / TILE_H) + 2;
 
       for (let c = startCol; c < endCol; c++) {
@@ -1703,8 +1948,9 @@
 
           for (const tid of tileIds) {
             let tname = mapData.tileNames[tid - 1];
-            // Skip powerUp markers and dummy null tiles - no ugly green boxes!
+            // Skip powerUp markers, null tiles, and editor base masks (eliminates green boxes completely!)
             if (!tname || tname === 'powerUp' || tname === 'null') continue;
+            if (tname.includes('stone') && tname.endsWith('-2')) continue;
 
             if (isSolidTile(tname)) {
               if (r > lowestSolidRow) lowestSolidRow = r;
@@ -1713,14 +1959,21 @@
             let drawName = tname;
             if (drawName.startsWith('R')) drawName = drawName.slice(1);
             if (drawName === '1Av') drawName = '1Av1';
+            if (drawName === '1Bv') drawName = '1B';
             if (drawName === '0Av') drawName = '0Av1';
-            if (drawName === '0Dv') drawName = '0Dv1';
-            if (drawName === '0Fv') drawName = '0Fv1';
             if (drawName === '0Bv') drawName = '0Bv1';
-            let tileImgSrc = `assets/images/map/element/forest/${drawName}.png`;
+            if (drawName === '0Cv') drawName = '0Cv1';
+            if (drawName === '0Dv') drawName = '0Dv1';
+            if (drawName === '0Ev') drawName = '0Ev1';
+            if (drawName === '0Fv') drawName = '0Fv1';
 
-            const timg = loadImage(tileImgSrc);
-            if (timg.complete && timg.naturalWidth > 0) {
+            let timg = images[`assets/images/map/element/${theme}/${drawName}.png`] ||
+                       images[`assets/images/map/element/forest/${drawName}.png`];
+            if (!timg) {
+              timg = loadImage(`assets/images/map/element/${theme}/${drawName}.png`);
+            }
+
+            if (timg && timg.complete && timg.naturalWidth > 0) {
               ctx.save();
               if (tname.startsWith('R')) {
                 ctx.translate(tx + TILE_W, ty);
@@ -1734,10 +1987,15 @@
           }
         }
 
-        // Fill downward dirt so background mountain/sky never shows underneath ground
-        if (lowestSolidRow !== -1 && dirtImg && dirtImg.complete) {
-          const tx = c * TILE_W - cameraX;
-          for (let fillR = lowestSolidRow + 1; fillR < maxScreenRow; fillR++) {
+        // Fill downward dirt so background sky never shows underneath ground
+        const tx = c * TILE_W - cameraX;
+        let startFillRow = lowestSolidRow;
+        if (startFillRow === -1) {
+          const gY = getGroundUnder(c * TILE_W + 40, 350);
+          if (gY !== null) startFillRow = Math.floor(gY / TILE_H);
+        }
+        if (startFillRow !== -1 && dirtImg && dirtImg.complete && dirtImg.naturalWidth > 0) {
+          for (let fillR = startFillRow + 1; fillR < maxScreenRow + 4; fillR++) {
             const ty = fillR * TILE_H - cameraY;
             ctx.drawImage(dirtImg, tx, ty, TILE_W, TILE_H);
           }
