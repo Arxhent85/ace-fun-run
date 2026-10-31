@@ -106,8 +106,8 @@
         </div>
       </div>
 
-      <!-- Bottom Action Bar with Authentic Wooden Buttons (Touch: Swipe up = Jump, Button = Fire) -->
-      <div class="bottom-bar" style="justify-content: flex-end;">
+      <!-- Bottom Action Bar with Authentic Wooden Buttons (Power-Up & Jump) -->
+      <div class="bottom-bar">
         <!-- Powerup Slot (Fire Button) -->
         <div class="wood-action-btn powerup-slot" id="btn3d-powerup" style="display:none;" title="Power-Up nutzen (Taste X / Shift / Tap)">
           <img src="assets/images/gui/button/btnPowerUp.png" class="wood-bg-img" alt="Powerup Frame">
@@ -115,6 +115,12 @@
             <img src="assets/images/game/powerup/blade/icon.png" id="icon3d-powerup" class="powerup-img" alt="">
           </div>
           <span class="wood-key-hint">[X] FEUER</span>
+        </div>
+
+        <!-- Jump Button (Tap or Swipe up to Jump & Double Jump) -->
+        <div class="wood-action-btn jump-slot" id="btn3d-jump" title="Springen & Doppelsprung (Leertaste / W / Swipe / Tap)">
+          <img src="assets/images/gui/button/btnJump.png" class="wood-bg-img" alt="Jump">
+          <span class="wood-key-hint">[SPACE] SPRUNG</span>
         </div>
       </div>
     </div>
@@ -372,7 +378,7 @@
         <!-- Controls explanation -->
         <div class="level3d-tips">
           ⌨️ <b>Tastatur:</b> A/D oder Pfeile = Spur • Leertaste/W/Oben = Sprung & Doppelsprung • X = Item<br>
-          📱 <b>Touch:</b> Wischen Links/Rechts = Spur • <b>Wischen Nach Oben = Sprung & Doppelsprung</b> • Button = Item
+          📱 <b>Touch:</b> Wischen Links/Rechts = Spur • <b>Sprungtaste oder Wischen Nach Oben = Sprung & Doppelsprung</b> • Feuer-Button = Item
         </div>
 
         <div style="display: flex; gap: 15px; margin-top: 18px; justify-content: center; flex-wrap: wrap;">

@@ -360,6 +360,8 @@
       this.speed = this.baseSpeed;
       this.size = 54;
       this.baseY = 0;
+      this.floorY = 0;
+      this.wasBlocked = false;
       this.vy = 0;
       this.isJumping = false;
       this.jumpCount = 0;
@@ -419,21 +421,21 @@
 
       if (!this.isJumping) {
         // Erster Sprung vom Boden
-        this.vy = 640;
+        this.vy = 660;
         this.isJumping = true;
         this.jumpCount = 1;
         this.isFlipping = false;
         this.flipAngle = 0;
         if (this.isPlayer) sfx.play('jump');
-        engine.particles.spawnDust(this.x, engine.getHillY(this.z), this.z);
+        engine.particles.spawnDust(this.x, engine.getHillY(this.z) + (this.floorY || 0), this.z);
       } else if (this.isJumping && this.jumpCount === 1) {
         // Doppelsprung in der Luft mit Salto-Flipping!
-        this.vy = 600;
+        this.vy = 620;
         this.jumpCount = 2;
         this.isFlipping = true;
         this.flipAngle = 0.1;
         if (this.isPlayer) sfx.play('double_jump');
-        engine.particles.spawnSparks(this.x, engine.getHillY(this.z) + this.baseY, this.z, 22, '#ffea00');
+        engine.particles.spawnSparks(this.x, engine.getHillY(this.z) + (this.floorY || 0) + this.baseY, this.z, 22, '#ffea00');
       }
     }
 
@@ -544,7 +546,7 @@
         this.speed = Math.min(this.speed, this.baseSpeed * 0.45);
       } else if (this.speedBoostTimer > 0) {
         this.speedBoostTimer -= dt;
-        engine.particles.spawnSpeedFlames(this.x, engine.getHillY(this.z) + this.baseY, this.z);
+        engine.particles.spawnSpeedFlames(this.x, engine.getHillY(this.z) + (this.floorY || 0) + this.baseY, this.z);
       } else if (this.stunTimer > 0) {
         this.stunTimer -= dt;
         this.speed = 0;
@@ -553,9 +555,57 @@
         this.speed += (this.baseSpeed - this.speed) * 3.5 * dt;
       }
 
-      this.z += this.speed * dt;
+      // Multi-Level Ledge / Cliff Collision (Subway Surfers multi-level style, Fun Run physics)
+      // When a higher earth tier or cliff is in front:
+      // If the player doesn't jump, they hit the vertical wall and stop dead!
+      let ledgeAhead = engine.getLedgeInFront(this.x, this.z, 28);
+      if (ledgeAhead) {
+        let currentTotalY = (this.floorY || 0) + this.baseY;
+        if (currentTotalY < ledgeAhead.height - 12) {
+          // BLOCKED: runner hits cliff face and stops until jumping!
+          this.z = ledgeAhead.startZ - 2;
+          this.speed = 0;
+          if (!this.wasBlocked) {
+            sfx.play('rock_hit');
+            engine.particles.spawnDust(this.x, engine.getHillY(this.z) + currentTotalY + 15, this.z);
+            if (this.isPlayer) engine.cameraShake = 8;
+            this.wasBlocked = true;
+          }
+        } else {
+          this.wasBlocked = false;
+        }
+      } else {
+        this.wasBlocked = false;
+      }
+
+      if (!this.wasBlocked) {
+        this.z += this.speed * dt;
+      }
+
       if (this.z >= engine.finishLineZ && this.finishTime === null) {
         this.finishTime = (Date.now() - engine.raceStartTime) / 1000;
+      }
+
+      // Check current ground elevation tier (Ledge plateau or ground)
+      let currentLedge = engine.getLedgeAt(this.x, this.z);
+      let targetFloor = currentLedge ? currentLedge.height : 0;
+
+      if (targetFloor > (this.floorY || 0)) {
+        // Step up onto higher plateau
+        if (this.baseY + (this.floorY || 0) >= targetFloor - 25) {
+          let diff = targetFloor - (this.floorY || 0);
+          this.floorY = targetFloor;
+          this.baseY = Math.max(0, this.baseY - diff);
+        }
+      } else if (targetFloor < (this.floorY || 0)) {
+        // Drop down from higher plateau
+        this.baseY += ((this.floorY || 0) - targetFloor);
+        this.floorY = targetFloor;
+        if (!this.isJumping) {
+          this.isJumping = true;
+          this.vy = 0;
+          this.jumpCount = 1; // Can double jump to recover mid-air!
+        }
       }
 
       // Jump & Double Jump Physics
@@ -572,7 +622,7 @@
           this.isFlipping = false;
           this.flipAngle = 0;
           this.vy = 0;
-          engine.particles.spawnDust(this.x, engine.getHillY(this.z), this.z);
+          engine.particles.spawnDust(this.x, engine.getHillY(this.z) + (this.floorY || 0), this.z);
         }
       }
 
@@ -592,24 +642,33 @@
           this.usePowerup(engine);
         }
 
-        // Avoid or jump over hurdles, rocks, and dropped traps
+        // AI Ledge Handling: jump up or steer away
+        let aiLedge = engine.getLedgeInFront(this.x, this.z, 280);
+        if (aiLedge && ((this.floorY || 0) + this.baseY) < aiLedge.height) {
+          if (Math.random() < 0.78) {
+            this.jump(engine);
+            setTimeout(() => { if (this.isJumping && this.jumpCount === 1) this.jump(engine); }, 200);
+          } else {
+            const openLanes = [-350, 0, 350].filter(l => !aiLedge.lanes.includes(l));
+            if (openLanes.length > 0) this.targetX = openLanes[0];
+            else this.jump(engine);
+          }
+        }
+
+        if (this.wasBlocked) {
+          this.jump(engine);
+          setTimeout(() => { if (this.isJumping && this.jumpCount === 1) this.jump(engine); }, 180);
+        }
+
+        // Avoid stones & traps
         engine.hazards.forEach(h => {
-          if (h.active && h.z > this.z && (h.z - this.z) < 420) {
-            if (h.type === 'wide_hurdle') {
-              if (Math.random() < 0.88) {
+          if (h.active && h.z > this.z && (h.z - this.z) < 320 && Math.abs(h.x - this.x) < 140) {
+            if (h.type === 'rock' || h.type === 'trap') {
+              if (Math.random() < 0.7) {
                 this.jump(engine);
-                if (Math.random() < 0.5) {
-                  setTimeout(() => { if (this.isJumping && this.jumpCount === 1) this.jump(engine); }, 220);
-                }
-              }
-            } else if (h.type === 'hurdle' || h.type === 'rock' || h.type === 'trap') {
-              if (Math.abs(h.x - this.x) < 140) {
-                if (Math.random() < 0.65) {
-                  this.jump(engine);
-                } else {
-                  const lanes = [-350, 0, 350];
-                  this.targetX = lanes.filter(l => Math.abs(l - h.x) > 100)[0] || 0;
-                }
+              } else {
+                const lanes = [-350, 0, 350];
+                this.targetX = lanes.filter(l => Math.abs(l - h.x) > 100)[0] || 0;
               }
             }
           }
@@ -624,17 +683,18 @@
       if (this.dead) return;
 
       let hillY = engine.getHillY(this.z);
+      let currentGroundY = hillY + (this.floorY || 0);
       let runCycle = this.z * 0.04;
       let waddleY = (!this.isJumping && this.speed > 80) ? Math.abs(Math.sin(runCycle)) * 9 : 0;
-      let finalY = hillY + this.baseY + waddleY;
+      let finalY = currentGroundY + this.baseY + waddleY;
 
       let p = engine.project(this.x, finalY, this.z);
       if (!p) return;
 
       let r = this.size * p.scale;
 
-      // Realistic 3D Ground Shadow
-      let shadowP = engine.project(this.x, hillY, this.z);
+      // Realistic 3D Ground Shadow on current surface (ground or high ledge)
+      let shadowP = engine.project(this.x, currentGroundY, this.z);
       if (shadowP) {
         let shadowSize = r * (1 - (this.baseY / 800));
         if (shadowSize > 0) {
@@ -958,11 +1018,13 @@
       this.hazards = [];
       this.projectiles = [];
       this.scenery = [];
+      this.ledges = [];
       this.particles = new ParticleSystem();
 
       // UI References
       this.uiOverlay = document.getElementById('ui3d-overlay');
       this.weaponBtn = document.getElementById('btn3d-powerup');
+      this.jumpBtn = document.getElementById('btn3d-jump');
       this.exitBtn = document.getElementById('btn3d-exit');
       this.rankDisplay = document.getElementById('rank3d-display');
       this.countdownDisplay = document.getElementById('countdown3d-display');
@@ -1013,6 +1075,30 @@
       let hill = Math.sin(z * 0.0028) * 130 + Math.sin(z * 0.001) * 180;
       if (this.isBridge(z)) hill += 250;
       return hill;
+    }
+
+    getLedgeAt(x, z) {
+      for (let i = 0; i < this.ledges.length; i++) {
+        let l = this.ledges[i];
+        if (z >= l.startZ && z <= l.endZ) {
+          for (let laneX of l.lanes) {
+            if (Math.abs(x - laneX) < 170) return l;
+          }
+        }
+      }
+      return null;
+    }
+
+    getLedgeInFront(x, z, checkDist = 30) {
+      for (let i = 0; i < this.ledges.length; i++) {
+        let l = this.ledges[i];
+        if (z + checkDist >= l.startZ && z < l.startZ) {
+          for (let laneX of l.lanes) {
+            if (Math.abs(x - laneX) < 160) return l;
+          }
+        }
+      }
+      return null;
     }
 
     project(worldX, worldY, worldZ) {
@@ -1136,6 +1222,19 @@
         });
       }
 
+      // Wooden Jump Button (Springen & Doppelsprung)
+      if (this.jumpBtn) {
+        const triggerJump = (e) => {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          sfx.init();
+          if (this.isPlaying && this.player) {
+            this.player.jump(this);
+          }
+        };
+        this.jumpBtn.addEventListener('click', triggerJump);
+        this.jumpBtn.addEventListener('touchstart', triggerJump, { passive: false });
+      }
+
       // Wooden Fire Action Button (Power-Up)
       if (this.weaponBtn) {
         this.weaponBtn.addEventListener('click', () => {
@@ -1161,44 +1260,90 @@
     createWorld() {
       this.hazards = [];
       this.scenery = [];
+      this.ledges = [];
       const lanes = [-350, 0, 350];
-      let nextWideHurdleZ = 3200;
 
-      // Procedural Generation of Pocket/FunRun level elements:
-      // Rolling hills, bridges, stones (rocks), hurdles, wide hurdles, bounce pads, speed pads & crates.
-      // NOTE: Traps and Sawblades are ONLY placed on track by players/bots when they fire their weapon!
-      for (let z = 900; z < this.finishLineZ - 1000; z += 460) {
-        // Track-wide barrier across all 3 lanes (Pocket & Fun Run wide hurdle)
-        if (z >= nextWideHurdleZ) {
-          this.hazards.push({
-            x: 0,
-            z: z,
-            width: 1200,
-            type: 'wide_hurdle',
-            active: true
-          });
-          nextWideHurdleZ += 3600;
-          continue;
+      // 1. Procedural Generation of Multi-Level Earth Tiers / Ledges (Subway Surfers multi-level style, Fun Run physics)
+      // Different sections & lanes are on higher earth/stone plateaus!
+      // Players can jump / double-jump up; if they don't jump, they are stopped against the cliff face!
+      let currentZ = 2200;
+      while (currentZ < this.finishLineZ - 3000) {
+        let typeRand = Math.random();
+        let length = 1400 + Math.random() * 800; // Plateau length
+        let height = 90 + Math.random() * 20;   // Height of the cliff/tier
+        let ledgeLanes = [];
+
+        if (typeRand > 0.6) {
+          // Full-width terraced cliff across all 3 lanes (requires Jump / Double Jump to clear!)
+          ledgeLanes = [-350, 0, 350];
+        } else if (typeRand > 0.3) {
+          // Elevated double-lane plateau (Left & Center or Center & Right)
+          ledgeLanes = Math.random() > 0.5 ? [-350, 0] : [0, 350];
+        } else {
+          // Single-lane elevated ridge
+          ledgeLanes = [lanes[Math.floor(Math.random() * lanes.length)]];
         }
 
+        let ledge = {
+          startZ: currentZ,
+          endZ: currentZ + length,
+          height: height,
+          lanes: ledgeLanes
+        };
+        this.ledges.push(ledge);
+
+        // High ground reward: Speed Boost Pad or Item Crate atop the plateau!
+        let midZ = currentZ + length * 0.45;
+        let bonusLane = ledgeLanes[Math.floor(Math.random() * ledgeLanes.length)];
+        if (Math.random() > 0.45) {
+          this.hazards.push({ x: bonusLane, z: midZ, type: 'speed_pad', active: true, onLedge: true, ledgeHeight: height });
+        } else {
+          this.hazards.push({ x: bonusLane, z: midZ, type: 'crate', active: true, respawnTimer: 0, onLedge: true, ledgeHeight: height });
+        }
+
+        currentZ += length + 1000 + Math.random() * 800;
+      }
+
+      // 2. Procedural Items & Stones on the Ground
+      // NOTE: Traps and Sawblades are ONLY placed on track by players/bots when they fire their weapon!
+      for (let z = 900; z < this.finishLineZ - 1000; z += 440) {
         let rand = Math.random();
         let x = lanes[Math.floor(Math.random() * lanes.length)];
+        let ledgeUnder = this.getLedgeAt(x, z);
 
-        if (rand > 0.76) {
+        if (rand > 0.74) {
           // Powerup Mystery Crate
-          this.hazards.push({ x, z, type: 'crate', active: true, respawnTimer: 0 });
-        } else if (rand > 0.52) {
+          this.hazards.push({
+            x, z,
+            type: 'crate',
+            active: true,
+            respawnTimer: 0,
+            onLedge: !!ledgeUnder,
+            ledgeHeight: ledgeUnder ? ledgeUnder.height : 0
+          });
+        } else if (rand > 0.44) {
           // Rock boulder in lane (jump over it or switch lanes!)
-          this.hazards.push({ x, z, type: 'rock', active: true });
-        } else if (rand > 0.32) {
-          // Single-lane wooden hurdle
-          this.hazards.push({ x, z, width: 260, type: 'hurdle', active: true });
-        } else if (rand > 0.18) {
-          // Bounce Trampoline Pad (catapults high in air)
-          this.hazards.push({ x, z, type: 'bounce', active: true });
+          if (!ledgeUnder) {
+            this.hazards.push({ x, z, type: 'rock', active: true });
+          }
+        } else if (rand > 0.26) {
+          // Bounce Trampoline Pad (catapults high in air to leap over ledges)
+          this.hazards.push({
+            x, z,
+            type: 'bounce',
+            active: true,
+            onLedge: !!ledgeUnder,
+            ledgeHeight: ledgeUnder ? ledgeUnder.height : 0
+          });
         } else {
           // Speed Booster Strip
-          this.hazards.push({ x, z, type: 'speed_pad', active: true });
+          this.hazards.push({
+            x, z,
+            type: 'speed_pad',
+            active: true,
+            onLedge: !!ledgeUnder,
+            ledgeHeight: ledgeUnder ? ledgeUnder.height : 0
+          });
         }
 
         // Add side scenery (trees and bridge posts)
@@ -1282,29 +1427,12 @@
           let dx = Math.abs(r.x - h.x);
 
           if (dz < 65) {
-            // Track-wide Barrier (Pocket & Funrun wide hurdle - requires Jump or Double Jump)
-            if (h.type === 'wide_hurdle' && r.baseY < 75) {
-              r.stumbleTimer = 0.9;
-              r.speed *= 0.42;
-              sfx.play('rock_hit');
-              this.particles.spawnDust(r.x, this.getHillY(r.z) + 30, r.z);
-              if (r.isPlayer) this.cameraShake = 12;
-            }
-            // Single Lane Hurdle
-            else if (h.type === 'hurdle' && dx < 135 && r.baseY < 60) {
-              h.active = false;
-              r.stumbleTimer = 0.8;
-              r.speed *= 0.5;
-              sfx.play('rock_hit');
-              this.particles.spawnSparks(r.x, this.getHillY(r.z) + 20, r.z, 16, '#c68642');
-              if (r.isPlayer) this.cameraShake = 8;
-            }
             // Stone Boulder (Rock)
-            else if (h.type === 'rock' && dx < 85 && r.baseY < 48) {
+            if (h.type === 'rock' && dx < 85 && r.baseY < 48) {
               r.stumbleTimer = 0.75;
               r.speed *= 0.48;
               sfx.play('rock_hit');
-              this.particles.spawnDust(r.x, this.getHillY(r.z) + 15, r.z);
+              this.particles.spawnDust(r.x, this.getHillY(r.z) + (r.floorY || 0) + 15, r.z);
               if (r.isPlayer) this.cameraShake = 9;
             }
             // Sawblade Hit (Fired by player/bot)
@@ -1417,11 +1545,13 @@
       // Camera Shake decay
       if (this.cameraShake > 0) this.cameraShake = Math.max(0, this.cameraShake - 42 * dt);
 
-      // Camera Follow Player (Positioned so the entire character & feet are fully visible)
-      this.cameraZ = this.player.z - 580;
-      let targetCamX = this.getCurve(this.player.z) + this.player.x * 0.85;
-      this.cameraX += (targetCamX - this.cameraX) * 6 * dt;
-      this.currentCameraY = this.getHillY(this.player.z) + this.cameraHeight;
+      // Camera strictly directly behind player (Subway Surfers & Fun Run tight follower)
+      this.cameraZ = this.player.z - 490;
+      let targetCamX = this.getCurve(this.player.z) + this.player.x;
+      this.cameraX += (targetCamX - this.cameraX) * 14 * dt;
+      let playerGroundY = this.getHillY(this.player.z) + (this.player.floorY || 0);
+      let targetCamY = playerGroundY + this.player.baseY * 0.35 + 235;
+      this.currentCameraY += (targetCamY - this.currentCameraY) * 12 * dt;
 
       // Render World
       this.drawBackground();
@@ -1580,6 +1710,11 @@
           drawables.push({ type: 'hazard', obj: h, z: h.z });
         }
       });
+      this.ledges.forEach(l => {
+        if (l.endZ > this.cameraZ && l.startZ < this.cameraZ + this.drawDistance * this.segmentLength) {
+          drawables.push({ type: 'ledge', obj: l, z: l.startZ });
+        }
+      });
 
       drawables.sort((a, b) => b.z - a.z);
 
@@ -1588,76 +1723,136 @@
         else if (d.type === 'proj') d.obj.draw(this.ctx, this);
         else if (d.type === 'gate') d.obj.draw(this.ctx, this);
         else if (d.type === 'tree') d.obj.draw(this.ctx, this);
-        else if (d.type === 'hazard') {
+        else if (d.type === 'ledge') {
+          let l = d.obj;
+          let minLaneX = Math.min(...l.lanes);
+          let maxLaneX = Math.max(...l.lanes);
+          let minX = minLaneX - 175;
+          let maxX = maxLaneX + 175;
+
+          // 1. Draw Front Cliff Face at startZ
+          let baseY = this.getHillY(l.startZ);
+          let topY = baseY + l.height;
+
+          let pBL = this.project(minX, baseY, l.startZ);
+          let pBR = this.project(maxX, baseY, l.startZ);
+          let pTL = this.project(minX, topY, l.startZ);
+          let pTR = this.project(maxX, topY, l.startZ);
+
+          if (pBL && pBR && pTL && pTR) {
+            // Shadow under cliff
+            this.ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            this.ctx.beginPath();
+            this.ctx.moveTo(pBL.x - 20 * pBL.scale, pBL.y + 15 * pBL.scale);
+            this.ctx.lineTo(pBR.x + 20 * pBR.scale, pBR.y + 15 * pBR.scale);
+            this.ctx.lineTo(pBR.x, pBR.y);
+            this.ctx.lineTo(pBL.x, pBL.y);
+            this.ctx.fill();
+
+            // Vertical Earth/Stone Cliff Face
+            let cliffGrad = this.ctx.createLinearGradient(0, pTL.y, 0, pBL.y);
+            cliffGrad.addColorStop(0, '#6d4223');
+            cliffGrad.addColorStop(0.5, '#4a2c17');
+            cliffGrad.addColorStop(1, '#2c180b');
+            this.ctx.fillStyle = cliffGrad;
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(pTL.x, pTL.y);
+            this.ctx.lineTo(pTR.x, pTR.y);
+            this.ctx.lineTo(pBR.x, pBR.y);
+            this.ctx.lineTo(pBL.x, pBL.y);
+            this.ctx.closePath();
+            this.ctx.fill();
+
+            // Craggy stone outline & stratification lines
+            this.ctx.strokeStyle = '#1d0f07';
+            this.ctx.lineWidth = Math.max(1, 3 * pTL.scale);
+            this.ctx.stroke();
+
+            // Rock stratum horizontal crevices
+            this.ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            this.ctx.lineWidth = Math.max(1, 2 * pTL.scale);
+            this.ctx.beginPath();
+            let midY1 = (pTL.y + pBL.y) / 2;
+            let midY2 = (pTR.y + pBR.y) / 2;
+            this.ctx.moveTo(pTL.x + 10 * pTL.scale, midY1);
+            this.ctx.lineTo(pTR.x - 10 * pTR.scale, midY2);
+            this.ctx.stroke();
+
+            // Grass / Snow Overhang Lip on Top Edge
+            let t = THEMES[this.currentLevel];
+            this.ctx.fillStyle = t.wallTopLight || '#3f7336';
+            this.ctx.beginPath();
+            this.ctx.moveTo(pTL.x - 6 * pTL.scale, pTL.y - 4 * pTL.scale);
+            this.ctx.lineTo(pTR.x + 6 * pTR.scale, pTR.y - 4 * pTR.scale);
+            this.ctx.lineTo(pTR.x + 4 * pTR.scale, pTR.y + 10 * pTR.scale);
+            this.ctx.lineTo(pTL.x - 4 * pTL.scale, pTL.y + 10 * pTL.scale);
+            this.ctx.closePath();
+            this.ctx.fill();
+          }
+
+          // 2. Draw Top Surface & Side Walls along the length of the Ledge
+          let stepZ = this.segmentLength;
+          let renderStart = Math.max(l.startZ, this.cameraZ);
+          let renderEnd = Math.min(l.endZ, this.cameraZ + this.drawDistance * stepZ);
+
+          for (let segZ = renderStart; segZ < renderEnd; segZ += stepZ) {
+            let nextZ = Math.min(l.endZ, segZ + stepZ);
+            let yA = this.getHillY(segZ) + l.height;
+            let yB = this.getHillY(nextZ) + l.height;
+            let groundYA = this.getHillY(segZ);
+            let groundYB = this.getHillY(nextZ);
+
+            let s1L = this.project(minX, yA, segZ);
+            let s1R = this.project(maxX, yA, segZ);
+            let s2L = this.project(minX, yB, nextZ);
+            let s2R = this.project(maxX, yB, nextZ);
+
+            if (s1L && s1R && s2L && s2R) {
+              let isEven = (Math.floor(segZ / stepZ) % 2 === 0);
+              // Top Surface of the Ledge
+              this.ctx.fillStyle = isEven ? '#8d5528' : '#774720';
+              this.ctx.beginPath();
+              this.ctx.moveTo(s1L.x, s1L.y);
+              this.ctx.lineTo(s1R.x, s1R.y);
+              this.ctx.lineTo(s2R.x, s2R.y);
+              this.ctx.lineTo(s2L.x, s2L.y);
+              this.ctx.fill();
+
+              // Side Edge Walls (Drop-offs to lower lanes)
+              if (minX > -this.roadWidth / 2) {
+                let g1L = this.project(minX, groundYA, segZ);
+                let g2L = this.project(minX, groundYB, nextZ);
+                if (g1L && g2L) {
+                  this.ctx.fillStyle = isEven ? '#4e2d18' : '#3d2212';
+                  this.ctx.beginPath();
+                  this.ctx.moveTo(s1L.x, s1L.y);
+                  this.ctx.lineTo(s2L.x, s2L.y);
+                  this.ctx.lineTo(g2L.x, g2L.y);
+                  this.ctx.lineTo(g1L.x, g1L.y);
+                  this.ctx.fill();
+                }
+              }
+              if (maxX < this.roadWidth / 2) {
+                let g1R = this.project(maxX, groundYA, segZ);
+                let g2R = this.project(maxX, groundYB, nextZ);
+                if (g1R && g2R) {
+                  this.ctx.fillStyle = isEven ? '#4e2d18' : '#3d2212';
+                  this.ctx.beginPath();
+                  this.ctx.moveTo(s1R.x, s1R.y);
+                  this.ctx.lineTo(s2R.x, s2R.y);
+                  this.ctx.lineTo(g2R.x, g2R.y);
+                  this.ctx.lineTo(g1R.x, g1R.y);
+                  this.ctx.fill();
+                }
+              }
+            }
+          }
+        } else if (d.type === 'hazard') {
           let h = d.obj;
-          let hillY = this.getHillY(h.z);
+          let hillY = this.getHillY(h.z) + (h.onLedge ? h.ledgeHeight : 0);
 
-          if (h.type === 'wide_hurdle') {
-            let pL = this.project(-this.roadWidth / 2, hillY, h.z);
-            let pR = this.project(this.roadWidth / 2, hillY, h.z);
-            let topL = this.project(-this.roadWidth / 2, hillY + 80, h.z);
-            let topR = this.project(this.roadWidth / 2, hillY + 80, h.z);
-            let pC = this.project(0, hillY, h.z);
-            let topC = this.project(0, hillY + 80, h.z);
-
-            if (pL && pR && topL && topR) {
-              let postW = 24 * pL.scale;
-              let barH = 42 * pL.scale;
-
-              // Heavy Wood End Posts
-              this.ctx.fillStyle = '#4a2810';
-              this.ctx.fillRect(pL.x - postW / 2, topL.y, postW, pL.y - topL.y);
-              this.ctx.fillRect(pR.x - postW / 2, topR.y, postW, pR.y - topR.y);
-              if (pC && topC) this.ctx.fillRect(pC.x - postW / 2, topC.y, postW, pC.y - topC.y);
-
-              // Solid Wooden Barricade Beam
-              let fullW = (pR.x - pL.x) + postW;
-              this.ctx.fillStyle = '#8b5a2b';
-              this.ctx.fillRect(pL.x - postW / 2, topL.y, fullW, barH);
-              this.ctx.strokeStyle = '#2b1608';
-              this.ctx.lineWidth = Math.max(1, 3 * pL.scale);
-              this.ctx.strokeRect(pL.x - postW / 2, topL.y, fullW, barH);
-
-              // Caution Stripes
-              this.ctx.fillStyle = '#ffcc00';
-              for (let s = pL.x; s < pR.x; s += 48 * pL.scale) {
-                this.ctx.fillRect(s, topL.y, 22 * pL.scale, barH);
-              }
-
-              // "⬆ JUMP ⬆" Badge in center
-              if (pC && topC) {
-                this.ctx.fillStyle = '#ff3344';
-                let fontS = Math.max(12, 32 * pL.scale);
-                this.ctx.font = '900 ' + fontS + 'px "Luckiest Guy", Impact, Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText('⬆ JUMP ⬆', pC.x, topC.y + barH / 2);
-              }
-            }
-          } else if (h.type === 'hurdle') {
-            let pL = this.project(h.x - 130, hillY, h.z);
-            let pR = this.project(h.x + 130, hillY, h.z);
-            let topL = this.project(h.x - 130, hillY + 65, h.z);
-            let topR = this.project(h.x + 130, hillY + 65, h.z);
-            if (pL && pR && topL && topR) {
-              let postW = 16 * pL.scale;
-              let barH = 26 * pL.scale;
-              this.ctx.fillStyle = '#5c3a21';
-              this.ctx.fillRect(pL.x - postW / 2, topL.y, postW, pL.y - topL.y);
-              this.ctx.fillRect(pR.x - postW / 2, topR.y, postW, pR.y - topR.y);
-              let barW = (pR.x - pL.x) + postW;
-              this.ctx.fillStyle = '#a06a38';
-              this.ctx.fillRect(pL.x - postW / 2, topL.y, barW, barH);
-              this.ctx.strokeStyle = '#3d2314';
-              this.ctx.lineWidth = Math.max(1, 2 * pL.scale);
-              this.ctx.strokeRect(pL.x - postW / 2, topL.y, barW, barH);
-              // Hazard warning stripes
-              this.ctx.fillStyle = '#ffd166';
-              for (let s = pL.x; s < pR.x; s += 28 * pL.scale) {
-                this.ctx.fillRect(s, topL.y, 14 * pL.scale, barH);
-              }
-            }
-          } else if (h.type === 'rock') {
+          if (h.type === 'rock') {
             let p = this.project(h.x, hillY + 22, h.z);
             if (p) {
               let r = 38 * p.scale;
