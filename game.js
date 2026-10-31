@@ -6,6 +6,23 @@
   const ctx = canvas.getContext('2d');
   const gameContainer = document.getElementById('game-container');
 
+  // Virtual Game Resolution (Logical canvas size)
+  const VIEW_W = 960;
+  const VIEW_H = 540;
+
+  // High-DPI Crisp Resolution Scaling
+  function updateCanvasResolution() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    canvas.width = Math.round(VIEW_W * dpr);
+    canvas.height = Math.round(VIEW_H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+  }
+  updateCanvasResolution();
+  window.addEventListener('resize', updateCanvasResolution);
+  window.addEventListener('orientationchange', updateCanvasResolution);
+
   // DOM Elements - Menus & Modals
   const mainMenuScreen = document.getElementById('main-menu-screen');
   const mainPlayBtn = document.getElementById('main-play-btn');
@@ -184,6 +201,24 @@
   loadImage('assets/images/game/powerup/jump/icon.png');
   loadImage('assets/images/game/powerup/magnet/icon.png');
   loadImage('assets/images/game/powerup/bounceTrap/icon.png');
+  loadImage('assets/images/game/powerup/bounceTrap/sprite.png');
+  loadImage('assets/images/map/element/forest/Jump1.png');
+
+  // Decompiled 12-frame spring boxing glove punch animation from bounceTrapSprite.lu
+  const BOUNCE_TRAP_FRAMES = [
+    { tx: 112, ty: 226, tw: 53, th: 54, cx: 64, cy: 26, cw: 53, ch: 54 }, // Frame 0: closed present box
+    { tx: 2, ty: 170, tw: 71, th: 54, cx: 46, cy: 26, cw: 71, ch: 54 },   // Frame 1: box begins opening
+    { tx: 115, ty: 114, tw: 87, th: 54, cx: 30, cy: 26, cw: 87, ch: 54 },  // Frame 2: spring emerges
+    { tx: 2, ty: 114, tw: 111, th: 54, cx: 6, cy: 26, cw: 111, ch: 54 },   // Frame 3: glove springs out
+    { tx: 121, ty: 2, tw: 117, th: 54, cx: 0, cy: 26, cw: 117, ch: 54 },    // Frame 4: FULL PUNCH!
+    { tx: 2, ty: 2, tw: 117, th: 54, cx: 0, cy: 26, cw: 117, ch: 54 },      // Frame 5: peak extension
+    { tx: 119, ty: 58, tw: 115, th: 54, cx: 2, cy: 26, cw: 115, ch: 54 },   // Frame 6: rebound
+    { tx: 2, ty: 58, tw: 115, th: 54, cx: 2, cy: 26, cw: 115, ch: 54 },     // Frame 7: recoil
+    { tx: 75, ty: 170, tw: 65, th: 54, cx: 52, cy: 26, cw: 65, ch: 54 },   // Frame 8: spring retracts
+    { tx: 142, ty: 170, tw: 59, th: 54, cx: 58, cy: 26, cw: 59, ch: 54 },  // Frame 9: glove returning
+    { tx: 57, ty: 226, tw: 53, th: 54, cx: 64, cy: 26, cw: 53, ch: 54 },   // Frame 10: closing lid
+    { tx: 2, ty: 226, tw: 53, th: 54, cx: 64, cy: 26, cw: 53, ch: 54 }     // Frame 11: closed
+  ];
   loadImage('assets/images/game/powerup/ninja/icon.png');
 
   // Preload Avatar Multi-Layer Sprites
@@ -428,8 +463,8 @@
   }
 
   const bouncePads = [
-    { x: 173 * 80 + 40, y: 500, radius: 50, force: -750 },
-    { x: 224 * 80 + 40, y: 700, radius: 50, force: -830 }
+    { x: 173 * 80 + 40, y: 500, radius: 55, force: -900, boostVx: 400, animTimer: 0 },
+    { x: 224 * 80 + 40, y: 700, radius: 60, force: -1220, boostVx: 480, animTimer: 0 }
   ];
 
   // Authentic terrain height supporting runner's feet
@@ -437,12 +472,12 @@
     const surfs = getSurfacesAt(worldX);
     if (surfs.length === 0) return null;
 
-    // 1. Connected slope (running up to 26px step up, down to 48px slope down)
+    // 1. Connected slope (running up to 52px step up for 1-tile ledges, down to 55px slope down)
     let best = null;
     let minDiff = Infinity;
     for (const s of surfs) {
       const diff = s - currentFeetY;
-      if (diff >= -26 && diff <= 48) {
+      if (diff >= -52 && diff <= 55) {
         if (Math.abs(diff) < minDiff) {
           minDiff = Math.abs(diff);
           best = s;
@@ -634,6 +669,7 @@
           y: this.y,
           triggered: false,
           triggerTimer: 0,
+          animFrame: 0,
           life: 25.0
         });
       } else if (p.id === 10) { // Katana Slash (Target Leader)
@@ -745,12 +781,14 @@
 
       // Check bounce pads
       for (const bp of bouncePads) {
-        if (Math.abs(this.x - bp.x) < bp.radius && Math.abs(this.y - bp.y) < 30) {
+        if (Math.abs(this.x - bp.x) < bp.radius && Math.abs(this.y - bp.y) < 38) {
           this.vy = bp.force;
+          if (bp.boostVx) this.vx = Math.max(this.vx, bp.boostVx);
           this.onGround = false;
           this.coyoteTimer = 0;
+          bp.animTimer = 0.35;
           sounds.play('jump');
-          spawnSparks(bp.x, bp.y - 10, 15);
+          spawnSparks(bp.x, bp.y - 10, 20);
         }
       }
 
@@ -761,7 +799,8 @@
 
       // Horizontal movement & wall check
       const nextX = this.x + this.vx * dt;
-      const wallAhead = isPointSolid(nextX + 12, this.y - 18) || isPointSolid(nextX + 12, this.y - 34);
+      // Step up check: only stop forward motion if both chest & head hit a wall higher than climbable 50px step
+      const wallAhead = isPointSolid(nextX + 12, this.y - 30) && isPointSolid(nextX + 12, this.y - 45);
       if (wallAhead) {
         this.vx = 0;
       } else {
@@ -770,7 +809,7 @@
 
       if (this.onGround) {
         const gY = getGroundUnder(this.x, this.y);
-        if (gY !== null && gY >= this.y - 26 && gY <= this.y + 48) {
+        if (gY !== null && gY >= this.y - 52 && gY <= this.y + 55) {
           this.y = gY;
           this.vy = 0;
           this.safeX = this.x;
@@ -851,12 +890,12 @@
     botAI(dt, racers) {
       this.botJumpCooldown -= dt;
       if (this.botJumpCooldown <= 0 && this.onGround) {
-        const isObstacleAhead = isPointSolid(this.x + 30, this.y - 18) || isPointSolid(this.x + 30, this.y - 34);
-        const surfsAhead = getSurfacesAt(this.x + 35);
-        const isStepUpAhead = surfsAhead.some(s => s >= this.y - 60 && s < this.y - 15);
-        if (isObstacleAhead || isStepUpAhead || this.vx < 120) {
+        const isObstacleAhead = (isPointSolid(this.x + 35, this.y - 25) && isPointSolid(this.x + 35, this.y - 42));
+        const surfsAhead = getSurfacesAt(this.x + 40);
+        const isStepUpAhead = surfsAhead.some(s => s >= this.y - 65 && s < this.y - 10);
+        if (isObstacleAhead || isStepUpAhead || this.vx < 110) {
           this.jump();
-          this.botJumpCooldown = 0.5 + Math.random() * 0.3;
+          this.botJumpCooldown = 0.45 + Math.random() * 0.3;
         }
       }
 
@@ -879,22 +918,20 @@
         ctx.globalAlpha = 0.4;
       }
 
-      // Scale & Origin: originX = 100, originY = 200 puts feet precisely on the grass line!
+      // Scale & Origin: Authentic Corona SDK composite alignment
+      // Ground level is at y = 100 in 200x200 sprite space
       const anim = avatarSprites && avatarSprites[this.animal];
       if (anim) {
         const frameIdx = this.onGround ? (this.animFrame % 7) : 3;
-        const scale = 0.30;
+        const scale = 0.28;
         ctx.scale(scale, scale);
 
-        const originX = 100;
-        const originY = 200;
-
-        // 1. Draw Feet (bottom running layer)
-        drawAvatarLayer(ctx, this.feetImg, anim.Feet, frameIdx, originX, originY);
-        // 2. Draw Body (middle torso layer)
-        drawAvatarLayer(ctx, this.bodyImg, anim.BodySprite, frameIdx, originX, originY);
-        // 3. Draw Head (top face layer)
-        drawAvatarLayer(ctx, this.headImg, anim.HeadSprite, frameIdx, originX, originY - 12);
+        // 1. Draw Feet (bottom running layer: originY = 100 puts feet bottom on the ground)
+        drawAvatarLayer(ctx, this.feetImg, anim.Feet, frameIdx, 100, 100);
+        // 2. Draw Body (middle torso layer: originY = 100 reveals full belly, arms and body)
+        drawAvatarLayer(ctx, this.bodyImg, anim.BodySprite, frameIdx, 100, 100);
+        // 3. Draw Head (top face layer: originY = 150 sits chin right above chest)
+        drawAvatarLayer(ctx, this.headImg, anim.HeadSprite, frameIdx, 100, 150);
       } else {
         // Fallback procedural avatar
         ctx.fillStyle = this.isPlayer ? '#ff9900' : '#4488ff';
@@ -1545,20 +1582,23 @@
 
         if (item.triggered) {
           item.triggerTimer -= dt;
+          // Progress through 12-frame spring boxing glove punch animation
+          item.animFrame = Math.min(11, Math.floor((0.9 - item.triggerTimer) * 13));
           if (item.triggerTimer <= 0) {
             activePowerupItems.splice(i, 1);
             continue;
           }
         } else {
           for (const r of racers) {
-            if (!r.dead && Math.hypot(r.x - item.x, r.y - item.y) < 30) {
+            if (!r.dead && Math.hypot(r.x - item.x, r.y - item.y) < 32) {
               item.triggered = true;
-              item.triggerTimer = 1.0;
+              item.triggerTimer = 0.9;
+              item.animFrame = 1;
               sounds.play('bounce_hit');
-              r.vy = -720;
-              r.vx = -160;
+              r.vy = -750;
+              r.vx = -180;
               r.onGround = false;
-              spawnSparks(r.x, r.y - 15, 20);
+              spawnSparks(r.x, r.y - 15, 25);
               break;
             }
           }
@@ -1609,30 +1649,30 @@
   }
 
   function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
     // 1. Sunny Day Sky Background (matching Image 2)
     const skyImg = images['assets/images/map/background/forest/bkg_day.png'];
     if (skyImg && skyImg.complete) {
-      ctx.drawImage(skyImg, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(skyImg, 0, 0, VIEW_W, VIEW_H);
     } else {
       ctx.fillStyle = '#64b5f6';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     }
 
     // Storm Overlay (Lightning activate)
     if (stormEffect.active) {
       ctx.fillStyle = 'rgba(15, 20, 50, 0.65)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
       // Storm clouds swooping across top
       const cTop = images['assets/images/game/powerup/lightning/cloudTop.png'];
       const cBot = images['assets/images/game/powerup/lightning/cloudBottom.png'];
       if (cTop && cTop.complete) {
-        ctx.drawImage(cTop, 0, 0, canvas.width, 90);
+        ctx.drawImage(cTop, 0, 0, VIEW_W, 90);
       }
       if (cBot && cBot.complete) {
-        ctx.drawImage(cBot, 0, 30, canvas.width, 90);
+        ctx.drawImage(cBot, 0, 30, VIEW_W, 90);
       }
     }
 
@@ -1647,9 +1687,9 @@
     // 3. Render World Tiles (within camera viewport)
     if (mapData) {
       const startCol = Math.max(0, Math.floor(cameraX / TILE_W));
-      const endCol = Math.min(mapData.cols, Math.ceil((cameraX + canvas.width) / TILE_W) + 1);
+      const endCol = Math.min(mapData.cols, Math.ceil((cameraX + VIEW_W) / TILE_W) + 1);
       const dirtImg = loadImage('assets/images/map/element/forest/1B.png');
-      const maxScreenRow = Math.ceil((cameraY + canvas.height) / TILE_H) + 2;
+      const maxScreenRow = Math.ceil((cameraY + VIEW_H) / TILE_H) + 2;
 
       for (let c = startCol; c < endCol; c++) {
         let lowestSolidRow = -1;
@@ -1663,7 +1703,8 @@
 
           for (const tid of tileIds) {
             let tname = mapData.tileNames[tid - 1];
-            if (!tname || tname === 'powerUp') continue;
+            // Skip powerUp markers and dummy null tiles - no ugly green boxes!
+            if (!tname || tname === 'powerUp' || tname === 'null') continue;
 
             if (isSolidTile(tname)) {
               if (r > lowestSolidRow) lowestSolidRow = r;
@@ -1689,9 +1730,6 @@
                 ctx.drawImage(timg, tx, ty, TILE_W, TILE_H);
               }
               ctx.restore();
-            } else {
-              ctx.fillStyle = '#4a7c28';
-              ctx.fillRect(tx, ty, TILE_W, TILE_H);
             }
           }
         }
@@ -1709,14 +1747,27 @@
       // Render Bounce Pads / Springboards
       const jumpPadImg = images['assets/images/map/element/forest/Jump1.png'];
       for (const bp of bouncePads) {
+        if (bp.animTimer > 0) bp.animTimer -= 0.016;
         const bx = bp.x - cameraX;
         const by = bp.y - cameraY;
-        if (bx > -60 && bx < canvas.width + 60) {
+        if (bx > -100 && bx < VIEW_W + 100) {
           if (jumpPadImg && jumpPadImg.complete && jumpPadImg.naturalWidth > 0) {
-            ctx.drawImage(jumpPadImg, bx - 30, by - 22, 60, 24);
+            if (bp.animTimer > 0) {
+              // Compressed trampoline spring on impact
+              ctx.drawImage(jumpPadImg, bx - 40, by - 36, 80, 36);
+              ctx.save();
+              ctx.fillStyle = 'rgba(255, 230, 0, 0.35)';
+              ctx.beginPath();
+              ctx.ellipse(bx, by - 8, 36, 12, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            } else {
+              // Resting uncompressed springboard placed cleanly on ground
+              ctx.drawImage(jumpPadImg, bx - 40, by - 48, 80, 50);
+            }
           } else {
             ctx.fillStyle = '#ff9800';
-            ctx.fillRect(bx - 25, by - 12, 50, 16);
+            ctx.fillRect(bx - 30, by - 16, 60, 16);
           }
         }
       }
@@ -1729,7 +1780,7 @@
       if (c.collected) continue;
       const cx = c.x - cameraX;
       const cy = c.y - cameraY + Math.sin(time * 0.005 + c.x) * 4;
-      if (cx > -80 && cx < canvas.width + 80) {
+      if (cx > -80 && cx < VIEW_W + 80) {
         // Golden glowing halo
         ctx.fillStyle = 'rgba(255, 215, 0, 0.28)';
         ctx.beginPath();
@@ -1780,12 +1831,21 @@
           ctx.fillRect(ix - 15, iy - 8, 30, 14);
         }
       } else if (item.type === 'bounceTrap') {
-        const btImg = images['assets/images/game/powerup/bounceTrap/icon.png'];
+        const btImg = images['assets/images/game/powerup/bounceTrap/sprite.png'];
         if (btImg && btImg.complete) {
-          ctx.drawImage(btImg, ix - 16, iy - 26, 32, 28);
+          const f = BOUNCE_TRAP_FRAMES[item.animFrame || 0] || BOUNCE_TRAP_FRAMES[0];
+          // Authentic Punch-in-a-Box spring boxing glove animation
+          const scale = 0.5;
+          const dw = f.tw * scale;
+          const dh = f.th * scale;
+          const dx = ix + (f.cx - 85) * scale;
+          const dy = iy - 28 + (f.cy - 26) * scale;
+          ctx.drawImage(btImg, f.tx, f.ty, f.tw, f.th, dx, dy, dw, dh);
         } else {
-          ctx.fillStyle = '#d32f2f';
-          ctx.fillRect(ix - 14, iy - 22, 28, 22);
+          const iconImg = images['assets/images/game/powerup/bounceTrap/icon.png'];
+          if (iconImg && iconImg.complete) {
+            ctx.drawImage(iconImg, ix - 16, iy - 26, 32, 28);
+          }
         }
       }
     }
@@ -1813,7 +1873,7 @@
     const goalImg = images['assets/images/map/element/forest/Goal.png'];
     const gx = GOAL_X - cameraX;
     const gy = (getGroundUnder(GOAL_X, 350) || 350) - cameraY - 140;
-    if (gx > -100 && gx < canvas.width + 100) {
+    if (gx > -100 && gx < VIEW_W + 100) {
       if (goalImg && goalImg.complete) {
         ctx.drawImage(goalImg, gx, gy, 120, 160);
       } else {
