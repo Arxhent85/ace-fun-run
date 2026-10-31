@@ -196,11 +196,41 @@
     return img;
   }
 
-  // Preload Backgrounds & Tiles
+  // Preload Backgrounds & Tiles (All Themes)
   loadImage('assets/images/map/background/forest/bkg_day.png');
   loadImage('assets/images/map/background/forest/bkg_mountains.png');
   loadImage('assets/images/map/element/forest/crate.png');
   loadImage('assets/images/map/element/forest/Goal.png');
+  loadImage('assets/images/map/element/forest/Jump1.png');
+  loadImage('assets/images/map/element/forest/1B.png');
+  loadImage('assets/images/map/element/forest/1Av1.png');
+
+  loadImage('assets/images/map/background/candy/bakgrunn1.png');
+  loadImage('assets/images/map/background/candy/bakgrunn2.png');
+  loadImage('assets/images/map/element/candy/crate.png');
+  loadImage('assets/images/map/element/candy/Goal.png');
+  loadImage('assets/images/map/element/candy/1B.png');
+  loadImage('assets/images/map/element/candy/1Av1.png');
+
+  loadImage('assets/images/map/background/beach/bkg_day.png');
+  loadImage('assets/images/map/background/beach/bkg_mountains.png');
+  loadImage('assets/images/map/element/beach/crate.png');
+  loadImage('assets/images/map/element/beach/Goal.png');
+  loadImage('assets/images/map/element/beach/Jump1.png');
+  loadImage('assets/images/map/element/beach/1B.png');
+  loadImage('assets/images/map/element/beach/1Av1.png');
+
+  function getElementImage(theme, drawName) {
+    const themePath = `assets/images/map/element/${theme}/${drawName}.png`;
+    let img = images[themePath] || loadImage(themePath);
+    if (img && img.complete && img.naturalWidth > 0) return img;
+    if (theme !== 'forest') {
+      const forestPath = `assets/images/map/element/forest/${drawName}.png`;
+      let fImg = images[forestPath] || loadImage(forestPath);
+      if (fImg && fImg.complete && fImg.naturalWidth > 0) return fImg;
+    }
+    return img;
+  }
 
   // Preload Power-Up graphics
   loadImage('assets/images/game/powerup/blade/blade.png');
@@ -550,7 +580,8 @@
         }
       }
     }
-    return surfaces.filter(s => !isPointSolid(worldX, s - 6)).sort((a, b) => a - b);
+    // Only exclude surfaces if deeply buried under a solid ceiling (at least 15px inside solid rock)
+    return surfaces.filter(s => !(isPointSolid(worldX, s - 12) && isPointSolid(worldX, s - 24))).sort((a, b) => a - b);
   }
 
   // Authentic terrain height supporting runner's feet
@@ -558,12 +589,12 @@
     const surfs = getSurfacesAt(worldX);
     if (surfs.length === 0) return null;
 
-    // 1. Connected slope (running up to 52px step up for 1-tile ledges, down to 55px slope down)
+    // 1. Connected slope (running up to 55px step up for 1-tile ledges, down to 65px slope down)
     let best = null;
     let minDiff = Infinity;
     for (const s of surfs) {
       const diff = s - currentFeetY;
-      if (diff >= -52 && diff <= 55) {
+      if (diff >= -55 && diff <= 65) {
         if (Math.abs(diff) < minDiff) {
           minDiff = Math.abs(diff);
           best = s;
@@ -574,12 +605,39 @@
 
     // 2. Nearest solid surface below current feet
     for (const s of surfs) {
-      if (s >= currentFeetY - 15) {
+      if (s >= currentFeetY - 20) {
         return s;
       }
     }
 
     return surfs[surfs.length - 1];
+  }
+
+  // Dynamic Initial Ground Finder for all 25 levels
+  function findInitialMapGround(worldX = 140) {
+    if (!mapData) return 350;
+    const col = Math.max(0, Math.min(mapData.cols - 1, Math.floor(worldX / TILE_W)));
+    for (let r = 0; r < mapData.rows; r++) {
+      const cell = mapData.grid[r][col];
+      if (!cell || cell === 1) continue;
+      const ids = Array.isArray(cell) ? cell : [cell];
+      for (const tid of ids) {
+        const name = mapData.tileNames[tid - 1];
+        if (!name) continue;
+        if (name.includes('1A') || name.includes('1C') || name.includes('1D') || name.includes('1E') || 
+            name.includes('1F') || name.includes('1G') || name.includes('1H') || name.includes('2A') || 
+            name.includes('2B') || name.includes('2C')) {
+          const surfs = getSurfacesAt(worldX);
+          for (const s of surfs) {
+            if (Math.abs(s - (r * TILE_H + 25)) < 40) return s;
+          }
+          return r * TILE_H;
+        }
+      }
+    }
+    const surfs = getSurfacesAt(worldX);
+    if (surfs.length > 0) return surfs[surfs.length - 1];
+    return 350;
   }
 
   function getTileInfoAt(worldX, worldY) {
@@ -649,6 +707,7 @@
       this.finishTime = 0;
       this.botJumpCooldown = 0;
       this.rank = 1;
+      this.isAgainstWall = false;
 
       // Safe Respawn Anchor
       this.safeX = startX;
@@ -664,6 +723,19 @@
 
     jump() {
       if (this.dead) return false;
+
+      // 1. Wall Climb: When facing a vertical wall or cliff, repeatedly pressing jump scales up the wall!
+      if (this.isAgainstWall || (isPointSolid(this.x + 16, this.y - 15) && !this.onGround)) {
+        this.vy = JUMP_FORCE * 1.05;
+        this.jumpCount = 1; // resets double-jump capacity so player can keep climbing or leap off
+        this.onGround = false;
+        this.coyoteTimer = 0;
+        if (this.isPlayer) sounds.play('jump');
+        spawnDust(this.x + 10, this.y - 10);
+        return true;
+      }
+
+      // 2. Ground Jump
       if (this.onGround || this.coyoteTimer > 0) {
         this.vy = JUMP_FORCE;
         this.onGround = false;
@@ -673,14 +745,17 @@
         if (this.isPlayer) sounds.play('jump');
         spawnDust(this.x, this.y);
         return true;
-      } else if (this.jumpCount === 1) {
-        // Authentic mid-air double jump
-        this.vy = JUMP_FORCE * 0.94;
+      }
+
+      // 3. Air Double Jump: allowed once in air, resets on touching ground or wall
+      if (this.jumpCount < 2) {
+        this.vy = JUMP_FORCE * 0.95;
         this.jumpCount = 2;
         if (this.isPlayer) sounds.play('jump');
         spawnJumpPuff(this.x, this.y);
         return true;
       }
+
       this.jumpBuffer = 0.18;
       return false;
     }
@@ -902,6 +977,7 @@
       const waistY = isLowCeil ? this.y - 12 : this.y - 18;
       const kneeY = isLowCeil ? this.y - 6 : this.y - 10;
       const wallAhead = isPointSolid(nextX + 14, waistY) && isPointSolid(nextX + 14, kneeY);
+      this.isAgainstWall = wallAhead;
 
       if (wallAhead) {
         const stepSurfs = getSurfacesAt(nextX + 14);
@@ -922,7 +998,7 @@
 
       if (this.onGround) {
         const gY = getGroundUnder(this.x, this.y);
-        if (gY !== null && gY >= this.y - 52 && gY <= this.y + 55) {
+        if (gY !== null && gY >= this.y - 55 && gY <= this.y + 65) {
           this.y = gY;
           this.vy = 0;
           this.jumpCount = 0;
@@ -941,7 +1017,7 @@
         let landed = false;
         if (this.vy >= 0) {
           for (const s of surfs) {
-            if (s >= prevY - 14 && s <= nextY + 12) {
+            if (s >= prevY - 18 && s <= nextY + 18) {
               this.y = s;
               this.vy = 0;
               this.onGround = true;
@@ -959,8 +1035,9 @@
         }
       }
 
-      // Pit Fall Check (Below bottom track level)
-      if (this.y > 850) {
+      // Dynamic Pit Fall Check (Below bottom level geometry across all 25 levels)
+      const pitY = (mapData ? mapData.rows * TILE_H : 900) + 120;
+      if (this.y > pitY) {
         this.hit('pit');
         return;
       }
@@ -1269,7 +1346,7 @@
     gameState = 'main_menu';
   });
 
-  function startRaceFlow() {
+  async function startRaceFlow() {
     sounds.init();
     mainMenuScreen.style.display = 'none';
     mainMenuScreen.classList.add('hidden');
@@ -1279,7 +1356,11 @@
     resultsScreen.classList.add('hidden');
     uiOverlay.style.display = 'flex';
     uiOverlay.classList.remove('hidden');
-    resetRace();
+    if (selectedMapKey !== currentMapKey) {
+      await loadMap(selectedMapKey, selectedMapName);
+    } else {
+      resetRace();
+    }
     startCountdown();
   }
 
@@ -1633,10 +1714,11 @@
   });
 
   function resetRace() {
-    const startY1 = getGroundUnder(140, 350) || 350;
-    const startY2 = getGroundUnder(100, 350) || 350;
-    const startY3 = getGroundUnder(60, 350) || 350;
-    const startY4 = getGroundUnder(20, 350) || 350;
+    const startY = findInitialMapGround(140);
+    const startY1 = getGroundUnder(140, startY) || startY;
+    const startY2 = getGroundUnder(100, startY) || startY;
+    const startY3 = getGroundUnder(60, startY) || startY;
+    const startY4 = getGroundUnder(20, startY) || startY;
     racers = [
       new Character(1, 'You', true, selectedAnimal, 140, startY1),
       new Character(2, 'Eagle', false, 'baldeagle', 100, startY2),
@@ -1645,7 +1727,7 @@
     ];
     player = racers[0];
     cameraX = 0;
-    cameraY = Math.max(0, startY1 - 320);
+    cameraY = Math.max(0, startY1 - 280);
     activePowerupItems = [];
     particles.length = 0;
     stormEffect.active = false;
@@ -1890,16 +1972,35 @@
     // Dynamic Theme based on Selected Map
     const theme = (mapData && mapData.theme) || (currentMapKey.includes('beach') || currentMapKey.includes('sand') || currentMapKey.includes('treasure') || currentMapKey.includes('pits') ? 'beach' : (currentMapKey.includes('sugar') || currentMapKey.includes('jelly') || currentMapKey.includes('candy') || currentMapKey.includes('chocolate') || currentMapKey.includes('frosting') || currentMapKey.includes('lollipop') ? 'candy' : 'forest'));
 
-    // 1. Sky Background (theme specific)
-    const skySrc = theme === 'candy'
-      ? 'assets/images/map/background/candy/bakgrunn1.png'
-      : (theme === 'beach' ? 'assets/images/map/background/beach/bkg_day.png' : 'assets/images/map/background/forest/bkg_day.png');
-    const skyImg = loadImage(skySrc);
-    if (skyImg && skyImg.complete && skyImg.naturalWidth > 0) {
-      ctx.drawImage(skyImg, 0, 0, VIEW_W, VIEW_H);
+    // 1. Sky & Ambient Atmosphere
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+    if (theme === 'candy') {
+      skyGrad.addColorStop(0, '#fce4ec'); // pastel pink
+      skyGrad.addColorStop(0.5, '#f8bbd0'); // sweet cotton-candy pink
+      skyGrad.addColorStop(1, '#f48fb1'); // warm strawberry rose
+    } else if (theme === 'beach') {
+      skyGrad.addColorStop(0, '#29b6f6'); // bright turquoise cyan
+      skyGrad.addColorStop(0.65, '#81d4fa');
+      skyGrad.addColorStop(1, '#e1f5fe');
     } else {
-      ctx.fillStyle = theme === 'candy' ? '#f8bbd0' : (theme === 'beach' ? '#81d4fa' : '#64b5f6');
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      skyGrad.addColorStop(0, '#42a5f5'); // classic sunny forest blue
+      skyGrad.addColorStop(0.65, '#90caf9');
+      skyGrad.addColorStop(1, '#bbdefb');
+    }
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    // Draw theme-specific sky overlay if available
+    if (theme === 'beach') {
+      const bkgDay = loadImage('assets/images/map/background/beach/bkg_day.png');
+      if (bkgDay && bkgDay.complete && bkgDay.naturalWidth > 0) {
+        ctx.drawImage(bkgDay, 0, 0, VIEW_W, VIEW_H);
+      }
+    } else if (theme === 'forest') {
+      const bkgDay = loadImage('assets/images/map/background/forest/bkg_day.png');
+      if (bkgDay && bkgDay.complete && bkgDay.naturalWidth > 0) {
+        ctx.drawImage(bkgDay, 0, 0, VIEW_W, VIEW_H);
+      }
     }
 
     // Storm Overlay (Lightning activate)
@@ -1919,21 +2020,38 @@
     }
 
     // 2. Parallax Mountain / Landscape Range
-    const mountainSrc = theme === 'candy'
-      ? 'assets/images/map/background/candy/bakgrunn2.png'
-      : (theme === 'beach' ? 'assets/images/map/background/beach/bkg_mountains.png' : 'assets/images/map/background/forest/bkg_mountains.png');
-    const mountainImg = loadImage(mountainSrc);
-    if (mountainImg && mountainImg.complete && mountainImg.naturalWidth > 0) {
-      const mOffset = -(cameraX * 0.18) % 1050;
-      ctx.drawImage(mountainImg, mOffset, 120, 1050, 375);
-      ctx.drawImage(mountainImg, mOffset + 1050, 120, 1050, 375);
+    if (theme === 'candy') {
+      // Layer 1: Distant candy waffle mountains (bakgrunn2.png) at 0.10x parallax
+      const bg2 = loadImage('assets/images/map/background/candy/bakgrunn2.png');
+      if (bg2 && bg2.complete && bg2.naturalWidth > 0) {
+        const offset2 = -(cameraX * 0.10) % 1090;
+        ctx.drawImage(bg2, offset2, 70, 1090, 426);
+        ctx.drawImage(bg2, offset2 + 1090, 70, 1090, 426);
+      }
+      // Layer 2: Midground pink candy hills & lollipops (bakgrunn1.png) at 0.22x parallax
+      const bg1 = loadImage('assets/images/map/background/candy/bakgrunn1.png');
+      if (bg1 && bg1.complete && bg1.naturalWidth > 0) {
+        const offset1 = -(cameraX * 0.22) % 1090;
+        ctx.drawImage(bg1, offset1, 140, 1090, 426);
+        ctx.drawImage(bg1, offset1 + 1090, 140, 1090, 426);
+      }
+    } else {
+      const mountainSrc = theme === 'beach'
+        ? 'assets/images/map/background/beach/bkg_mountains.png'
+        : 'assets/images/map/background/forest/bkg_mountains.png';
+      const mountainImg = loadImage(mountainSrc);
+      if (mountainImg && mountainImg.complete && mountainImg.naturalWidth > 0) {
+        const mOffset = -(cameraX * 0.18) % 1050;
+        ctx.drawImage(mountainImg, mOffset, 120, 1050, 375);
+        ctx.drawImage(mountainImg, mOffset + 1050, 120, 1050, 375);
+      }
     }
 
     // 3. Render World Tiles (within camera viewport)
     if (mapData) {
       const startCol = Math.max(0, Math.floor(cameraX / TILE_W));
       const endCol = Math.min(mapData.cols, Math.ceil((cameraX + VIEW_W) / TILE_W) + 1);
-      const dirtImg = loadImage(`assets/images/map/element/${theme}/1B.png`) || loadImage('assets/images/map/element/forest/1B.png');
+      const dirtImg = getElementImage(theme, '1B');
       const maxScreenRow = Math.ceil((cameraY + VIEW_H) / TILE_H) + 2;
 
       for (let c = startCol; c < endCol; c++) {
@@ -1967,11 +2085,7 @@
             if (drawName === '0Ev') drawName = '0Ev1';
             if (drawName === '0Fv') drawName = '0Fv1';
 
-            let timg = images[`assets/images/map/element/${theme}/${drawName}.png`] ||
-                       images[`assets/images/map/element/forest/${drawName}.png`];
-            if (!timg) {
-              timg = loadImage(`assets/images/map/element/${theme}/${drawName}.png`);
-            }
+            let timg = getElementImage(theme, drawName);
 
             if (timg && timg.complete && timg.naturalWidth > 0) {
               ctx.save();
@@ -1991,11 +2105,12 @@
         const tx = c * TILE_W - cameraX;
         let startFillRow = lowestSolidRow;
         if (startFillRow === -1) {
-          const gY = getGroundUnder(c * TILE_W + 40, 350);
+          const gY = getGroundUnder(c * TILE_W + 40, mapData ? mapData.rows * 25 : 350);
           if (gY !== null) startFillRow = Math.floor(gY / TILE_H);
         }
         if (startFillRow !== -1 && dirtImg && dirtImg.complete && dirtImg.naturalWidth > 0) {
-          for (let fillR = startFillRow + 1; fillR < maxScreenRow + 4; fillR++) {
+          const endFillRow = Math.max(maxScreenRow + 10, startFillRow + 16);
+          for (let fillR = startFillRow + 1; fillR < endFillRow; fillR++) {
             const ty = fillR * TILE_H - cameraY;
             ctx.drawImage(dirtImg, tx, ty, TILE_W, TILE_H);
           }
@@ -2003,7 +2118,7 @@
       }
 
       // Render Bounce Pads / Springboards
-      const jumpPadImg = images['assets/images/map/element/forest/Jump1.png'];
+      const jumpPadImg = getElementImage(theme, 'Jump1');
       for (const bp of bouncePads) {
         if (bp.animTimer > 0) bp.animTimer -= 0.016;
         const bx = bp.x - cameraX;
@@ -2032,7 +2147,7 @@
     }
 
     // 4. Render Powerup Crates with floating bob & halo
-    const crateImg = images['assets/images/map/element/forest/crate.png'];
+    const crateImg = getElementImage(theme, 'crate');
     const time = performance.now();
     for (const c of crates) {
       if (c.collected) continue;
@@ -2128,11 +2243,12 @@
     }
 
     // 7. Render Finish Line Flag
-    const goalImg = images['assets/images/map/element/forest/Goal.png'];
+    const goalImg = getElementImage(theme, 'Goal');
     const gx = GOAL_X - cameraX;
-    const gy = (getGroundUnder(GOAL_X, 350) || 350) - cameraY - 140;
+    const goalGround = getGroundUnder(GOAL_X, mapData ? mapData.rows * 25 : 350) || (mapData ? mapData.rows * 30 : 350);
+    const gy = goalGround - cameraY - 140;
     if (gx > -100 && gx < VIEW_W + 100) {
-      if (goalImg && goalImg.complete) {
+      if (goalImg && goalImg.complete && goalImg.naturalWidth > 0) {
         ctx.drawImage(goalImg, gx, gy, 120, 160);
       } else {
         ctx.fillStyle = '#ffffff';
