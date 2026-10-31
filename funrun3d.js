@@ -85,6 +85,26 @@
           g.gain.linearRampToValueAtTime(0.01, now + 0.16);
           osc.connect(g); g.connect(this.ctx.destination);
           osc.start(); osc.stop(now + 0.16);
+        } else if (name === 'double_jump') {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(420, now);
+          osc.frequency.exponentialRampToValueAtTime(950, now + 0.18);
+          g.gain.setValueAtTime(0.35, now);
+          g.gain.linearRampToValueAtTime(0.01, now + 0.18);
+          osc.connect(g); g.connect(this.ctx.destination);
+          osc.start(); osc.stop(now + 0.18);
+        } else if (name === 'rock_hit') {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(45, now + 0.22);
+          g.gain.setValueAtTime(0.4, now);
+          g.gain.linearRampToValueAtTime(0.01, now + 0.22);
+          osc.connect(g); g.connect(this.ctx.destination);
+          osc.start(); osc.stop(now + 0.22);
         } else if (name === 'blade_hit' || name === 'blood') {
           const bufSize = this.ctx.sampleRate * 0.35;
           const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
@@ -342,6 +362,10 @@
       this.baseY = 0;
       this.vy = 0;
       this.isJumping = false;
+      this.jumpCount = 0;
+      this.isFlipping = false;
+      this.flipAngle = 0;
+      this.stumbleTimer = 0;
       this.targetX = x;
       this.aiTimer = 0;
 
@@ -391,11 +415,25 @@
     }
 
     jump(engine) {
-      if (!this.isJumping && this.stunTimer <= 0 && !this.dead) {
-        this.vy = 620;
+      if (this.stunTimer > 0 || this.dead) return;
+
+      if (!this.isJumping) {
+        // Erster Sprung vom Boden
+        this.vy = 640;
         this.isJumping = true;
+        this.jumpCount = 1;
+        this.isFlipping = false;
+        this.flipAngle = 0;
         if (this.isPlayer) sfx.play('jump');
         engine.particles.spawnDust(this.x, engine.getHillY(this.z), this.z);
+      } else if (this.isJumping && this.jumpCount === 1) {
+        // Doppelsprung in der Luft mit Salto-Flipping!
+        this.vy = 600;
+        this.jumpCount = 2;
+        this.isFlipping = true;
+        this.flipAngle = 0.1;
+        if (this.isPlayer) sfx.play('double_jump');
+        engine.particles.spawnSparks(this.x, engine.getHillY(this.z) + this.baseY, this.z, 22, '#ffea00');
       }
     }
 
@@ -499,9 +537,12 @@
         return;
       }
 
-      // Timers
+      // Timers & Speed modifiers
       if (this.shieldTimer > 0) this.shieldTimer -= dt;
-      if (this.speedBoostTimer > 0) {
+      if (this.stumbleTimer > 0) {
+        this.stumbleTimer -= dt;
+        this.speed = Math.min(this.speed, this.baseSpeed * 0.45);
+      } else if (this.speedBoostTimer > 0) {
         this.speedBoostTimer -= dt;
         engine.particles.spawnSpeedFlames(this.x, engine.getHillY(this.z) + this.baseY, this.z);
       } else if (this.stunTimer > 0) {
@@ -517,13 +558,19 @@
         this.finishTime = (Date.now() - engine.raceStartTime) / 1000;
       }
 
-      // Jump Physics
+      // Jump & Double Jump Physics
       if (this.isJumping) {
         this.baseY += this.vy * dt;
         this.vy -= 1450 * dt;
+        if (this.isFlipping) {
+          this.flipAngle += dt * 14;
+        }
         if (this.baseY <= 0) {
           this.baseY = 0;
           this.isJumping = false;
+          this.jumpCount = 0;
+          this.isFlipping = false;
+          this.flipAngle = 0;
           this.vy = 0;
           engine.particles.spawnDust(this.x, engine.getHillY(this.z), this.z);
         }
@@ -545,10 +592,26 @@
           this.usePowerup(engine);
         }
 
-        // Avoid or jump over hazards
+        // Avoid or jump over hurdles, rocks, and dropped traps
         engine.hazards.forEach(h => {
-          if (h.active && h.z > this.z && (h.z - this.z) < 360 && Math.abs(h.x - this.x) < 140) {
-            if (Math.random() < 0.82) this.jump(engine);
+          if (h.active && h.z > this.z && (h.z - this.z) < 420) {
+            if (h.type === 'wide_hurdle') {
+              if (Math.random() < 0.88) {
+                this.jump(engine);
+                if (Math.random() < 0.5) {
+                  setTimeout(() => { if (this.isJumping && this.jumpCount === 1) this.jump(engine); }, 220);
+                }
+              }
+            } else if (h.type === 'hurdle' || h.type === 'rock' || h.type === 'trap') {
+              if (Math.abs(h.x - this.x) < 140) {
+                if (Math.random() < 0.65) {
+                  this.jump(engine);
+                } else {
+                  const lanes = [-350, 0, 350];
+                  this.targetX = lanes.filter(l => Math.abs(l - h.x) > 100)[0] || 0;
+                }
+              }
+            }
           }
         });
       } else {
@@ -589,6 +652,8 @@
         ctx.rotate((Math.random() - 0.5) * 0.35);
       } else if (this.stunTimer > 0) {
         ctx.rotate((this.stunTimer * 14) % (Math.PI * 2));
+      } else if (this.isFlipping) {
+        ctx.rotate(this.flipAngle);
       } else {
         ctx.rotate(this.lean);
       }
@@ -898,7 +963,6 @@
       // UI References
       this.uiOverlay = document.getElementById('ui3d-overlay');
       this.weaponBtn = document.getElementById('btn3d-powerup');
-      this.jumpBtn = document.getElementById('btn3d-jump');
       this.exitBtn = document.getElementById('btn3d-exit');
       this.rankDisplay = document.getElementById('rank3d-display');
       this.countdownDisplay = document.getElementById('countdown3d-display');
@@ -918,15 +982,37 @@
       this.initEvents();
     }
 
+    isBridge(z) {
+      if (this.currentLevel === 1) {
+        return (z >= 7500 && z <= 13500) || (z >= 24000 && z <= 30000) || (z >= 42000 && z <= 48000);
+      } else if (this.currentLevel === 2) {
+        return (z >= 11000 && z <= 17000) || (z >= 32000 && z <= 38000);
+      } else if (this.currentLevel === 3) {
+        return (z >= 9000 && z <= 15000) || (z >= 28000 && z <= 34000);
+      }
+      return false;
+    }
+
     getCurve(z) {
       return Math.sin(z * 0.0004) * 620 + Math.sin(z * 0.0002) * 320;
     }
 
     getHillY(z) {
       if (this.currentLevel === 2) {
-        return Math.sin(z * 0.005) * 80 - z * 0.085; // Permanent downhill slope
+        let slope = -z * 0.07; // Snow downhill slope
+        let bumps = Math.sin(z * 0.0035) * 120 + Math.cos(z * 0.0012) * 160;
+        if (this.isBridge(z)) bumps += 180;
+        return slope + bumps;
       }
-      return Math.sin(z * 0.005) * 85;
+      if (this.currentLevel === 3) {
+        let hills = Math.sin(z * 0.0035) * 160 + Math.sin(z * 0.0012) * 220;
+        if (this.isBridge(z)) hills += 220;
+        return hills;
+      }
+      // Sunset Valley: Rolling terrain with hills, valleys and high bridges
+      let hill = Math.sin(z * 0.0028) * 130 + Math.sin(z * 0.001) * 180;
+      if (this.isBridge(z)) hill += 250;
+      return hill;
     }
 
     project(worldX, worldY, worldZ) {
@@ -996,7 +1082,7 @@
         }
       });
 
-      // Touch & Swipe on Canvas
+      // Touch & Swipe on Canvas (Left/Right = Lane, Up = Jump & Double Jump)
       let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
       if (this.canvas) {
         this.canvas.addEventListener('touchstart', (e) => {
@@ -1011,14 +1097,31 @@
           if (!this.isPlaying || !this.player) return;
           e.preventDefault();
           let diffX = e.touches[0].clientX - touchStartX;
-          if (diffX > 40 && this.laneIndex < 2) {
-            this.laneIndex++;
-            this.targetX = (this.laneIndex - 1) * 350;
+          let diffY = e.touches[0].clientY - touchStartY;
+
+          // Swipe Up -> Jump & Double Jump
+          if (diffY < -35 && Math.abs(diffY) > Math.abs(diffX) * 0.6) {
+            this.player.jump(this);
+            touchStartY = e.touches[0].clientY; // Reset to allow rapid second swipe for Double Jump
             touchStartX = e.touches[0].clientX;
-          } else if (diffX < -40 && this.laneIndex > 0) {
-            this.laneIndex--;
-            this.targetX = (this.laneIndex - 1) * 350;
+          }
+          // Swipe Right -> Change lane to the right
+          else if (diffX > 38 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
+            if (this.laneIndex < 2) {
+              this.laneIndex++;
+              this.targetX = (this.laneIndex - 1) * 350;
+            }
             touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+          }
+          // Swipe Left -> Change lane to the left
+          else if (diffX < -38 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
+            if (this.laneIndex > 0) {
+              this.laneIndex--;
+              this.targetX = (this.laneIndex - 1) * 350;
+            }
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
           }
         }, { passive: false });
 
@@ -1026,24 +1129,14 @@
           if (!this.isPlaying || !this.player) return;
           let dx = e.changedTouches[0].clientX - touchStartX;
           let dy = e.changedTouches[0].clientY - touchStartY;
-          let dur = Date.now() - touchStartTime;
-          if (Math.abs(dx) < 25 && Math.abs(dy) < 25 && dur < 250) {
+          // Short quick upward flick
+          if (dy < -25 && Math.abs(dy) > Math.abs(dx)) {
             this.player.jump(this);
           }
         });
       }
 
-      // Wooden HUD Action Buttons
-      if (this.jumpBtn) {
-        this.jumpBtn.addEventListener('click', () => {
-          if (this.player) this.player.jump(this);
-        });
-        this.jumpBtn.addEventListener('touchstart', (e) => {
-          e.stopPropagation();
-          if (this.player) this.player.jump(this);
-        }, { passive: false });
-      }
-
+      // Wooden Fire Action Button (Power-Up)
       if (this.weaponBtn) {
         this.weaponBtn.addEventListener('click', () => {
           if (this.player) this.player.usePowerup(this);
@@ -1069,39 +1162,48 @@
       this.hazards = [];
       this.scenery = [];
       const lanes = [-350, 0, 350];
+      let nextWideHurdleZ = 3200;
 
-      // Procedural Generation of Sawblades, Traps, Bounce Pads, Speed Pads & Crates
-      for (let z = 900; z < this.finishLineZ - 1000; z += 480) {
+      // Procedural Generation of Pocket/FunRun level elements:
+      // Rolling hills, bridges, stones (rocks), hurdles, wide hurdles, bounce pads, speed pads & crates.
+      // NOTE: Traps and Sawblades are ONLY placed on track by players/bots when they fire their weapon!
+      for (let z = 900; z < this.finishLineZ - 1000; z += 460) {
+        // Track-wide barrier across all 3 lanes (Pocket & Fun Run wide hurdle)
+        if (z >= nextWideHurdleZ) {
+          this.hazards.push({
+            x: 0,
+            z: z,
+            width: 1200,
+            type: 'wide_hurdle',
+            active: true
+          });
+          nextWideHurdleZ += 3600;
+          continue;
+        }
+
         let rand = Math.random();
         let x = lanes[Math.floor(Math.random() * lanes.length)];
 
-        if (rand > 0.8) {
+        if (rand > 0.76) {
           // Powerup Mystery Crate
           this.hazards.push({ x, z, type: 'crate', active: true, respawnTimer: 0 });
-        } else if (rand > 0.6) {
-          // Rotating Sawblade (Pendular across lanes - 20% slower for balanced gameplay)
-          this.hazards.push({
-            x, z,
-            type: 'sawblade',
-            active: true,
-            origX: x,
-            angle: 0,
-            speed: (Math.random() > 0.5 ? 1 : -1) * (160 + Math.random() * 110)
-          });
-        } else if (rand > 0.42) {
-          // Bear Trap
-          this.hazards.push({ x, z, type: 'trap', active: true, snapped: false });
-        } else if (rand > 0.28) {
-          // Bounce Trampoline Pad
+        } else if (rand > 0.52) {
+          // Rock boulder in lane (jump over it or switch lanes!)
+          this.hazards.push({ x, z, type: 'rock', active: true });
+        } else if (rand > 0.32) {
+          // Single-lane wooden hurdle
+          this.hazards.push({ x, z, width: 260, type: 'hurdle', active: true });
+        } else if (rand > 0.18) {
+          // Bounce Trampoline Pad (catapults high in air)
           this.hazards.push({ x, z, type: 'bounce', active: true });
         } else {
           // Speed Booster Strip
           this.hazards.push({ x, z, type: 'speed_pad', active: true });
         }
 
-        // Add side trees / forest structures
-        if (Math.random() > 0.2) this.scenery.push(new Tree3D(z, 'left', this));
-        if (Math.random() > 0.2) this.scenery.push(new Tree3D(z, 'right', this));
+        // Add side scenery (trees and bridge posts)
+        if (Math.random() > 0.25) this.scenery.push(new Tree3D(z, 'left', this));
+        if (Math.random() > 0.25) this.scenery.push(new Tree3D(z, 'right', this));
       }
     }
 
@@ -1180,19 +1282,46 @@
           let dx = Math.abs(r.x - h.x);
 
           if (dz < 65) {
-            // Sawblade Hit
-            if (h.type === 'sawblade' && dx < 80 && r.baseY < 65) {
+            // Track-wide Barrier (Pocket & Funrun wide hurdle - requires Jump or Double Jump)
+            if (h.type === 'wide_hurdle' && r.baseY < 75) {
+              r.stumbleTimer = 0.9;
+              r.speed *= 0.42;
+              sfx.play('rock_hit');
+              this.particles.spawnDust(r.x, this.getHillY(r.z) + 30, r.z);
+              if (r.isPlayer) this.cameraShake = 12;
+            }
+            // Single Lane Hurdle
+            else if (h.type === 'hurdle' && dx < 135 && r.baseY < 60) {
+              h.active = false;
+              r.stumbleTimer = 0.8;
+              r.speed *= 0.5;
+              sfx.play('rock_hit');
+              this.particles.spawnSparks(r.x, this.getHillY(r.z) + 20, r.z, 16, '#c68642');
+              if (r.isPlayer) this.cameraShake = 8;
+            }
+            // Stone Boulder (Rock)
+            else if (h.type === 'rock' && dx < 85 && r.baseY < 48) {
+              r.stumbleTimer = 0.75;
+              r.speed *= 0.48;
+              sfx.play('rock_hit');
+              this.particles.spawnDust(r.x, this.getHillY(r.z) + 15, r.z);
+              if (r.isPlayer) this.cameraShake = 9;
+            }
+            // Sawblade Hit (Fired by player/bot)
+            else if (h.type === 'sawblade' && dx < 80 && r.baseY < 65) {
               r.takeDamage(this, 'blade');
             }
-            // Bear Trap Hit
+            // Bear Trap Hit (Placed by player/bot)
             else if (h.type === 'trap' && dx < 75 && r.baseY < 35) {
               h.active = false;
               r.takeDamage(this, 'trap');
             }
-            // Bounce Pad Hit (super jump over saws)
+            // Bounce Pad Hit (Catapults high into air)
             else if (h.type === 'bounce' && dx < 80 && r.baseY < 40) {
-              r.vy = 980;
+              r.vy = 1000;
               r.isJumping = true;
+              r.jumpCount = 1;
+              r.isFlipping = true;
               sfx.play('bounce');
               this.particles.spawnSparks(r.x, this.getHillY(r.z) + 10, r.z, 20, '#00e5ff');
             }
@@ -1321,54 +1450,115 @@
 
         if (p1L && p1R && p2L && p2R && w1L && w1R && w2L && w2R) {
           let isDark = (i % 2 === 0);
+          let onBridge = this.isBridge(z1);
 
-          // Outer Grass/Scenery
-          this.ctx.fillStyle = isDark ? t.outDark : t.outLight;
-          if (out1L && out2L) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(out1L.x, out1L.y); this.ctx.lineTo(w1L.x, w1L.y);
-            this.ctx.lineTo(w2L.x, w2L.y); this.ctx.lineTo(out2L.x, out2L.y);
-            this.ctx.fill();
-            this.ctx.beginPath();
-            this.ctx.moveTo(w1R.x, w1R.y); this.ctx.lineTo(out1R.x, out1R.y);
-            this.ctx.lineTo(out2R.x, out2R.y); this.ctx.lineTo(w2R.x, w2R.y);
-            this.ctx.fill();
-          }
+          if (onBridge) {
+            // Wooden Suspension Bridge Visuals
+            // 1. Chasm Void below Bridge
+            this.ctx.fillStyle = '#0f1710';
+            if (out1L && out2L) {
+              this.ctx.beginPath();
+              this.ctx.moveTo(out1L.x, out1L.y); this.ctx.lineTo(w1L.x, w1L.y);
+              this.ctx.lineTo(w2L.x, w2L.y); this.ctx.lineTo(out2L.x, out2L.y);
+              this.ctx.fill();
+              this.ctx.beginPath();
+              this.ctx.moveTo(w1R.x, w1R.y); this.ctx.lineTo(out1R.x, out1R.y);
+              this.ctx.lineTo(out2R.x, out2R.y); this.ctx.lineTo(w2R.x, w2R.y);
+              this.ctx.fill();
+            }
 
-          // Side Barriers / Curbs
-          this.ctx.fillStyle = isDark ? t.wallDark : t.wallLight;
-          this.ctx.beginPath();
-          this.ctx.moveTo(p1L.x, p1L.y); this.ctx.lineTo(w1L.x, w1L.y);
-          this.ctx.lineTo(w2L.x, w2L.y); this.ctx.lineTo(p2L.x, p2L.y);
-          this.ctx.fill();
-          this.ctx.fillStyle = isDark ? t.wallTopDark : t.wallTopLight;
-          this.ctx.beginPath();
-          this.ctx.moveTo(p1R.x, p1R.y); this.ctx.lineTo(w1R.x, w1R.y);
-          this.ctx.lineTo(w2R.x, w2R.y); this.ctx.lineTo(p2R.x, p2R.y);
-          this.ctx.fill();
+            // 2. Heavy Wooden Pilings / Piers underneath extending down
+            if (i % 4 === 0) {
+              let pBotL = this.project(-this.roadWidth / 2, y1 - 420, z1);
+              let pBotR = this.project(this.roadWidth / 2, y1 - 420, z1);
+              if (pBotL && pBotR) {
+                let pierW = 28 * p1L.scale;
+                this.ctx.fillStyle = '#3a2012';
+                this.ctx.fillRect(p1L.x - pierW / 2, p1L.y, pierW, Math.max(10, pBotL.y - p1L.y));
+                this.ctx.fillRect(p1R.x - pierW / 2, p1R.y, pierW, Math.max(10, pBotR.y - p1R.y));
+              }
+            }
 
-          // Main Track Road
-          this.ctx.fillStyle = isDark ? t.roadDark : t.roadLight;
-          this.ctx.beginPath();
-          this.ctx.moveTo(p1L.x, p1L.y); this.ctx.lineTo(p1R.x, p1R.y);
-          this.ctx.lineTo(p2R.x, p2R.y); this.ctx.lineTo(p2L.x, p2L.y);
-          this.ctx.fill();
+            // 3. Wooden Bridge Road Surface
+            this.ctx.fillStyle = isDark ? '#7a4823' : '#8e552a';
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1L.x, p1L.y); this.ctx.lineTo(p1R.x, p1R.y);
+            this.ctx.lineTo(p2R.x, p2R.y); this.ctx.lineTo(p2L.x, p2L.y);
+            this.ctx.fill();
 
-          // Lane Markings
-          let p1M1 = this.project(-this.roadWidth / 6, y1, z1);
-          let p1M2 = this.project(this.roadWidth / 6, y1, z1);
-          let p2M1 = this.project(-this.roadWidth / 6, y2, z2);
-          let p2M2 = this.project(this.roadWidth / 6, y2, z2);
-          if (p1M1 && p1M2 && p2M1 && p2M2) {
-            this.ctx.fillStyle = isDark ? t.roadMDark : t.roadMLight;
+            // Bridge Plank transverse lines
+            this.ctx.strokeStyle = '#523016';
+            this.ctx.lineWidth = Math.max(1, 2 * p1L.scale);
             this.ctx.beginPath();
-            this.ctx.moveTo(p1L.x, p1L.y); this.ctx.lineTo(p1M1.x, p1M1.y);
-            this.ctx.lineTo(p2M1.x, p2M1.y); this.ctx.lineTo(p2L.x, p2L.y);
-            this.ctx.fill();
+            this.ctx.moveTo(p1L.x, p1L.y); this.ctx.lineTo(p1R.x, p1R.y);
+            this.ctx.stroke();
+
+            // 4. Bridge Railing Posts & Suspension Ropes
+            let postW = 12 * p1L.scale;
+            this.ctx.fillStyle = '#5c3311';
+            this.ctx.fillRect(p1L.x - postW / 2, w1L.y, postW, p1L.y - w1L.y);
+            this.ctx.fillRect(p1R.x - postW / 2, w1R.y, postW, p1R.y - w1R.y);
+
+            this.ctx.strokeStyle = '#d4a373';
+            this.ctx.lineWidth = Math.max(1, 3 * p1L.scale);
             this.ctx.beginPath();
-            this.ctx.moveTo(p1M2.x, p1M2.y); this.ctx.lineTo(p1R.x, p1R.y);
-            this.ctx.lineTo(p2R.x, p2R.y); this.ctx.lineTo(p2M2.x, p2M2.y);
+            this.ctx.moveTo(w1L.x, w1L.y + 10 * p1L.scale);
+            this.ctx.lineTo(w2L.x, w2L.y + 10 * p2L.scale);
+            this.ctx.stroke();
+            this.ctx.beginPath();
+            this.ctx.moveTo(w1R.x, w1R.y + 10 * p1R.scale);
+            this.ctx.lineTo(w2R.x, w2R.y + 10 * p2R.scale);
+            this.ctx.stroke();
+
+          } else {
+            // Outer Grass/Scenery
+            this.ctx.fillStyle = isDark ? t.outDark : t.outLight;
+            if (out1L && out2L) {
+              this.ctx.beginPath();
+              this.ctx.moveTo(out1L.x, out1L.y); this.ctx.lineTo(w1L.x, w1L.y);
+              this.ctx.lineTo(w2L.x, w2L.y); this.ctx.lineTo(out2L.x, out2L.y);
+              this.ctx.fill();
+              this.ctx.beginPath();
+              this.ctx.moveTo(w1R.x, w1R.y); this.ctx.lineTo(out1R.x, out1R.y);
+              this.ctx.lineTo(out2R.x, out2R.y); this.ctx.lineTo(w2R.x, w2R.y);
+              this.ctx.fill();
+            }
+
+            // Side Barriers / Curbs
+            this.ctx.fillStyle = isDark ? t.wallDark : t.wallLight;
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1L.x, p1L.y); this.ctx.lineTo(w1L.x, w1L.y);
+            this.ctx.lineTo(w2L.x, w2L.y); this.ctx.lineTo(p2L.x, p2L.y);
             this.ctx.fill();
+            this.ctx.fillStyle = isDark ? t.wallTopDark : t.wallTopLight;
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1R.x, p1R.y); this.ctx.lineTo(w1R.x, w1R.y);
+            this.ctx.lineTo(w2R.x, w2R.y); this.ctx.lineTo(p2R.x, p2R.y);
+            this.ctx.fill();
+
+            // Main Track Road
+            this.ctx.fillStyle = isDark ? t.roadDark : t.roadLight;
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1L.x, p1L.y); this.ctx.lineTo(p1R.x, p1R.y);
+            this.ctx.lineTo(p2R.x, p2R.y); this.ctx.lineTo(p2L.x, p2L.y);
+            this.ctx.fill();
+
+            // Lane Markings
+            let p1M1 = this.project(-this.roadWidth / 6, y1, z1);
+            let p1M2 = this.project(this.roadWidth / 6, y1, z1);
+            let p2M1 = this.project(-this.roadWidth / 6, y2, z2);
+            let p2M2 = this.project(this.roadWidth / 6, y2, z2);
+            if (p1M1 && p1M2 && p2M1 && p2M2) {
+              this.ctx.fillStyle = isDark ? t.roadMDark : t.roadMLight;
+              this.ctx.beginPath();
+              this.ctx.moveTo(p1L.x, p1L.y); this.ctx.lineTo(p1M1.x, p1M1.y);
+              this.ctx.lineTo(p2M1.x, p2M1.y); this.ctx.lineTo(p2L.x, p2L.y);
+              this.ctx.fill();
+              this.ctx.beginPath();
+              this.ctx.moveTo(p1M2.x, p1M2.y); this.ctx.lineTo(p1R.x, p1R.y);
+              this.ctx.lineTo(p2R.x, p2R.y); this.ctx.lineTo(p2M2.x, p2M2.y);
+              this.ctx.fill();
+            }
           }
         }
       }
@@ -1402,7 +1592,119 @@
           let h = d.obj;
           let hillY = this.getHillY(h.z);
 
-          if (h.type === 'sawblade') {
+          if (h.type === 'wide_hurdle') {
+            let pL = this.project(-this.roadWidth / 2, hillY, h.z);
+            let pR = this.project(this.roadWidth / 2, hillY, h.z);
+            let topL = this.project(-this.roadWidth / 2, hillY + 80, h.z);
+            let topR = this.project(this.roadWidth / 2, hillY + 80, h.z);
+            let pC = this.project(0, hillY, h.z);
+            let topC = this.project(0, hillY + 80, h.z);
+
+            if (pL && pR && topL && topR) {
+              let postW = 24 * pL.scale;
+              let barH = 42 * pL.scale;
+
+              // Heavy Wood End Posts
+              this.ctx.fillStyle = '#4a2810';
+              this.ctx.fillRect(pL.x - postW / 2, topL.y, postW, pL.y - topL.y);
+              this.ctx.fillRect(pR.x - postW / 2, topR.y, postW, pR.y - topR.y);
+              if (pC && topC) this.ctx.fillRect(pC.x - postW / 2, topC.y, postW, pC.y - topC.y);
+
+              // Solid Wooden Barricade Beam
+              let fullW = (pR.x - pL.x) + postW;
+              this.ctx.fillStyle = '#8b5a2b';
+              this.ctx.fillRect(pL.x - postW / 2, topL.y, fullW, barH);
+              this.ctx.strokeStyle = '#2b1608';
+              this.ctx.lineWidth = Math.max(1, 3 * pL.scale);
+              this.ctx.strokeRect(pL.x - postW / 2, topL.y, fullW, barH);
+
+              // Caution Stripes
+              this.ctx.fillStyle = '#ffcc00';
+              for (let s = pL.x; s < pR.x; s += 48 * pL.scale) {
+                this.ctx.fillRect(s, topL.y, 22 * pL.scale, barH);
+              }
+
+              // "⬆ JUMP ⬆" Badge in center
+              if (pC && topC) {
+                this.ctx.fillStyle = '#ff3344';
+                let fontS = Math.max(12, 32 * pL.scale);
+                this.ctx.font = '900 ' + fontS + 'px "Luckiest Guy", Impact, Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('⬆ JUMP ⬆', pC.x, topC.y + barH / 2);
+              }
+            }
+          } else if (h.type === 'hurdle') {
+            let pL = this.project(h.x - 130, hillY, h.z);
+            let pR = this.project(h.x + 130, hillY, h.z);
+            let topL = this.project(h.x - 130, hillY + 65, h.z);
+            let topR = this.project(h.x + 130, hillY + 65, h.z);
+            if (pL && pR && topL && topR) {
+              let postW = 16 * pL.scale;
+              let barH = 26 * pL.scale;
+              this.ctx.fillStyle = '#5c3a21';
+              this.ctx.fillRect(pL.x - postW / 2, topL.y, postW, pL.y - topL.y);
+              this.ctx.fillRect(pR.x - postW / 2, topR.y, postW, pR.y - topR.y);
+              let barW = (pR.x - pL.x) + postW;
+              this.ctx.fillStyle = '#a06a38';
+              this.ctx.fillRect(pL.x - postW / 2, topL.y, barW, barH);
+              this.ctx.strokeStyle = '#3d2314';
+              this.ctx.lineWidth = Math.max(1, 2 * pL.scale);
+              this.ctx.strokeRect(pL.x - postW / 2, topL.y, barW, barH);
+              // Hazard warning stripes
+              this.ctx.fillStyle = '#ffd166';
+              for (let s = pL.x; s < pR.x; s += 28 * pL.scale) {
+                this.ctx.fillRect(s, topL.y, 14 * pL.scale, barH);
+              }
+            }
+          } else if (h.type === 'rock') {
+            let p = this.project(h.x, hillY + 22, h.z);
+            if (p) {
+              let r = 38 * p.scale;
+              this.ctx.save();
+              this.ctx.translate(p.x, p.y);
+              // Shadow
+              this.ctx.fillStyle = 'rgba(0,0,0,0.38)';
+              this.ctx.beginPath();
+              this.ctx.ellipse(0, r * 0.72, r * 1.15, r * 0.4, 0, 0, Math.PI * 2);
+              this.ctx.fill();
+
+              // Craggy 3D Rock Boulder with gradient
+              let rGrad = this.ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r * 1.2);
+              rGrad.addColorStop(0, '#a5b2bc');
+              rGrad.addColorStop(0.5, '#6c7a86');
+              rGrad.addColorStop(1, '#374149');
+              this.ctx.fillStyle = rGrad;
+              this.ctx.beginPath();
+              this.ctx.moveTo(-r * 0.85, r * 0.4);
+              this.ctx.lineTo(-r * 0.95, -r * 0.3);
+              this.ctx.lineTo(-r * 0.4, -r * 0.9);
+              this.ctx.lineTo(r * 0.3, -r * 0.85);
+              this.ctx.lineTo(r * 0.9, -r * 0.2);
+              this.ctx.lineTo(r * 0.8, r * 0.5);
+              this.ctx.lineTo(0, r * 0.7);
+              this.ctx.closePath();
+              this.ctx.fill();
+              this.ctx.lineWidth = Math.max(1, 3 * p.scale);
+              this.ctx.strokeStyle = '#22282d';
+              this.ctx.stroke();
+
+              // Rock cracks & highlight
+              this.ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+              this.ctx.lineWidth = Math.max(1, 2 * p.scale);
+              this.ctx.beginPath();
+              this.ctx.moveTo(-r * 0.3, -r * 0.7); this.ctx.lineTo(-r * 0.1, -r * 0.3); this.ctx.lineTo(r * 0.2, -r * 0.4);
+              this.ctx.stroke();
+
+              // Moss patch
+              this.ctx.fillStyle = '#4d7c0f';
+              this.ctx.beginPath();
+              this.ctx.ellipse(-r * 0.1, -r * 0.65, r * 0.28, r * 0.14, -0.2, 0, Math.PI * 2);
+              this.ctx.fill();
+
+              this.ctx.restore();
+            }
+          } else if (h.type === 'sawblade') {
             let p = this.project(h.x, hillY + 32, h.z);
             if (p) {
               let r = 42 * p.scale;
