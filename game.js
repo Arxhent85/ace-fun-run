@@ -1070,12 +1070,13 @@
         }
       }
 
-      // Animation Cycle
+      // Animation Cycle - Authentic Corona SDK 200ms run cycle at top speed (35 fps)
       if (this.onGround) {
-        this.animTime += dt * (this.vx / 42);
+        const animFps = (Math.abs(this.vx) / DEFAULT_TOP_SPEED) * 35;
+        this.animTime += dt * Math.max(10, animFps);
         this.animFrame = Math.floor(this.animTime) % 7;
       } else {
-        this.animFrame = 3; // jump frame
+        this.animFrame = 3; // airborne tuck frame
       }
     }
 
@@ -1116,19 +1117,22 @@
         ctx.globalAlpha = 0.4;
       }
 
-      // Unified 200x200 sprite space origin (100, 200):
-      // - Feet: y = 166..200 -> dy = -34..0 (bottom rests perfectly on grass)
-      // - Body: y = 95..165 -> dy = -105..-35 (belly, chest & arms 100% visible)
-      // - Head: y = 53..147 -> dy = -147..-53 (sits proudly on shoulders)
+      // Multi-layer avatar assembly:
+      // - Feet: 200x200 canvas, bottom touches ground cleanly at dy = 0 (originY = 200)
+      // - Body: 200x200 canvas, torso stands above feet (dy = -105..-35, originY = 200)
+      // - Head: 200x250 canvas (250px source height in Corona SDK spriteSourceSize),
+      //         chin sits proudly on shoulders at dy = -103 (originY = 250),
+      //         leaving the entire torso, belly, and chest 100% visible and uncrushed!
       const anim = avatarSprites && avatarSprites[this.animal];
       if (anim) {
         const frameIdx = this.onGround ? (this.animFrame % 7) : 3;
         const scale = 0.28;
         ctx.scale(scale, scale);
 
-        drawAvatarLayer(ctx, this.feetImg, anim.Feet, frameIdx, 100, 200);
-        drawAvatarLayer(ctx, this.bodyImg, anim.BodySprite, frameIdx, 100, 200);
-        drawAvatarLayer(ctx, this.headImg, anim.HeadSprite, frameIdx, 100, 200);
+        const ox = (this.animal === 'beaver' || this.animal === 'baldeagle') ? 125 : 100;
+        drawAvatarLayer(ctx, this.feetImg, anim.Feet, frameIdx, ox, 200);
+        drawAvatarLayer(ctx, this.bodyImg, anim.BodySprite, frameIdx, ox, 200);
+        drawAvatarLayer(ctx, this.headImg, anim.HeadSprite, frameIdx, ox, 250);
       } else {
         // Fallback procedural avatar
         ctx.fillStyle = this.isPlayer ? '#ff9900' : '#4488ff';
