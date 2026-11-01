@@ -284,22 +284,22 @@
 
   // Level Theme Definitions (Sunset Valley, Slush Cave, Sugar Slope)
   const THEMES = {
-    1: { // Sunset Valley (Wald & Sägewerk)
+    1: { // Sunset Valley (Wald & Wiesen-Parcours)
       name: 'Sunset Valley',
       icon: '🌲',
       skyTop: '#ff7744',
       skyBot: '#ffd166',
-      bgHill: '#244222',
-      roadDark: '#5c3a21',
-      roadLight: '#73492c',
-      roadMDark: '#73492c',
-      roadMLight: '#5c3a21',
-      wallDark: '#382213',
-      wallLight: '#4d2e1a',
-      wallTopDark: '#2e5728',
-      wallTopLight: '#3f7336',
-      outDark: '#1a3318',
-      outLight: '#244521',
+      bgHill: '#1b4016',
+      roadDark: '#3d8b28',     // Saftig grüne Wiese
+      roadLight: '#4ea332',    // Sonnige grüne Wiese
+      roadMDark: '#367e23',    // Rasen-Streifen
+      roadMLight: '#46972d',   // Rasen-Streifen
+      wallDark: '#5c371a',     // Erdige Kante
+      wallLight: '#734621',    // Erdige Kante
+      wallTopDark: '#2e701e',  // Gras auf Kante
+      wallTopLight: '#419429', // Gras auf Kante
+      outDark: '#1f4e18',      // Äußere Wiesen
+      outLight: '#2a6620',     // Äußere Wiesen
       treeTrunk: '#3e2311',
       treeL1: '#1f4e1f',
       treeL2: '#2b6e2b'
@@ -558,27 +558,38 @@
       // Multi-Level Ledge / Cliff Collision (Subway Surfers multi-level style, Fun Run physics)
       // When a higher earth tier or cliff is in front:
       // If the player doesn't jump, they hit the vertical wall and stop dead!
-      let ledgeAhead = engine.getLedgeInFront(this.x, this.z, 28);
-      if (ledgeAhead) {
-        let currentTotalY = (this.floorY || 0) + this.baseY;
-        if (currentTotalY < ledgeAhead.height - 12) {
-          // BLOCKED: runner hits cliff face and stops until jumping!
-          this.z = ledgeAhead.startZ - 2;
-          this.speed = 0;
-          if (!this.wasBlocked) {
-            sfx.play('rock_hit');
-            engine.particles.spawnDust(this.x, engine.getHillY(this.z) + currentTotalY + 15, this.z);
-            if (this.isPlayer) engine.cameraShake = 8;
-            this.wasBlocked = true;
+      let totalFeetY = (this.floorY || 0) + this.baseY;
+      let blockedLedge = null;
+
+      // 1. Check upcoming cliff wall right in front
+      let ledgeAhead = engine.getLedgeInFront(this.x, this.z, 30);
+      if (ledgeAhead && totalFeetY < ledgeAhead.height - 14) {
+        blockedLedge = ledgeAhead;
+      }
+
+      // 2. Prevent walking into or clipping underneath any ledge
+      if (!blockedLedge) {
+        let ledgesHere = engine.getLedgesAt(this.x, this.z);
+        for (let l of ledgesHere) {
+          if (totalFeetY < l.height - 15 && (this.floorY || 0) < l.height) {
+            blockedLedge = l;
+            break;
           }
-        } else {
-          this.wasBlocked = false;
+        }
+      }
+
+      if (blockedLedge) {
+        // BLOCKED: runner hits cliff face and stops until jumping high enough!
+        this.z = blockedLedge.startZ - 2;
+        this.speed = 0;
+        if (!this.wasBlocked) {
+          sfx.play('rock_hit');
+          engine.particles.spawnDust(this.x, engine.getHillY(this.z) + totalFeetY + 15, this.z);
+          if (this.isPlayer) engine.cameraShake = 8;
+          this.wasBlocked = true;
         }
       } else {
         this.wasBlocked = false;
-      }
-
-      if (!this.wasBlocked) {
         this.z += this.speed * dt;
       }
 
@@ -586,25 +597,35 @@
         this.finishTime = (Date.now() - engine.raceStartTime) / 1000;
       }
 
-      // Check current ground elevation tier (Ledge plateau or ground)
-      let currentLedge = engine.getLedgeAt(this.x, this.z);
-      let targetFloor = currentLedge ? currentLedge.height : 0;
+      // Check current ground elevation tier (Wiese auf höherer Ebene / Stufe)
+      let ledgesHere = engine.getLedgesAt(this.x, this.z);
+      let targetFloor = 0;
+
+      if (ledgesHere.length > 0) {
+        // Finde die höchste Stufe, die der Spieler erreicht hat
+        for (let i = ledgesHere.length - 1; i >= 0; i--) {
+          let l = ledgesHere[i];
+          if (totalFeetY >= l.height - 18 || (this.floorY || 0) >= l.height - 10) {
+            targetFloor = l.height;
+            break;
+          }
+        }
+      }
 
       if (targetFloor > (this.floorY || 0)) {
-        // Step up onto higher plateau
-        if (this.baseY + (this.floorY || 0) >= targetFloor - 25) {
-          let diff = targetFloor - (this.floorY || 0);
-          this.floorY = targetFloor;
-          this.baseY = Math.max(0, this.baseY - diff);
-        }
-      } else if (targetFloor < (this.floorY || 0)) {
-        // Drop down from higher plateau
-        this.baseY += ((this.floorY || 0) - targetFloor);
+        // Hinauf auf die höhere Wiese steigen
+        let diff = targetFloor - (this.floorY || 0);
         this.floorY = targetFloor;
+        this.baseY = Math.max(0, this.baseY - diff);
+      } else if (targetFloor < (this.floorY || 0)) {
+        // Von der höheren Wiese herunterfallen (Ende der Klippe oder seitlich runtergelaufen)
+        let diff = (this.floorY || 0) - targetFloor;
+        this.floorY = targetFloor;
+        this.baseY += diff;
         if (!this.isJumping) {
           this.isJumping = true;
           this.vy = 0;
-          this.jumpCount = 1; // Can double jump to recover mid-air!
+          this.jumpCount = 1; // Kann mit Doppelsprung in der Luft reagieren!
         }
       }
 
@@ -1077,24 +1098,39 @@
       return hill;
     }
 
-    getLedgeAt(x, z) {
+    getLedgesAt(x, z) {
+      let matches = [];
       for (let i = 0; i < this.ledges.length; i++) {
         let l = this.ledges[i];
         if (z >= l.startZ && z <= l.endZ) {
-          for (let laneX of l.lanes) {
-            if (Math.abs(x - laneX) < 170) return l;
+          let minLaneX = Math.min(...l.lanes);
+          let maxLaneX = Math.max(...l.lanes);
+          let minX = minLaneX - 180;
+          let maxX = maxLaneX + 180;
+          if (x >= minX && x <= maxX) {
+            matches.push(l);
           }
         }
       }
-      return null;
+      matches.sort((a, b) => a.height - b.height);
+      return matches;
+    }
+
+    getLedgeAt(x, z) {
+      let matches = this.getLedgesAt(x, z);
+      return matches.length > 0 ? matches[matches.length - 1] : null;
     }
 
     getLedgeInFront(x, z, checkDist = 30) {
       for (let i = 0; i < this.ledges.length; i++) {
         let l = this.ledges[i];
-        if (z + checkDist >= l.startZ && z < l.startZ) {
-          for (let laneX of l.lanes) {
-            if (Math.abs(x - laneX) < 160) return l;
+        let minLaneX = Math.min(...l.lanes);
+        let maxLaneX = Math.max(...l.lanes);
+        let minX = minLaneX - 180;
+        let maxX = maxLaneX + 180;
+        if (x >= minX && x <= maxX) {
+          if (z + checkDist >= l.startZ && z < l.startZ) {
+            return l;
           }
         }
       }
@@ -1268,9 +1304,14 @@
       // Players can jump / double-jump up; if they don't jump, they are stopped against the cliff face!
       let currentZ = 2200;
       while (currentZ < this.finishLineZ - 3000) {
+        // Wooden Bridges should remain bridges over chasm, no earth ledges on bridge spans
+        if (this.isBridge(currentZ) || this.isBridge(currentZ + 2400)) {
+          currentZ += 2600;
+          continue;
+        }
+
         let typeRand = Math.random();
-        let length = 1400 + Math.random() * 800; // Plateau length
-        let height = 90 + Math.random() * 20;   // Height of the cliff/tier
+        let length = 1500 + Math.random() * 800; // Plateau length
         let ledgeLanes = [];
 
         if (typeRand > 0.6) {
@@ -1284,24 +1325,56 @@
           ledgeLanes = [lanes[Math.floor(Math.random() * lanes.length)]];
         }
 
-        let ledge = {
-          startZ: currentZ,
-          endZ: currentZ + length,
-          height: height,
-          lanes: ledgeLanes
-        };
-        this.ledges.push(ledge);
+        let isTwoStep = (typeRand > 0.55 && ledgeLanes.length >= 2);
+        if (isTwoStep) {
+          // 2-STUFIGER ERDRUTSCH (Zwei Stufen Wiese höher!)
+          // Stufe 1: Höhe 75
+          let step1 = {
+            startZ: currentZ,
+            endZ: currentZ + length,
+            height: 75,
+            tier: 1,
+            lanes: ledgeLanes
+          };
+          this.ledges.push(step1);
 
-        // High ground reward: Speed Boost Pad or Item Crate atop the plateau!
-        let midZ = currentZ + length * 0.45;
-        let bonusLane = ledgeLanes[Math.floor(Math.random() * ledgeLanes.length)];
-        if (Math.random() > 0.45) {
-          this.hazards.push({ x: bonusLane, z: midZ, type: 'speed_pad', active: true, onLedge: true, ledgeHeight: height });
+          // Stufe 2: Höhe 150 (setzt 400 Einheiten später an für den zweiten Sprung)
+          let step2Lanes = (ledgeLanes.length === 3) ? [0] : [ledgeLanes[0]];
+          let step2 = {
+            startZ: currentZ + 400,
+            endZ: currentZ + length - 200,
+            height: 150,
+            tier: 2,
+            lanes: step2Lanes
+          };
+          this.ledges.push(step2);
+
+          // Belohnung auf der obersten 2. Stufe!
+          let midZ = currentZ + 400 + (length - 600) * 0.5;
+          let bonusLane = step2Lanes[0];
+          this.hazards.push({ x: bonusLane, z: midZ, type: 'speed_pad', active: true, onLedge: true, ledgeHeight: 150 });
         } else {
-          this.hazards.push({ x: bonusLane, z: midZ, type: 'crate', active: true, respawnTimer: 0, onLedge: true, ledgeHeight: height });
+          // 1-STUFIGE WIESE (Eine Stufe höher, Höhe 80)
+          let ledge = {
+            startZ: currentZ,
+            endZ: currentZ + length,
+            height: 80,
+            tier: 1,
+            lanes: ledgeLanes
+          };
+          this.ledges.push(ledge);
+
+          // High ground reward: Speed Boost Pad or Item Crate atop the plateau!
+          let midZ = currentZ + length * 0.45;
+          let bonusLane = ledgeLanes[Math.floor(Math.random() * ledgeLanes.length)];
+          if (Math.random() > 0.45) {
+            this.hazards.push({ x: bonusLane, z: midZ, type: 'speed_pad', active: true, onLedge: true, ledgeHeight: 80 });
+          } else {
+            this.hazards.push({ x: bonusLane, z: midZ, type: 'crate', active: true, respawnTimer: 0, onLedge: true, ledgeHeight: 80 });
+          }
         }
 
-        currentZ += length + 1000 + Math.random() * 800;
+        currentZ += length + 1100 + Math.random() * 850;
       }
 
       // 2. Procedural Items & Stones on the Ground
@@ -1690,6 +1763,165 @@
               this.ctx.fill();
             }
           }
+
+          // Render Elevated Earth & Meadow Ledges / Cliffs for this road segment
+          for (let li = 0; li < this.ledges.length; li++) {
+            let l = this.ledges[li];
+            if (l.startZ < z2 && l.endZ > z1) {
+              let segZ1 = Math.max(l.startZ, z1);
+              let segZ2 = Math.min(l.endZ, z2);
+              let minLaneX = Math.min(...l.lanes);
+              let maxLaneX = Math.max(...l.lanes);
+              let minX = minLaneX - 175;
+              let maxX = maxLaneX + 175;
+
+              let yA = this.getHillY(segZ1) + l.height;
+              let yB = this.getHillY(segZ2) + l.height;
+              let groundYA = this.getHillY(segZ1);
+              let groundYB = this.getHillY(segZ2);
+
+              let s1L = this.project(minX, yA, segZ1);
+              let s1R = this.project(maxX, yA, segZ1);
+              let s2L = this.project(minX, yB, segZ2);
+              let s2R = this.project(maxX, yB, segZ2);
+
+              if (s1L && s1R && s2L && s2R) {
+                let isLedgeEven = (Math.floor(segZ1 / this.segmentLength) % 2 === 0);
+
+                // 1. Top Surface of the Ledge: GREEN MEADOW (Gras-Ebene eine Stufe höher!)
+                this.ctx.fillStyle = isLedgeEven ? '#469b2d' : '#55af37';
+                this.ctx.beginPath();
+                this.ctx.moveTo(s1L.x, s1L.y);
+                this.ctx.lineTo(s1R.x, s1R.y);
+                this.ctx.lineTo(s2R.x, s2R.y);
+                this.ctx.lineTo(s2L.x, s2L.y);
+                this.ctx.fill();
+
+                // Subtle meadow stripe line
+                this.ctx.strokeStyle = isLedgeEven ? '#3a8524' : '#499f2e';
+                this.ctx.lineWidth = Math.max(1, 1.5 * s1L.scale);
+                this.ctx.beginPath();
+                this.ctx.moveTo(s1L.x, s1L.y);
+                this.ctx.lineTo(s1R.x, s1R.y);
+                this.ctx.stroke();
+
+                // 2. Side Edge Walls (Drop-offs to lower lanes: exposed BROWN EARTH)
+                if (minX > -this.roadWidth / 2) {
+                  let g1L = this.project(minX, groundYA, segZ1);
+                  let g2L = this.project(minX, groundYB, segZ2);
+                  if (g1L && g2L) {
+                    this.ctx.fillStyle = isLedgeEven ? '#5c371a' : '#462912';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(s1L.x, s1L.y);
+                    this.ctx.lineTo(s2L.x, s2L.y);
+                    this.ctx.lineTo(g2L.x, g2L.y);
+                    this.ctx.lineTo(g1L.x, g1L.y);
+                    this.ctx.fill();
+
+                    // Green grass lip along top left edge
+                    this.ctx.strokeStyle = '#66bb33';
+                    this.ctx.lineWidth = Math.max(1, 2.5 * s1L.scale);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(s1L.x, s1L.y);
+                    this.ctx.lineTo(s2L.x, s2L.y);
+                    this.ctx.stroke();
+                  }
+                }
+                if (maxX < this.roadWidth / 2) {
+                  let g1R = this.project(maxX, groundYA, segZ1);
+                  let g2R = this.project(maxX, groundYB, segZ2);
+                  if (g1R && g2R) {
+                    this.ctx.fillStyle = isLedgeEven ? '#5c371a' : '#462912';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(s1R.x, s1R.y);
+                    this.ctx.lineTo(s2R.x, s2R.y);
+                    this.ctx.lineTo(g2R.x, g2R.y);
+                    this.ctx.lineTo(g1R.x, g1R.y);
+                    this.ctx.fill();
+
+                    // Green grass lip along top right edge
+                    this.ctx.strokeStyle = '#66bb33';
+                    this.ctx.lineWidth = Math.max(1, 2.5 * s1R.scale);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(s1R.x, s1R.y);
+                    this.ctx.lineTo(s2R.x, s2R.y);
+                    this.ctx.stroke();
+                  }
+                }
+
+                // 3. Front Vertical Earth Cliff Face at l.startZ (Die braune Erdwand/Erdrutsch!)
+                if (l.startZ >= z1 && l.startZ < z2) {
+                  let cliffBaseY = groundYA;
+                  if (l.tier === 2) {
+                    cliffBaseY = groundYA + 75; // Step 2 rises above Step 1
+                  }
+                  let cliffTopY = groundYA + l.height;
+
+                  let pBL = this.project(minX, cliffBaseY, l.startZ);
+                  let pBR = this.project(maxX, cliffBaseY, l.startZ);
+                  let pTL = this.project(minX, cliffTopY, l.startZ);
+                  let pTR = this.project(maxX, cliffTopY, l.startZ);
+
+                  if (pBL && pBR && pTL && pTR) {
+                    // Dark earth shadow under cliff base
+                    this.ctx.fillStyle = 'rgba(0,0,0,0.42)';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(pBL.x - 12 * pBL.scale, pBL.y + 12 * pBL.scale);
+                    this.ctx.lineTo(pBR.x + 12 * pBR.scale, pBR.y + 12 * pBR.scale);
+                    this.ctx.lineTo(pBR.x, pBR.y);
+                    this.ctx.lineTo(pBL.x, pBL.y);
+                    this.ctx.fill();
+
+                    // Vertical Earth / Rock Cliff Wall (Rich Brown Gradient)
+                    let cliffGrad = this.ctx.createLinearGradient(0, pTL.y, 0, pBL.y);
+                    cliffGrad.addColorStop(0, '#7d4c26');
+                    cliffGrad.addColorStop(0.5, '#5a3418');
+                    cliffGrad.addColorStop(1, '#331c0b');
+                    this.ctx.fillStyle = cliffGrad;
+
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(pTL.x, pTL.y);
+                    this.ctx.lineTo(pTR.x, pTR.y);
+                    this.ctx.lineTo(pBR.x, pBR.y);
+                    this.ctx.lineTo(pBL.x, pBL.y);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+
+                    // Dark rock contour outline
+                    this.ctx.strokeStyle = '#221106';
+                    this.ctx.lineWidth = Math.max(1, 3 * pTL.scale);
+                    this.ctx.stroke();
+
+                    // Craggy horizontal rock strata
+                    this.ctx.strokeStyle = 'rgba(255, 230, 200, 0.22)';
+                    this.ctx.lineWidth = Math.max(1, 2 * pTL.scale);
+                    this.ctx.beginPath();
+                    let midY1 = (pTL.y + pBL.y) * 0.52;
+                    let midY2 = (pTR.y + pBR.y) * 0.48;
+                    this.ctx.moveTo(pTL.x + 8 * pTL.scale, midY1);
+                    this.ctx.lineTo(pTR.x - 8 * pTR.scale, midY2);
+                    this.ctx.stroke();
+
+                    // Bright Green Grass Overhang Lip with Jagged Teeth
+                    let grassLipH = 12 * pTL.scale;
+                    this.ctx.fillStyle = '#61c53d';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(pTL.x - 5 * pTL.scale, pTL.y - 3 * pTL.scale);
+                    this.ctx.lineTo(pTR.x + 5 * pTR.scale, pTR.y - 3 * pTR.scale);
+                    let teeth = 16;
+                    for (let t = teeth; t >= 0; t--) {
+                      let frac = t / teeth;
+                      let tx = pTL.x + (pTR.x - pTL.x) * frac;
+                      let ty = pTL.y + (pTR.y - pTL.y) * frac + ((t % 2 === 0) ? grassLipH : grassLipH * 0.4);
+                      this.ctx.lineTo(tx, ty);
+                    }
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                  }
+                }
+              }
+            }
+          }
         }
       }
 
@@ -1710,11 +1942,6 @@
           drawables.push({ type: 'hazard', obj: h, z: h.z });
         }
       });
-      this.ledges.forEach(l => {
-        if (l.endZ > this.cameraZ && l.startZ < this.cameraZ + this.drawDistance * this.segmentLength) {
-          drawables.push({ type: 'ledge', obj: l, z: l.startZ });
-        }
-      });
 
       drawables.sort((a, b) => b.z - a.z);
 
@@ -1723,132 +1950,7 @@
         else if (d.type === 'proj') d.obj.draw(this.ctx, this);
         else if (d.type === 'gate') d.obj.draw(this.ctx, this);
         else if (d.type === 'tree') d.obj.draw(this.ctx, this);
-        else if (d.type === 'ledge') {
-          let l = d.obj;
-          let minLaneX = Math.min(...l.lanes);
-          let maxLaneX = Math.max(...l.lanes);
-          let minX = minLaneX - 175;
-          let maxX = maxLaneX + 175;
-
-          // 1. Draw Front Cliff Face at startZ
-          let baseY = this.getHillY(l.startZ);
-          let topY = baseY + l.height;
-
-          let pBL = this.project(minX, baseY, l.startZ);
-          let pBR = this.project(maxX, baseY, l.startZ);
-          let pTL = this.project(minX, topY, l.startZ);
-          let pTR = this.project(maxX, topY, l.startZ);
-
-          if (pBL && pBR && pTL && pTR) {
-            // Shadow under cliff
-            this.ctx.fillStyle = 'rgba(0,0,0,0.45)';
-            this.ctx.beginPath();
-            this.ctx.moveTo(pBL.x - 20 * pBL.scale, pBL.y + 15 * pBL.scale);
-            this.ctx.lineTo(pBR.x + 20 * pBR.scale, pBR.y + 15 * pBR.scale);
-            this.ctx.lineTo(pBR.x, pBR.y);
-            this.ctx.lineTo(pBL.x, pBL.y);
-            this.ctx.fill();
-
-            // Vertical Earth/Stone Cliff Face
-            let cliffGrad = this.ctx.createLinearGradient(0, pTL.y, 0, pBL.y);
-            cliffGrad.addColorStop(0, '#6d4223');
-            cliffGrad.addColorStop(0.5, '#4a2c17');
-            cliffGrad.addColorStop(1, '#2c180b');
-            this.ctx.fillStyle = cliffGrad;
-
-            this.ctx.beginPath();
-            this.ctx.moveTo(pTL.x, pTL.y);
-            this.ctx.lineTo(pTR.x, pTR.y);
-            this.ctx.lineTo(pBR.x, pBR.y);
-            this.ctx.lineTo(pBL.x, pBL.y);
-            this.ctx.closePath();
-            this.ctx.fill();
-
-            // Craggy stone outline & stratification lines
-            this.ctx.strokeStyle = '#1d0f07';
-            this.ctx.lineWidth = Math.max(1, 3 * pTL.scale);
-            this.ctx.stroke();
-
-            // Rock stratum horizontal crevices
-            this.ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-            this.ctx.lineWidth = Math.max(1, 2 * pTL.scale);
-            this.ctx.beginPath();
-            let midY1 = (pTL.y + pBL.y) / 2;
-            let midY2 = (pTR.y + pBR.y) / 2;
-            this.ctx.moveTo(pTL.x + 10 * pTL.scale, midY1);
-            this.ctx.lineTo(pTR.x - 10 * pTR.scale, midY2);
-            this.ctx.stroke();
-
-            // Grass / Snow Overhang Lip on Top Edge
-            let t = THEMES[this.currentLevel];
-            this.ctx.fillStyle = t.wallTopLight || '#3f7336';
-            this.ctx.beginPath();
-            this.ctx.moveTo(pTL.x - 6 * pTL.scale, pTL.y - 4 * pTL.scale);
-            this.ctx.lineTo(pTR.x + 6 * pTR.scale, pTR.y - 4 * pTR.scale);
-            this.ctx.lineTo(pTR.x + 4 * pTR.scale, pTR.y + 10 * pTR.scale);
-            this.ctx.lineTo(pTL.x - 4 * pTL.scale, pTL.y + 10 * pTL.scale);
-            this.ctx.closePath();
-            this.ctx.fill();
-          }
-
-          // 2. Draw Top Surface & Side Walls along the length of the Ledge
-          let stepZ = this.segmentLength;
-          let renderStart = Math.max(l.startZ, this.cameraZ);
-          let renderEnd = Math.min(l.endZ, this.cameraZ + this.drawDistance * stepZ);
-
-          for (let segZ = renderStart; segZ < renderEnd; segZ += stepZ) {
-            let nextZ = Math.min(l.endZ, segZ + stepZ);
-            let yA = this.getHillY(segZ) + l.height;
-            let yB = this.getHillY(nextZ) + l.height;
-            let groundYA = this.getHillY(segZ);
-            let groundYB = this.getHillY(nextZ);
-
-            let s1L = this.project(minX, yA, segZ);
-            let s1R = this.project(maxX, yA, segZ);
-            let s2L = this.project(minX, yB, nextZ);
-            let s2R = this.project(maxX, yB, nextZ);
-
-            if (s1L && s1R && s2L && s2R) {
-              let isEven = (Math.floor(segZ / stepZ) % 2 === 0);
-              // Top Surface of the Ledge
-              this.ctx.fillStyle = isEven ? '#8d5528' : '#774720';
-              this.ctx.beginPath();
-              this.ctx.moveTo(s1L.x, s1L.y);
-              this.ctx.lineTo(s1R.x, s1R.y);
-              this.ctx.lineTo(s2R.x, s2R.y);
-              this.ctx.lineTo(s2L.x, s2L.y);
-              this.ctx.fill();
-
-              // Side Edge Walls (Drop-offs to lower lanes)
-              if (minX > -this.roadWidth / 2) {
-                let g1L = this.project(minX, groundYA, segZ);
-                let g2L = this.project(minX, groundYB, nextZ);
-                if (g1L && g2L) {
-                  this.ctx.fillStyle = isEven ? '#4e2d18' : '#3d2212';
-                  this.ctx.beginPath();
-                  this.ctx.moveTo(s1L.x, s1L.y);
-                  this.ctx.lineTo(s2L.x, s2L.y);
-                  this.ctx.lineTo(g2L.x, g2L.y);
-                  this.ctx.lineTo(g1L.x, g1L.y);
-                  this.ctx.fill();
-                }
-              }
-              if (maxX < this.roadWidth / 2) {
-                let g1R = this.project(maxX, groundYA, segZ);
-                let g2R = this.project(maxX, groundYB, nextZ);
-                if (g1R && g2R) {
-                  this.ctx.fillStyle = isEven ? '#4e2d18' : '#3d2212';
-                  this.ctx.beginPath();
-                  this.ctx.moveTo(s1R.x, s1R.y);
-                  this.ctx.lineTo(s2R.x, s2R.y);
-                  this.ctx.lineTo(g2R.x, g2R.y);
-                  this.ctx.lineTo(g1R.x, g1R.y);
-                  this.ctx.fill();
-                }
-              }
-            }
-          }
-        } else if (d.type === 'hazard') {
+        else if (d.type === 'hazard') {
           let h = d.obj;
           let hillY = this.getHillY(h.z) + (h.onLedge ? h.ledgeHeight : 0);
 
