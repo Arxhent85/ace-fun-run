@@ -1,6 +1,6 @@
 // ============================================================================
 // FUN RUN 3D / POCKET RUN - THREE.JS WEBGL RACING ENGINE
-// True 3D Smooth Mesh World, Dynamic Camera, Physics, Sound & Fun Run Combat
+// True 3D Smooth Mesh World, Dynamic Camera, High-Detail Characters & Combat
 // ============================================================================
 
 (function () {
@@ -216,7 +216,7 @@
       }
     }
 
-    spawnSparks(x, y, z, count = 16, colorHex = 0xffea00) {
+    spawnSparks(x, y, z, count = 16) {
       for (let i = 0; i < count; i++) {
         this.spawn(
           x, y + 0.6, z,
@@ -258,7 +258,7 @@
         p.mesh.position.x += p.vx * dt;
         p.mesh.position.y += p.vy * dt;
         p.mesh.position.z += p.vz * dt;
-        p.vy -= 22 * dt; // gravity
+        p.vy -= 22 * dt;
         const progress = p.life / p.maxLife;
         p.mesh.scale.setScalar(progress);
       }
@@ -273,12 +273,13 @@
   }
 
   // --------------------------------------------------------------------------
-  // 3. 3D RACER CHARACTER (Fun Run Animals: Bear, Fox, Beaver, Eagle)
+  // 3. HIGH-DETAIL 3D RACER CHARACTER (Fun Run & Pocket Champs Style)
   // --------------------------------------------------------------------------
   class Racer3D {
     constructor(laneIndex, animal, isPlayer, name, engine) {
-      this.laneIndex = laneIndex; // 0: Left (-4.6), 1: Center (0), 2: Right (+4.6)
-      this.x = (laneIndex - 1) * 4.6;
+      this.laneIndex = laneIndex; // 0: Screen Left (+4.5), 1: Center (0), 2: Screen Right (-4.5)
+      // Screen Left is +X, Screen Right is -X when camera looks towards +Z
+      this.x = (1 - laneIndex) * 4.5;
       this.targetX = this.x;
       this.z = isPlayer ? 10 : 15 + Math.random() * 15;
       this.animal = animal || 'bear';
@@ -311,16 +312,16 @@
       this.engine.scene.add(this.group);
 
       // Contact Shadow
-      const shadowGeo = new THREE.CircleGeometry(0.7, 16);
+      const shadowGeo = new THREE.CircleGeometry(0.75, 16);
       shadowGeo.rotateX(-Math.PI / 2);
-      const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.38 });
+      const shadowMat = new THREE.MeshBasicMaterial({ color: 0x0a1f0a, transparent: true, opacity: 0.42 });
       this.shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
       this.engine.scene.add(this.shadowMesh);
 
       // DU / Indicator Badge
       if (this.isPlayer) {
         this.badgeSprite = this.createBadgeSprite('DU');
-        this.badgeSprite.position.y = 2.4;
+        this.badgeSprite.position.y = 2.6;
         this.group.add(this.badgeSprite);
       }
     }
@@ -342,110 +343,191 @@
       const texture = new THREE.CanvasTexture(canvas);
       const mat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
       const sprite = new THREE.Sprite(mat);
-      sprite.scale.set(1.8, 0.9, 1);
+      sprite.scale.set(1.9, 0.95, 1);
       return sprite;
     }
 
     buildAnimalModel() {
-      // Clear any existing children
       while (this.group.children.length > 0) {
         this.group.remove(this.group.children[0]);
       }
 
-      let mainColor = 0x8d5524, bellyColor = 0xc68642, darkColor = 0x5c3311;
+      let mainColor = 0x8d5524, bellyColor = 0xf5d6ba, darkColor = 0x542e11, earInnerColor = 0xffa8b8;
       if (this.animal === 'fox') {
-        mainColor = 0xff6b35; bellyColor = 0xffffff; darkColor = 0x222222;
+        mainColor = 0xff6b35; bellyColor = 0xffffff; darkColor = 0x222222; earInnerColor = 0xffc4aa;
       } else if (this.animal === 'beaver') {
-        mainColor = 0x9a5c37; bellyColor = 0xdfa06e; darkColor = 0x422413;
+        mainColor = 0x8a4b27; bellyColor = 0xdfa06e; darkColor = 0x3d1f0e; earInnerColor = 0xdfa06e;
       } else if (this.animal === 'baldeagle' || this.animal === 'eagle') {
-        mainColor = 0x4a3b32; bellyColor = 0xffffff; darkColor = 0xffb703;
+        mainColor = 0x3d3027; bellyColor = 0xffffff; darkColor = 0xffb703; earInnerColor = 0xffb703;
       }
 
       this.bodyMat = new THREE.MeshLambertMaterial({ color: mainColor });
       this.bellyMat = new THREE.MeshLambertMaterial({ color: bellyColor });
       this.darkMat = new THREE.MeshLambertMaterial({ color: darkColor });
+      this.innerEarMat = new THREE.MeshLambertMaterial({ color: earInnerColor });
+      this.eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      this.eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+      this.shoeMat = new THREE.MeshLambertMaterial({ color: 0xd32f2f }); // Red running sneakers
+      this.soleMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
 
-      // Torso
-      const torsoGeo = new THREE.SphereGeometry(0.72, 14, 12);
-      torsoGeo.scale(1.0, 1.25, 0.92);
+      // 1. Torso
+      const torsoGeo = new THREE.SphereGeometry(0.72, 16, 14);
+      torsoGeo.scale(1.0, 1.25, 0.95);
       this.torsoMesh = new THREE.Mesh(torsoGeo, this.bodyMat);
-      this.torsoMesh.position.y = 0.9;
+      this.torsoMesh.position.y = 0.92;
       this.torsoMesh.castShadow = true;
       this.group.add(this.torsoMesh);
 
-      // Belly Patch
-      const bellyGeo = new THREE.SphereGeometry(0.55, 12, 10);
-      bellyGeo.scale(0.85, 0.95, 0.35);
+      // Creamy Belly Wrap
+      const bellyGeo = new THREE.SphereGeometry(0.56, 14, 12);
+      bellyGeo.scale(0.85, 0.96, 0.38);
       const bellyMesh = new THREE.Mesh(bellyGeo, this.bellyMat);
-      bellyMesh.position.set(0, 0.85, 0.6);
+      bellyMesh.position.set(0, 0.88, 0.62);
       this.group.add(bellyMesh);
 
-      // Head
-      const headGeo = new THREE.SphereGeometry(0.56, 14, 12);
+      // Racing Harness / Collar with Gold Star
+      const collarGeo = new THREE.TorusGeometry(0.68, 0.08, 8, 16);
+      collarGeo.rotateX(Math.PI / 2);
+      const collar = new THREE.Mesh(collarGeo, new THREE.MeshLambertMaterial({ color: 0x1976d2 }));
+      collar.position.set(0, 1.35, 0.1);
+      this.group.add(collar);
+
+      const starGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.06, 5);
+      starGeo.rotateX(Math.PI / 2);
+      const star = new THREE.Mesh(starGeo, new THREE.MeshLambertMaterial({ color: 0xffd700 }));
+      star.position.set(0, 1.35, 0.78);
+      this.group.add(star);
+
+      // 2. Head
+      const headGeo = new THREE.SphereGeometry(0.58, 16, 14);
       this.headMesh = new THREE.Mesh(headGeo, this.bodyMat);
-      this.headMesh.position.set(0, 1.7, 0.1);
+      this.headMesh.position.set(0, 1.76, 0.1);
       this.headMesh.castShadow = true;
       this.group.add(this.headMesh);
 
-      // Snout / Beak
+      // Big Cute Cartoon Eyes
+      const eyeGeo = new THREE.SphereGeometry(0.14, 10, 8);
+      eyeGeo.scale(0.9, 1.15, 0.5);
+      const pupilGeo = new THREE.SphereGeometry(0.08, 8, 6);
+      pupilGeo.scale(0.9, 1.0, 0.4);
+
+      for (let eyeSide of [-1, 1]) {
+        const eyeWhite = new THREE.Mesh(eyeGeo, this.eyeWhiteMat);
+        eyeWhite.position.set(eyeSide * 0.24, 1.86, 0.54);
+        eyeWhite.rotation.y = eyeSide * 0.15;
+        this.group.add(eyeWhite);
+
+        const eyePupil = new THREE.Mesh(pupilGeo, this.eyePupilMat);
+        eyePupil.position.set(eyeSide * 0.24, 1.86, 0.59);
+        this.group.add(eyePupil);
+
+        // White catchlight dot
+        const catchlightGeo = new THREE.SphereGeometry(0.03, 6, 4);
+        const catchlight = new THREE.Mesh(catchlightGeo, this.eyeWhiteMat);
+        catchlight.position.set(eyeSide * 0.22, 1.9, 0.62);
+        this.group.add(catchlight);
+      }
+
+      // Snout / Muzzle
       if (this.animal === 'baldeagle' || this.animal === 'eagle') {
-        const beakGeo = new THREE.ConeGeometry(0.22, 0.45, 6);
+        const beakGeo = new THREE.ConeGeometry(0.24, 0.55, 8);
         beakGeo.rotateX(Math.PI / 2);
         const beak = new THREE.Mesh(beakGeo, this.darkMat);
-        beak.position.set(0, 1.62, 0.65);
+        beak.position.set(0, 1.66, 0.68);
         this.group.add(beak);
       } else {
-        const snoutGeo = new THREE.SphereGeometry(0.3, 10, 8);
-        snoutGeo.scale(1.0, 0.75, 0.8);
+        const snoutGeo = new THREE.SphereGeometry(0.32, 12, 10);
+        snoutGeo.scale(1.0, 0.75, 0.85);
         const snout = new THREE.Mesh(snoutGeo, this.bellyMat);
-        snout.position.set(0, 1.6, 0.52);
+        snout.position.set(0, 1.62, 0.55);
         this.group.add(snout);
 
-        const noseGeo = new THREE.SphereGeometry(0.1, 6, 6);
+        const noseGeo = new THREE.SphereGeometry(0.11, 8, 6);
         const nose = new THREE.Mesh(noseGeo, new THREE.MeshBasicMaterial({ color: 0x111111 }));
-        nose.position.set(0, 1.68, 0.76);
+        nose.position.set(0, 1.71, 0.82);
         this.group.add(nose);
       }
 
-      // Ears
+      // Ears (with pink inner-ear detail!)
       if (this.animal === 'bear') {
-        const earGeo = new THREE.SphereGeometry(0.22, 10, 8);
-        const earL = new THREE.Mesh(earGeo, this.darkMat);
-        earL.position.set(-0.45, 2.15, 0.05);
-        const earR = new THREE.Mesh(earGeo, this.darkMat);
-        earR.position.set(0.45, 2.15, 0.05);
-        this.group.add(earL);
-        this.group.add(earR);
+        for (let side of [-1, 1]) {
+          const earOuter = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), this.darkMat);
+          earOuter.position.set(side * 0.46, 2.22, 0.05);
+          const earInner = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), this.innerEarMat);
+          earInner.position.set(side * 0.46, 2.22, 0.14);
+          this.group.add(earOuter);
+          this.group.add(earInner);
+        }
       } else if (this.animal === 'fox') {
-        const earGeo = new THREE.ConeGeometry(0.22, 0.55, 6);
-        const earL = new THREE.Mesh(earGeo, this.bodyMat);
-        earL.position.set(-0.35, 2.25, 0.05);
-        earL.rotation.z = 0.2;
-        const earR = new THREE.Mesh(earGeo, this.bodyMat);
-        earR.position.set(0.35, 2.25, 0.05);
-        earR.rotation.z = -0.2;
-        this.group.add(earL);
-        this.group.add(earR);
+        for (let side of [-1, 1]) {
+          const earOuter = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.62, 6), this.bodyMat);
+          earOuter.position.set(side * 0.36, 2.32, 0.05);
+          earOuter.rotation.z = -side * 0.22;
+          const earTip = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.26, 6), this.darkMat);
+          earTip.position.set(side * 0.42, 2.52, 0.05);
+          earTip.rotation.z = -side * 0.22;
+          this.group.add(earOuter);
+          this.group.add(earTip);
+        }
       } else if (this.animal === 'beaver') {
-        const tailGeo = new THREE.BoxGeometry(0.55, 0.12, 0.85);
+        // Flat waffle beaver tail
+        const tailGeo = new THREE.BoxGeometry(0.65, 0.12, 1.05);
         const tail = new THREE.Mesh(tailGeo, this.darkMat);
-        tail.position.set(0, 0.55, -0.65);
-        tail.rotation.x = -0.3;
+        tail.position.set(0, 0.55, -0.75);
+        tail.rotation.x = -0.32;
         this.group.add(tail);
       }
 
-      // Running Paws / Feet
-      const pawGeo = new THREE.SphereGeometry(0.24, 8, 8);
-      pawGeo.scale(1.0, 0.6, 1.3);
-      this.pawL = new THREE.Mesh(pawGeo, this.darkMat);
-      this.pawR = new THREE.Mesh(pawGeo, this.darkMat);
-      this.pawL.position.set(-0.36, 0.15, 0.1);
-      this.pawR.position.set(0.36, 0.15, -0.1);
-      this.group.add(this.pawL);
-      this.group.add(this.pawR);
+      // Little Bobtail (for Bear & Fox)
+      if (this.animal === 'bear') {
+        const bobtail = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), this.darkMat);
+        bobtail.position.set(0, 0.65, -0.72);
+        this.group.add(bobtail);
+      } else if (this.animal === 'fox') {
+        const bushyTail = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.1, 8), this.bodyMat);
+        bushyTail.position.set(0, 0.75, -0.9);
+        bushyTail.rotation.x = -0.85;
+        this.group.add(bushyTail);
+      }
 
-      // Shield Bubble Aura (hidden until active)
-      const shieldGeo = new THREE.SphereGeometry(1.4, 16, 12);
+      // 3. Articulated Arms / Paws
+      const armGeo = new THREE.SphereGeometry(0.2, 8, 8);
+      armGeo.scale(0.8, 1.3, 0.8);
+      this.armL = new THREE.Mesh(armGeo, this.bodyMat);
+      this.armR = new THREE.Mesh(armGeo, this.bodyMat);
+      this.armL.position.set(0.72, 1.05, 0.1);
+      this.armR.position.set(-0.72, 1.05, 0.1);
+      this.group.add(this.armL);
+      this.group.add(this.armR);
+
+      // 4. Running Sneakers / Feet
+      const footGroupL = new THREE.Group();
+      const footGroupR = new THREE.Group();
+
+      const sneakerGeo = new THREE.BoxGeometry(0.36, 0.24, 0.58);
+      const soleGeo = new THREE.BoxGeometry(0.40, 0.08, 0.62);
+
+      const snkL = new THREE.Mesh(sneakerGeo, this.shoeMat);
+      snkL.position.y = 0.16;
+      const soleL = new THREE.Mesh(soleGeo, this.soleMat);
+      soleL.position.y = 0.04;
+      footGroupL.add(snkL); footGroupL.add(soleL);
+
+      const snkR = new THREE.Mesh(sneakerGeo, this.shoeMat);
+      snkR.position.y = 0.16;
+      const soleR = new THREE.Mesh(soleGeo, this.soleMat);
+      soleR.position.y = 0.04;
+      footGroupR.add(snkR); footGroupR.add(soleR);
+
+      this.footL = footGroupL;
+      this.footR = footGroupR;
+      this.footL.position.set(0.36, 0, 0);
+      this.footR.position.set(-0.36, 0, 0);
+      this.group.add(this.footL);
+      this.group.add(this.footR);
+
+      // Shield Bubble Aura
+      const shieldGeo = new THREE.SphereGeometry(1.45, 16, 12);
       const shieldMat = new THREE.MeshBasicMaterial({
         color: 0x00e5ff,
         transparent: true,
@@ -471,7 +553,7 @@
         if (this.isPlayer) sfx.play('jump');
         this.engine.particles.spawnDust(this.x, this.engine.getHillY(this.z), this.z, 6);
       } else if (this.isJumping && this.jumpCount === 1) {
-        // Double jump in mid-air with 360° flip & golden sparks!
+        // Double jump in mid-air with 360° somersault flip & golden sparks!
         this.vy = 13.8;
         this.jumpCount = 2;
         this.isFlipping = true;
@@ -591,7 +673,7 @@
       // Jump & Gravity Physics
       if (this.isJumping) {
         this.jumpY += this.vy * dt;
-        this.vy -= 34.0 * dt; // Gravity
+        this.vy -= 34.0 * dt;
         if (this.isFlipping) {
           this.flipAngle += dt * 15.0;
         }
@@ -610,30 +692,28 @@
       if (!this.isPlayer) {
         this.aiTimer -= dt;
         if (this.aiTimer <= 0) {
-          const lanes = [-4.6, 0, 4.6];
+          const lanes = [4.5, 0, -4.5];
           this.targetX = lanes[Math.floor(Math.random() * lanes.length)];
           this.aiTimer = 1.2 + Math.random() * 2.0;
         }
 
-        // Random weapon usage
         if (this.currentWeapon && Math.random() < 0.03) {
           this.usePowerup();
         }
 
-        // Avoid boulders
         for (let r of this.engine.rocks) {
-          if (r.active && r.z > this.z && (r.z - this.z) < 14.0 && Math.abs(r.x - this.x) < 2.0) {
+          if (r.active && r.z > this.z && (r.z - this.z) < 14.0 && Math.abs(r.laneX - this.x) < 2.0) {
             if (Math.random() < 0.75) {
               this.jump();
             } else {
-              const openLanes = [-4.6, 0, 4.6].filter(l => Math.abs(l - r.x) > 2.0);
+              const openLanes = [4.5, 0, -4.5].filter(l => Math.abs(l - r.laneX) > 2.0);
               if (openLanes.length > 0) this.targetX = openLanes[0];
             }
           }
         }
       }
 
-      // Synchronize 3D Object Hierarchy
+      // Synchronize 3D Position
       const trackCurveX = this.engine.getCurveX(this.z);
       const groundY = this.engine.getHillY(this.z);
       const finalX = trackCurveX + this.x;
@@ -641,25 +721,40 @@
 
       this.group.position.set(finalX, finalY, this.z);
 
-      // Tilting & Somersault Rotation
-      const laneTilt = (this.targetX - this.x) * -0.06;
+      // Tilting & Somersault Rotation (Natural leaning into turns!)
+      // When moving to screen Left (targetX > x), bank body left (+Z rotation leans left on screen)
+      const laneTilt = (this.targetX - this.x) * 0.08;
       if (this.isFlipping) {
         this.group.rotation.set(this.flipAngle, 0, laneTilt);
       } else {
         this.group.rotation.set(0, 0, laneTilt);
       }
 
-      // Animated Paws (Running swing cycle)
+      // Animated Running Limbs (Arms pump, sneakers step)
       if (!this.isJumping && this.speed > 2.0) {
-        const runCycle = this.z * 1.5;
-        this.pawL.position.z = Math.sin(runCycle) * 0.35;
-        this.pawR.position.z = Math.sin(runCycle + Math.PI) * 0.35;
+        const runCycle = this.z * 1.6;
+        // Paws swing opposite
+        this.footL.position.z = Math.sin(runCycle) * 0.38;
+        this.footR.position.z = Math.sin(runCycle + Math.PI) * 0.38;
+        this.footL.position.y = Math.max(0, -Math.sin(runCycle)) * 0.22;
+        this.footR.position.y = Math.max(0, -Math.sin(runCycle + Math.PI)) * 0.22;
+
+        this.armL.position.z = -Math.sin(runCycle) * 0.32;
+        this.armR.position.z = Math.sin(runCycle) * 0.32;
+
+        // Running body bobbing
+        this.torsoMesh.position.y = 0.92 + Math.abs(Math.sin(runCycle)) * 0.08;
+        this.headMesh.position.y = 1.76 + Math.abs(Math.sin(runCycle)) * 0.08;
       } else {
-        this.pawL.position.z = 0;
-        this.pawR.position.z = 0;
+        this.footL.position.set(0.36, 0, 0);
+        this.footR.position.set(-0.36, 0, 0);
+        this.armL.position.z = 0;
+        this.armR.position.z = 0;
+        this.torsoMesh.position.y = 0.92;
+        this.headMesh.position.y = 1.76;
       }
 
-      // Contact Shadow directly on the ground
+      // Contact Shadow
       this.shadowMesh.position.set(finalX, groundY + 0.05, this.z);
       const shadowScale = Math.max(0.2, 1.0 - this.jumpY * 0.22);
       this.shadowMesh.scale.set(shadowScale, shadowScale, shadowScale);
@@ -688,7 +783,7 @@
       this.currentLevel = 1;
       this.selectedAnimal = 'bear';
 
-      this.finishLineZ = 1200; // ~55 second race at speed 22 m/s
+      this.finishLineZ = 1200; // ~55 second race
       this.cameraShake = 0;
 
       this.player = null;
@@ -699,6 +794,7 @@
       this.bouncePads = [];
       this.projectiles = [];
       this.traps = [];
+      this.clouds = [];
       this.particles = null;
 
       // UI References
@@ -725,45 +821,45 @@
       const w = window.innerWidth;
       const h = window.innerHeight;
 
-      // WebGL Renderer with Antialiasing
+      // WebGL Renderer with High Quality & Soft Shadows
       this.renderer = new THREE.WebGLRenderer({
         canvas: this.canvas,
         antialias: true,
         alpha: false,
         powerPreference: 'high-performance'
       });
-      this.renderer.setSize(w, h);
+      this.renderer.setSize(w, h, false);
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-      // 3D Scene with Sunset Valley Atmosphere
+      // 3D Scene with Rich Sunset Sky
       this.scene = new THREE.Scene();
-      this.scene.background = new THREE.Color(0xff8c42);
-      this.scene.fog = new THREE.FogExp2(0xff9944, 0.0022);
+      this.scene.background = new THREE.Color(0xff8038);
+      this.scene.fog = new THREE.FogExp2(0xff9944, 0.0020);
 
-      // Perspective Camera (Subway Surfers & Fun Run tight follower)
+      // Perspective Camera (Behind-the-Back Follower)
       this.camera = new THREE.PerspectiveCamera(54, w / h, 0.5, 450);
 
-      // Lighting (Warm Sun & Rich Meadow Ambient)
-      this.ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+      // Lighting Setup (Sun, Sky Ambient, Hemisphere Ground Fill)
+      this.ambientLight = new THREE.AmbientLight(0xffffff, 0.60);
       this.scene.add(this.ambientLight);
 
-      this.hemiLight = new THREE.HemisphereLight(0xffe2b8, 0x3d7028, 0.65);
+      this.hemiLight = new THREE.HemisphereLight(0xffe2b8, 0x3d7028, 0.70);
       this.scene.add(this.hemiLight);
 
-      this.dirLight = new THREE.DirectionalLight(0xfffaed, 1.25);
-      this.dirLight.castShadow = true;
-      this.dirLight.shadow.mapSize.width = 1024;
-      this.dirLight.shadow.mapSize.height = 1024;
-      this.dirLight.shadow.camera.near = 1.0;
-      this.dirLight.shadow.camera.far = 160;
-      this.dirLight.shadow.camera.left = -28;
-      this.dirLight.shadow.camera.right = 28;
-      this.dirLight.shadow.camera.top = 28;
-      this.dirLight.shadow.camera.bottom = -28;
-      this.scene.add(this.dirLight);
-      this.scene.add(this.dirLight.target);
+      this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.30);
+      this.sunLight.castShadow = true;
+      this.sunLight.shadow.mapSize.width = 1024;
+      this.sunLight.shadow.mapSize.height = 1024;
+      this.sunLight.shadow.camera.near = 1.0;
+      this.sunLight.shadow.camera.far = 160;
+      this.sunLight.shadow.camera.left = -28;
+      this.sunLight.shadow.camera.right = 28;
+      this.sunLight.shadow.camera.top = 28;
+      this.sunLight.shadow.camera.bottom = -28;
+      this.scene.add(this.sunLight);
+      this.scene.add(this.sunLight.target);
 
       this.particles = new ParticleSystem3D(this.scene);
     }
@@ -780,10 +876,8 @@
     }
 
     getHillY(z) {
-      // Silky smooth rolling hills that crest and slope naturally
       let h = Math.sin(z * 0.016) * 4.8 + Math.sin(z * 0.006) * 7.2;
       if (this.isBridge(z)) {
-        // High arched suspension bridge over deep gorge
         let start = (z < 500) ? 240 : 740;
         let span = 150;
         let t = (z - start) / span;
@@ -798,7 +892,7 @@
       const trackH = this.getHillY(z);
       if (this.isBridge(z)) {
         if (distFromCenter <= 7.2) return trackH;
-        return trackH - 24.0; // Abyss below bridge
+        return trackH - 24.0;
       }
       const outerSlope = Math.max(0, distFromCenter - 7.0) * -0.06;
       const hillWave = Math.sin(x * 0.03 + z * 0.01) * 1.5;
@@ -806,18 +900,59 @@
     }
 
     // ------------------------------------------------------------------------
-    // WORLD & GEOMETRY GENERATION
+    // ENVIRONMENT & SCENERY (Mountains, Clouds, Track Mesh, Trees)
     // ------------------------------------------------------------------------
+    buildSkyAndMountains() {
+      if (this.skyGroup) this.scene.remove(this.skyGroup);
+      this.skyGroup = new THREE.Group();
+
+      // 1. Distant Horizon Mountain Ridges
+      const mountainGeo = new THREE.ConeGeometry(38, 55, 5);
+      const mountainMat1 = new THREE.MeshLambertMaterial({ color: 0x1b431e });
+      const mountainMat2 = new THREE.MeshLambertMaterial({ color: 0x27592b });
+
+      for (let z = 60; z < this.finishLineZ + 150; z += 90) {
+        const cx = this.getCurveX(z);
+        for (let side of [-1, 1]) {
+          const m = new THREE.Mesh(mountainGeo, Math.random() > 0.5 ? mountainMat1 : mountainMat2);
+          m.position.set(cx + side * (120 + Math.random() * 40), 18 + Math.random() * 12, z);
+          m.scale.set(1.0 + Math.random() * 0.6, 1.0 + Math.random() * 0.5, 1.0 + Math.random() * 0.6);
+          this.skyGroup.add(m);
+        }
+      }
+
+      // 2. Floating 3D Cartoon Clouds (Zelda style)
+      this.clouds = [];
+      const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.88 });
+      const cloudSphere = new THREE.SphereGeometry(6, 8, 8);
+
+      for (let z = 20; z < this.finishLineZ + 100; z += 70) {
+        const cloud = new THREE.Group();
+        const baseCx = this.getCurveX(z);
+        cloud.position.set(baseCx + (Math.random() - 0.5) * 80, 48 + Math.random() * 15, z);
+
+        for (let c = 0; c < 5; c++) {
+          const puff = new THREE.Mesh(cloudSphere, cloudMat);
+          puff.position.set((c - 2) * 4.2 + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 4);
+          puff.scale.setScalar(0.75 + Math.random() * 0.5);
+          cloud.add(puff);
+        }
+
+        this.skyGroup.add(cloud);
+        this.clouds.push(cloud);
+      }
+
+      this.scene.add(this.skyGroup);
+    }
+
     buildTrackMesh() {
-      // Remove old track mesh if present
       if (this.trackMesh) this.scene.remove(this.trackMesh);
 
       const segStep = 3.0;
       const segCount = Math.ceil((this.finishLineZ + 150) / segStep);
 
-      // Width profiles: 12 vertices per cross-section
-      // [-45, -14, -8.5, -7.5, -7.0, -2.3, 0, +2.3, +7.0, +7.5, +8.5, +14, +45]
-      const lateralOffsets = [-45, -15, -8.5, -7.5, -7.0, -2.3, 0, 2.3, 7.0, 7.5, 8.5, 15, 45];
+      // Width profile: 14 vertices per cross-section
+      const lateralOffsets = [-50, -18, -9.0, -7.5, -6.8, -4.6, -2.3, 0, 2.3, 4.6, 6.8, 7.5, 9.0, 18, 50];
       const pointsPerSeg = lateralOffsets.length;
 
       const positions = [];
@@ -831,7 +966,6 @@
         const cy = this.getHillY(z);
         const onBridge = this.isBridge(z);
 
-        // Track normal vector (perpendicular to curvature)
         const dx = this.getCurveX(z + 0.5) - this.getCurveX(z - 0.5);
         const len = Math.sqrt(dx * dx + 1);
         const nx = 1 / len;
@@ -845,31 +979,40 @@
           const vz = z + nz * w;
           let vy = cy;
 
-          // Color selection
-          let r = 0.24, g = 0.65, b = 0.22; // Lush green meadow
+          let r = 0.27, g = 0.67, b = 0.24;
 
-          if (Math.abs(w) > 14) {
+          if (Math.abs(w) > 17) {
             // Far outer rolling terrain
             vy = this.getGroundY(vx, vz);
-            r = 0.12; g = 0.38; b = 0.12;
-          } else if (Math.abs(w) > 7.5) {
-            // Earthy curb embankment slope
-            vy = onBridge ? (cy - 12.0) : (cy - 0.45);
-            r = 0.38; g = 0.24; b = 0.13; // Brown rock/soil
+            r = 0.14; g = 0.42; b = 0.14;
+          } else if (Math.abs(w) > 8.5) {
+            // Earthy curb slope
+            vy = onBridge ? (cy - 14.0) : (cy - 0.5);
+            r = 0.38; g = 0.24; b = 0.13;
           } else if (Math.abs(w) > 7.0) {
-            // Top green grass lip on curb
-            vy = cy + 0.15;
-            r = 0.42; g = 0.78; b = 0.28;
+            // Raised curb border
+            vy = cy + 0.20;
+            // Alternating Red & White race kerb blocks!
+            if (!onBridge) {
+              const isRedKerb = (Math.floor(i / 2) % 2 === 0);
+              r = isRedKerb ? 0.88 : 0.95;
+              g = isRedKerb ? 0.15 : 0.95;
+              b = isRedKerb ? 0.15 : 0.95;
+            } else {
+              r = 0.45; g = 0.26; b = 0.12;
+            }
           } else {
-            // Running Track (Green meadow mowing stripes or wooden bridge planks)
+            // Running Track Surface
             if (onBridge) {
+              // Wooden Suspension Bridge Planks
               r = isEvenSeg ? 0.55 : 0.45;
               g = isEvenSeg ? 0.33 : 0.27;
               b = isEvenSeg ? 0.16 : 0.13;
             } else {
-              r = isEvenSeg ? 0.27 : 0.23;
-              g = isEvenSeg ? 0.67 : 0.60;
-              b = isEvenSeg ? 0.24 : 0.21;
+              // Vibrant Green Mowing Stripes
+              r = isEvenSeg ? 0.26 : 0.32;
+              g = isEvenSeg ? 0.68 : 0.76;
+              b = isEvenSeg ? 0.24 : 0.28;
             }
           }
 
@@ -879,7 +1022,6 @@
         }
       }
 
-      // Generate Quad Face Indices
       for (let i = 0; i < segCount; i++) {
         const row1 = i * pointsPerSeg;
         const row2 = (i + 1) * pointsPerSeg;
@@ -903,8 +1045,7 @@
       const mat = new THREE.MeshStandardMaterial({
         vertexColors: true,
         roughness: 0.82,
-        metalness: 0.08,
-        flatShading: false
+        metalness: 0.08
       });
 
       this.trackMesh = new THREE.Mesh(geo, mat);
@@ -913,12 +1054,12 @@
     }
 
     buildBridgeDetails() {
+      if (this.bridgeGroup) this.scene.remove(this.bridgeGroup);
       this.bridgeGroup = new THREE.Group();
       const intervals = [[240, 390], [740, 890]];
 
       const postGeo = new THREE.CylinderGeometry(0.18, 0.2, 2.2, 6);
       const postMat = new THREE.MeshLambertMaterial({ color: 0x5c3311 });
-      const ropeMat = new THREE.MeshLambertMaterial({ color: 0xd4a373 });
       const pierGeo = new THREE.BoxGeometry(0.8, 25, 0.8);
       const pierMat = new THREE.MeshLambertMaterial({ color: 0x3d2212 });
 
@@ -927,17 +1068,14 @@
           const cx = this.getCurveX(z);
           const cy = this.getHillY(z);
 
-          // Left Post
           const pL = new THREE.Mesh(postGeo, postMat);
           pL.position.set(cx - 7.2, cy + 1.1, z);
           this.bridgeGroup.add(pL);
 
-          // Right Post
           const pR = new THREE.Mesh(postGeo, postMat);
           pR.position.set(cx + 7.2, cy + 1.1, z);
           this.bridgeGroup.add(pR);
 
-          // Deep Piers into gorge
           if ((z - startZ) % 18 === 0) {
             const pierL = new THREE.Mesh(pierGeo, pierMat);
             pierL.position.set(cx - 7.2, cy - 12.5, z);
@@ -954,19 +1092,21 @@
     }
 
     buildSceneryTrees() {
+      if (this.sceneryGroup) this.scene.remove(this.sceneryGroup);
       this.sceneryGroup = new THREE.Group();
 
-      const trunkGeo = new THREE.CylinderGeometry(0.35, 0.55, 3.8, 6);
+      const trunkGeo = new THREE.CylinderGeometry(0.35, 0.6, 4.0, 7);
       const trunkMat = new THREE.MeshLambertMaterial({ color: 0x3e2311 });
-      const foliageGeo = new THREE.DodecahedronGeometry(2.0, 0);
+      const foliageGeo = new THREE.DodecahedronGeometry(2.1, 1);
       const fMat1 = new THREE.MeshLambertMaterial({ color: 0x1f4e1f });
-      const fMat2 = new THREE.MeshLambertMaterial({ color: 0x2b6e2b });
+      const fMat2 = new THREE.MeshLambertMaterial({ color: 0x2d732d });
+      const fMat3 = new THREE.MeshLambertMaterial({ color: 0x388e3c });
 
-      for (let z = 30; z < this.finishLineZ + 80; z += 18 + Math.random() * 12) {
-        if (this.isBridge(z)) continue; // Never on bridges!
+      for (let z = 25; z < this.finishLineZ + 80; z += 16 + Math.random() * 10) {
+        if (this.isBridge(z)) continue;
 
         for (let side of [-1, 1]) {
-          const dist = 13.0 + Math.random() * 20.0;
+          const dist = 12.5 + Math.random() * 22.0;
           const x = this.getCurveX(z) + side * dist;
           const y = this.getGroundY(x, z);
 
@@ -974,21 +1114,28 @@
           tree.position.set(x, y, z);
 
           const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-          trunk.position.y = 1.9;
+          trunk.position.y = 2.0;
           trunk.castShadow = true;
           tree.add(trunk);
 
+          // 3-tiered lush foliage
           const fol1 = new THREE.Mesh(foliageGeo, fMat1);
           fol1.position.set(0, 4.2, 0);
-          fol1.scale.set(1.1, 1.2, 1.1);
+          fol1.scale.set(1.2, 1.1, 1.2);
           fol1.castShadow = true;
           tree.add(fol1);
 
           const fol2 = new THREE.Mesh(foliageGeo, fMat2);
-          fol2.position.set((Math.random() - 0.5) * 0.8, 5.4, (Math.random() - 0.5) * 0.8);
-          fol2.scale.set(0.9, 0.9, 0.9);
+          fol2.position.set((Math.random() - 0.5) * 0.6, 5.5, (Math.random() - 0.5) * 0.6);
+          fol2.scale.set(1.0, 1.0, 1.0);
           fol2.castShadow = true;
           tree.add(fol2);
+
+          const fol3 = new THREE.Mesh(foliageGeo, fMat3);
+          fol3.position.set(0, 6.6, 0);
+          fol3.scale.set(0.75, 0.85, 0.75);
+          fol3.castShadow = true;
+          tree.add(fol3);
 
           this.sceneryGroup.add(tree);
         }
@@ -998,24 +1145,25 @@
     }
 
     buildFinishGate() {
+      if (this.finishGateGroup) this.scene.remove(this.finishGateGroup);
       this.finishGateGroup = new THREE.Group();
       const z = this.finishLineZ;
       const cx = this.getCurveX(z);
       const cy = this.getHillY(z);
 
-      const pillarGeo = new THREE.BoxGeometry(0.9, 9.0, 0.9);
+      const pillarGeo = new THREE.BoxGeometry(0.9, 9.5, 0.9);
       const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
       const pL = new THREE.Mesh(pillarGeo, woodMat);
-      pL.position.set(cx - 7.5, cy + 4.5, z);
+      pL.position.set(cx - 7.5, cy + 4.75, z);
       const pR = new THREE.Mesh(pillarGeo, woodMat);
-      pR.position.set(cx + 7.5, cy + 4.5, z);
+      pR.position.set(cx + 7.5, cy + 4.75, z);
       this.finishGateGroup.add(pL);
       this.finishGateGroup.add(pR);
 
       // Top Crossbar
-      const barGeo = new THREE.BoxGeometry(16.5, 2.2, 0.8);
+      const barGeo = new THREE.BoxGeometry(16.5, 2.4, 0.9);
       const bar = new THREE.Mesh(barGeo, new THREE.MeshLambertMaterial({ color: 0xffd166 }));
-      bar.position.set(cx, cy + 8.2, z);
+      bar.position.set(cx, cy + 8.5, z);
       this.finishGateGroup.add(bar);
 
       // Checkered Canvas Banner
@@ -1032,23 +1180,23 @@
       bctx.fillText('FINISH', 256, 64);
       const bannerTex = new THREE.CanvasTexture(bannerCanvas);
       const bannerPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(14, 2.0),
+        new THREE.PlaneGeometry(14, 2.2),
         new THREE.MeshBasicMaterial({ map: bannerTex })
       );
-      bannerPlane.position.set(cx, cy + 8.2, z + 0.42);
+      bannerPlane.position.set(cx, cy + 8.5, z + 0.48);
       this.finishGateGroup.add(bannerPlane);
 
       this.scene.add(this.finishGateGroup);
     }
 
     // ------------------------------------------------------------------------
-    // INTERACTIVE TRACK ELEMENTS (Boulders, Crates, Speed Pads, Bounce Pads)
+    // INTERACTIVE TRACK ELEMENTS
     // ------------------------------------------------------------------------
     spawnWorldElements() {
       this.clearWorldElements();
-      const lanes = [-4.6, 0, 4.6];
+      // Screen Left (+4.5), Screen Center (0), Screen Right (-4.5)
+      const lanes = [4.5, 0, -4.5];
 
-      // Procedural distribution along the track
       for (let z = 50; z < this.finishLineZ - 30; z += 24 + Math.random() * 12) {
         const rand = Math.random();
         const laneX = lanes[Math.floor(Math.random() * lanes.length)];
@@ -1057,24 +1205,20 @@
         const worldX = cx + laneX;
 
         if (rand > 0.65) {
-          // Mystery Powerup Crate
           this.createCrate(worldX, cy + 1.6, z, laneX);
         } else if (rand > 0.36) {
-          // Rock Boulder (Jump over it or change lanes!)
           this.createRock(worldX, cy + 0.7, z, laneX);
         } else if (rand > 0.20) {
-          // Bounce Trampoline
           this.createBouncePad(worldX, cy + 0.1, z, laneX);
         } else {
-          // Speed Booster Strip
           this.createSpeedPad(worldX, cy + 0.08, z, laneX);
         }
       }
     }
 
     createRock(x, y, z, laneX) {
-      const geo = new THREE.DodecahedronGeometry(1.15, 0);
-      geo.scale(1.2, 0.9, 1.1);
+      const geo = new THREE.DodecahedronGeometry(1.2, 0);
+      geo.scale(1.25, 0.9, 1.15);
       const mat = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.9, metalness: 0.1 });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x, y, z);
@@ -1109,29 +1253,41 @@
     }
 
     createSpeedPad(x, y, z, laneX) {
-      const geo = new THREE.PlaneGeometry(2.4, 3.5);
-      geo.rotateX(-Math.PI / 2);
+      // Forward-pointing speed chevrons (points directly along +Z into the distance!)
+      const geo = new THREE.PlaneGeometry(2.6, 3.6);
+      geo.rotateX(Math.PI / 2); // Top of texture points to +Z (FORWARD)!
+
       const canvas = document.createElement('canvas');
       canvas.width = 128;
       canvas.height = 128;
       const c = canvas.getContext('2d');
+      c.fillStyle = 'rgba(0, 0, 0, 0)';
+      c.fillRect(0, 0, 128, 128);
+
+      // Draw 3 forward chevrons pointing UP (which maps to +Z forward!)
       c.fillStyle = '#ffea00';
-      c.beginPath();
-      c.moveTo(64, 10);
-      c.lineTo(110, 70);
-      c.lineTo(84, 70);
-      c.lineTo(84, 120);
-      c.lineTo(44, 120);
-      c.lineTo(44, 70);
-      c.lineTo(18, 70);
-      c.closePath();
-      c.fill();
+      c.shadowColor = '#ffea00';
+      c.shadowBlur = 10;
+
+      for (let row = 0; row < 3; row++) {
+        const topY = 16 + row * 38;
+        c.beginPath();
+        c.moveTo(64, topY);
+        c.lineTo(110, topY + 28);
+        c.lineTo(92, topY + 34);
+        c.lineTo(64, topY + 16);
+        c.lineTo(36, topY + 34);
+        c.lineTo(18, topY + 28);
+        c.closePath();
+        c.fill();
+      }
+
       const tex = new THREE.CanvasTexture(canvas);
       const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x, y, z);
       this.scene.add(mesh);
-      this.speedPads.push({ mesh, x, z, active: true });
+      this.speedPads.push({ mesh, x, z, laneX, active: true });
     }
 
     createBouncePad(x, y, z, laneX) {
@@ -1140,7 +1296,7 @@
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x, y, z);
       this.scene.add(mesh);
-      this.bouncePads.push({ mesh, x, z, active: true });
+      this.bouncePads.push({ mesh, x, z, laneX, active: true });
     }
 
     spawnSawblade(x, z, owner) {
@@ -1170,7 +1326,6 @@
           r.takeDamage('lightning');
         }
       });
-      // Camera shake
       this.cameraShake = 0.8;
     }
 
@@ -1229,15 +1384,17 @@
     initEvents() {
       window.addEventListener('resize', () => this.resize());
 
-      // Keyboard Controls
+      // Keyboard Controls (Left is Left, Right is Right!)
       window.addEventListener('keydown', (e) => {
         if (!this.isPlaying || !this.player) return;
         if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+          // Move to Screen Left (laneIndex 0 -> x = +4.5)
           this.player.laneIndex = Math.max(0, this.player.laneIndex - 1);
-          this.player.targetX = (this.player.laneIndex - 1) * 4.6;
+          this.player.targetX = (1 - this.player.laneIndex) * 4.5;
         } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+          // Move to Screen Right (laneIndex 2 -> x = -4.5)
           this.player.laneIndex = Math.min(2, this.player.laneIndex + 1);
-          this.player.targetX = (this.player.laneIndex - 1) * 4.6;
+          this.player.targetX = (1 - this.player.laneIndex) * 4.5;
         } else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') {
           this.player.jump();
         } else if (e.key === 'x' || e.key === 'X' || e.key === 'Shift' || e.key === 'Enter') {
@@ -1245,7 +1402,7 @@
         }
       });
 
-      // Touch & Swipe Controls
+      // Touch & Swipe Controls (Left is Left, Right is Right!)
       let touchStartX = 0, touchStartY = 0;
       if (this.canvas) {
         this.canvas.addEventListener('touchstart', (e) => {
@@ -1267,20 +1424,20 @@
             touchStartY = e.touches[0].clientY;
             touchStartX = e.touches[0].clientX;
           }
-          // Swipe Right -> Change lane to the right
+          // Swipe Right -> Move to Screen Right
           else if (diffX > 35 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
             if (this.player.laneIndex < 2) {
               this.player.laneIndex++;
-              this.player.targetX = (this.player.laneIndex - 1) * 4.6;
+              this.player.targetX = (1 - this.player.laneIndex) * 4.5;
             }
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
           }
-          // Swipe Left -> Change lane to the left
+          // Swipe Left -> Move to Screen Left
           else if (diffX < -35 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
             if (this.player.laneIndex > 0) {
               this.player.laneIndex--;
-              this.player.targetX = (this.player.laneIndex - 1) * 4.6;
+              this.player.targetX = (1 - this.player.laneIndex) * 4.5;
             }
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
@@ -1329,6 +1486,9 @@
       this.controlMode = mode;
       this.currentLevel = level;
 
+      // Expand container to 100vw x 100vh for true edge-to-edge 3D
+      document.body.classList.add('mode-3d');
+
       if (this.levelSelectScreen) this.levelSelectScreen.classList.add('hidden');
       if (this.resultsScreen) this.resultsScreen.classList.add('hidden');
       if (this.uiOverlay) this.uiOverlay.classList.remove('hidden');
@@ -1359,13 +1519,13 @@
     }
 
     launchLoop() {
-      // Clear previous racers
       for (let r of this.racers) r.destroy();
       this.racers = [];
       this.particles.clear();
       this.hideWeaponButton();
 
-      // Build 3D World Geometry
+      // Build 3D World Geometry & Environment
+      this.buildSkyAndMountains();
       this.buildTrackMesh();
       this.buildBridgeDetails();
       this.buildSceneryTrees();
@@ -1399,7 +1559,6 @@
           const dx = Math.abs(r.x - rock.laneX);
           if (dz < 1.3 && dx < 1.6) {
             if (r.jumpY < 1.3) {
-              // Stumble & speed penalty
               r.stumbleTimer = 0.75;
               r.speed *= 0.45;
               sfx.play('rock_hit');
@@ -1430,7 +1589,7 @@
         for (let pad of this.speedPads) {
           const dz = Math.abs(r.z - pad.z);
           const dx = Math.abs(r.x - (pad.x - this.getCurveX(pad.z)));
-          if (dz < 1.5 && dx < 1.5 && r.jumpY < 0.6) {
+          if (dz < 1.6 && dx < 1.6 && r.jumpY < 0.6) {
             r.speedBoostTimer = 2.5;
             r.speed = r.baseSpeed * 1.55;
             sfx.play('speed_act');
@@ -1497,6 +1656,11 @@
       this.racers.forEach(r => r.update(dt));
       this.particles.update(dt);
 
+      // Rotate Clouds gently
+      for (let c of this.clouds) {
+        c.position.x += dt * 0.8;
+      }
+
       // Rotate Crates & Handle Respawns
       this.crates.forEach(c => {
         if (c.active) {
@@ -1551,8 +1715,8 @@
       this.camera.lookAt(lookX, lookY, lookAheadZ);
 
       // Sun Light Target Tracking Player
-      this.dirLight.position.set(targetCamX + 22, targetCamY + 35, targetCamZ + 15);
-      this.dirLight.target.position.set(targetCamX, targetCamY, targetCamZ + 20);
+      this.sunLight.position.set(targetCamX + 22, targetCamY + 35, targetCamZ + 15);
+      this.sunLight.target.position.set(targetCamX, targetCamY, targetCamZ + 20);
 
       // Render WebGL Scene
       this.renderer.render(this.scene, this.camera);
@@ -1624,6 +1788,7 @@
 
     stopAndReturnToMenu() {
       this.isPlaying = false;
+      document.body.classList.remove('mode-3d');
       if (this.canvas) this.canvas.classList.add('hidden');
       if (this.uiOverlay) this.uiOverlay.classList.add('hidden');
       if (this.resultsScreen) this.resultsScreen.classList.add('hidden');
