@@ -110,13 +110,15 @@
     mainMenuScreen.classList.remove('hidden');
   }
 
-  // Game Constants from Solar2D player.lu & gamePlay.lu
+  // Game Constants from Solar2D player.lu & gamePlay.lu (Authentic Fun Run 1 physics)
   const TILE_W = 80;
   const TILE_H = 50;
-  const GRAVITY = 980;
+  const GRAVITY = 1150;
   const DEFAULT_TOP_SPEED = 350;
   const ACCELERATE_X = 260;
-  const JUMP_FORCE = -530;
+  const JUMP_FORCE = -430;
+  const DOUBLE_JUMP_FORCE = -400;
+  const WALL_CLIMB_FORCE = -410;
   const RESPAWN_DELAY = 2.2;
 
   // Selected Player Character
@@ -221,13 +223,19 @@
   loadImage('assets/images/map/element/beach/1Av1.png');
 
   function getElementImage(theme, drawName) {
-    const themePath = `assets/images/map/element/${theme}/${drawName}.png`;
+    let lookupName = drawName;
+    if (theme === 'candy' && lookupName === 'stottev') lookupName = 'stottev1';
+    const themePath = `assets/images/map/element/${theme}/${lookupName}.png`;
     let img = images[themePath] || loadImage(themePath);
     if (img && img.complete && img.naturalWidth > 0) return img;
+    // Only fall back to forest if theme image is decorative vegetation/stone, preserving authentic candy & beach terrain
     if (theme !== 'forest') {
-      const forestPath = `assets/images/map/element/forest/${drawName}.png`;
-      let fImg = images[forestPath] || loadImage(forestPath);
-      if (fImg && fImg.complete && fImg.naturalWidth > 0) return fImg;
+      const isCoreTerrain = lookupName.startsWith('1A') || lookupName.startsWith('1B') || lookupName.startsWith('0A') || lookupName.startsWith('1C') || lookupName.startsWith('1D') || lookupName.startsWith('1E') || lookupName.startsWith('1F') || lookupName.startsWith('1G') || lookupName.startsWith('1H') || lookupName.startsWith('2A') || lookupName.startsWith('2B') || lookupName.startsWith('2C');
+      if (!isCoreTerrain) {
+        const forestPath = `assets/images/map/element/forest/${lookupName}.png`;
+        let fImg = images[forestPath] || loadImage(forestPath);
+        if (fImg && fImg.complete && fImg.naturalWidth > 0) return fImg;
+      }
     }
     return img;
   }
@@ -268,6 +276,12 @@
     { tx: 2, ty: 226, tw: 53, th: 54, cx: 64, cy: 26, cw: 53, ch: 54 }     // Frame 11: closed
   ];
   loadImage('assets/images/game/powerup/ninja/icon.png');
+  loadImage('assets/images/game/powerup/ninja/arrow.png');
+
+  // Samurai Katana Cycling & Target Tracking
+  let activeNinjaTargetId = null;
+  let ninjaCycleTimer = 0;
+  let finishTimeout = null;
 
   // Preload Avatar Multi-Layer Sprites
   const ALL_ANIMALS = ['bear', 'fox', 'beaver', 'baldeagle'];
@@ -726,7 +740,7 @@
 
       // 1. Wall Climb: When facing a vertical wall or cliff, repeatedly pressing jump scales up the wall!
       if (this.isAgainstWall || (isPointSolid(this.x + 16, this.y - 15) && !this.onGround)) {
-        this.vy = JUMP_FORCE * 1.05;
+        this.vy = WALL_CLIMB_FORCE;
         this.jumpCount = 1; // resets double-jump capacity so player can keep climbing or leap off
         this.onGround = false;
         this.coyoteTimer = 0;
@@ -735,7 +749,7 @@
         return true;
       }
 
-      // 2. Ground Jump
+      // 2. Ground Jump (~80px height arc matching authentic Fun Run)
       if (this.onGround || this.coyoteTimer > 0) {
         this.vy = JUMP_FORCE;
         this.onGround = false;
@@ -749,7 +763,7 @@
 
       // 3. Air Double Jump: allowed once in air, resets on touching ground or wall
       if (this.jumpCount < 2) {
-        this.vy = JUMP_FORCE * 0.95;
+        this.vy = DOUBLE_JUMP_FORCE;
         this.jumpCount = 2;
         if (this.isPlayer) sounds.play('jump');
         spawnJumpPuff(this.x, this.y);
@@ -843,13 +857,18 @@
           animFrame: 0,
           life: 25.0
         });
-      } else if (p.id === 10) { // Katana Slash (Target Leader)
-        const leader = racers.filter(r => r.id !== this.id && !r.dead).sort((a, b) => b.x - a.x)[0];
-        if (leader) {
-          sounds.play('laser');
-          spawnSparks(leader.x, leader.y - 20, 30);
-          leader.hit('ninja');
+      } else if (p.id === 10) { // Katana Slash (Hits player with active red targeting arrow!)
+        let target = racers.find(r => r.id === activeNinjaTargetId && !r.dead);
+        if (!target) {
+          // Fallback to nearest living opponent
+          target = racers.filter(r => r.id !== this.id && !r.dead).sort((a, b) => Math.abs(a.x - this.x) - Math.abs(b.x - this.x))[0];
         }
+        if (target) {
+          sounds.play('laser');
+          spawnSparks(target.x, target.y - 20, 35);
+          target.hit('ninja');
+        }
+        activeNinjaTargetId = null;
       }
     }
 
@@ -979,20 +998,42 @@
       const wallAhead = isPointSolid(nextX + 14, waistY) && isPointSolid(nextX + 14, kneeY);
       this.isAgainstWall = wallAhead;
 
-      if (wallAhead) {
+      // Check for solid stone obstacle directly ahead on ground
+      const checkCol = Math.floor((nextX + 16) / TILE_W);
+      const checkRow = Math.floor((this.y - 10) / TILE_H);
+      let isStoneAhead = false;
+      if (mapData && checkCol >= 0 && checkCol < mapData.cols && checkRow >= 0 && checkRow < mapData.rows) {
+        const cell = mapData.grid[checkRow][checkCol];
+        if (cell && cell !== 1) {
+          const ids = Array.isArray(cell) ? cell : [cell];
+          for (const tid of ids) {
+            const tname = mapData.tileNames[tid - 1];
+            if (tname && tname.includes('stone') && !tname.endsWith('-2')) {
+              isStoneAhead = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (isStoneAhead && this.onGround) {
+        // Stone obstacle blocks runner until they jump over it!
+        this.vx = 0;
+        this.isAgainstWall = true;
+      } else if (wallAhead) {
         const stepSurfs = getSurfacesAt(nextX + 14);
         const canStepUp = stepSurfs.some(s => s >= this.y - 35 && s < this.y - 4);
-        if (canStepUp) {
+        if (canStepUp && !isStoneAhead) {
           this.x = nextX;
         } else {
-          this.vx = Math.min(this.vx, 30);
+          this.vx = Math.min(this.vx, 20);
         }
       } else {
         this.x = nextX;
       }
 
       // Smooth ceiling bounce inside low tunnels
-      if (isPointSolid(this.x, this.y - 34) && this.vy < 0) {
+      if (isPointSolid(this.x, this.y - 28) && this.vy < 0) {
         this.vy = 20;
       }
 
@@ -1066,7 +1107,12 @@
         this.finishTime = performance.now();
         if (this.isPlayer) {
           sounds.play('coins');
-          setTimeout(() => showResults(racers), 1000);
+          if (finishTimeout) clearTimeout(finishTimeout);
+          finishTimeout = setTimeout(() => {
+            if (gameState === 'racing' || gameState === 'ended') {
+              showResults(racers);
+            }
+          }, 1000);
         }
       }
 
@@ -1167,6 +1213,15 @@
         if (heartImg && heartImg.complete) {
           const hoverY = Math.sin(performance.now() * 0.007) * 4;
           ctx.drawImage(heartImg, renderX - 14, renderY - 68 + hoverY, 28, 28);
+        }
+      }
+
+      // Samurai Sword Red Targeting Arrow (Authentic Katana Mark from puNinja)
+      if (activeNinjaTargetId === this.id && !this.dead) {
+        const arrowImg = images['assets/images/game/powerup/ninja/arrow.png'] || loadImage('assets/images/game/powerup/ninja/arrow.png');
+        if (arrowImg && arrowImg.complete && arrowImg.naturalWidth > 0) {
+          const arrowBob = Math.sin(performance.now() * 0.015) * 6;
+          ctx.drawImage(arrowImg, renderX - 25, renderY - 96 + arrowBob, 50, 48);
         }
       }
 
@@ -1548,6 +1603,10 @@
       choice.classList.add('selected');
       selectedAnimal = choice.getAttribute('data-animal');
       player.setAnimal(selectedAnimal);
+      const markerPlayerImg = document.getElementById('marker-player-img');
+      if (markerPlayerImg) {
+        markerPlayerImg.src = `assets/images/gui/market/accessories/${selectedAnimal}.png`;
+      }
       if (window.funRun3D) window.funRun3D.setPlayerAnimal(selectedAnimal);
     });
   });
@@ -1655,8 +1714,12 @@
     }
   });
 
-  // Action Inputs: Jump & Power-up
+  // Action Inputs: Jump & Power-up with 120ms Debounce Guard (prevents double-tap consumption)
+  let lastJumpPressTime = 0;
   function doJump() {
+    const now = performance.now();
+    if (now - lastJumpPressTime < 120) return;
+    lastJumpPressTime = now;
     sounds.init();
     if (gameState !== 'racing') return;
     player.jump();
@@ -1664,7 +1727,11 @@
     setTimeout(() => jumpBtn.classList.remove('active'), 120);
   }
 
+  let lastPowerupPressTime = 0;
   function doPowerup() {
+    const now = performance.now();
+    if (now - lastPowerupPressTime < 120) return;
+    lastPowerupPressTime = now;
     sounds.init();
     if (gameState !== 'racing') return;
     player.usePowerUp(racers);
@@ -1686,12 +1753,9 @@
     }
   });
 
-  // Touch / Pointer Listeners
+  // Touch / Pointer Listeners (Debounce protected)
   jumpBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); doJump(); });
-  jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); doJump(); }, { passive: false });
-
   powerupBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); doPowerup(); });
-  powerupBtn.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); doPowerup(); }, { passive: false });
 
   // Full Screen Tap Controls: Right half = jump, Left half = powerup
   gameContainer.addEventListener('pointerdown', (e) => {
@@ -1718,16 +1782,21 @@
   });
 
   function resetRace() {
-    const startY = findInitialMapGround(140);
-    const startY1 = getGroundUnder(140, startY) || startY;
-    const startY2 = getGroundUnder(100, startY) || startY;
-    const startY3 = getGroundUnder(60, startY) || startY;
-    const startY4 = getGroundUnder(20, startY) || startY;
+    if (finishTimeout) {
+      clearTimeout(finishTimeout);
+      finishTimeout = null;
+    }
+    // Spawn all 4 racers on the level starting track across all 25 levels
+    const startY = findInitialMapGround(210);
+    const startY1 = getGroundUnder(210, startY) || startY;
+    const startY2 = getGroundUnder(180, startY) || startY;
+    const startY3 = getGroundUnder(150, startY) || startY;
+    const startY4 = getGroundUnder(120, startY) || startY;
     racers = [
-      new Character(1, 'You', true, selectedAnimal, 140, startY1),
-      new Character(2, 'Eagle', false, 'baldeagle', 100, startY2),
-      new Character(3, 'Beaver', false, 'beaver', 60, startY3),
-      new Character(4, 'Fox', false, 'fox', 20, startY4)
+      new Character(1, 'You', true, selectedAnimal, 210, startY1),
+      new Character(2, 'Eagle', false, 'baldeagle', 180, startY2),
+      new Character(3, 'Beaver', false, 'beaver', 150, startY3),
+      new Character(4, 'Fox', false, 'fox', 120, startY4)
     ];
     player = racers[0];
     cameraX = 0;
@@ -1735,6 +1804,8 @@
     activePowerupItems = [];
     particles.length = 0;
     stormEffect.active = false;
+    activeNinjaTargetId = null;
+    ninjaCycleTimer = 0;
     bloodFlashTimer = 0;
     if (bloodOverlay) bloodOverlay.classList.add('hidden');
     crates.forEach(c => c.collected = false);
@@ -1749,11 +1820,12 @@
   }
 
   function showResults(allRacers) {
+    if (gameState === 'main_menu') return;
     gameState = 'ended';
     const list = (allRacers && allRacers.length > 0) ? allRacers : racers;
     const sorted = list.slice().sort((a, b) => {
-      const aScore = (a.finished ? 1000000 : 0) + a.x;
-      const bScore = (b.finished ? 1000000 : 0) + b.x;
+      const aScore = (a.finished ? 10000000 : 0) + (a.finishTime ? -a.finishTime : a.x);
+      const bScore = (b.finished ? 10000000 : 0) + (b.finishTime ? -b.finishTime : b.x);
       return bScore - aScore;
     });
     resultsList.innerHTML = '';
@@ -1830,6 +1902,26 @@
       if (stormEffect.timer <= 0) {
         stormEffect.active = false;
       }
+    }
+
+    // Samurai Katana Target Cycling (Cycles red target arrow across living opponents every 0.45s)
+    const ninjaHolder = racers.find(r => !r.dead && r.powerup && r.powerup.id === 10 && r.rouletteTimer <= 0);
+    if (ninjaHolder) {
+      ninjaCycleTimer += dt;
+      const eligibleTargets = racers.filter(r => r.id !== ninjaHolder.id && !r.dead);
+      if (eligibleTargets.length > 0) {
+        if (ninjaCycleTimer >= 0.45 || !activeNinjaTargetId || !eligibleTargets.some(t => t.id === activeNinjaTargetId)) {
+          ninjaCycleTimer = 0;
+          const curIdx = eligibleTargets.findIndex(t => t.id === activeNinjaTargetId);
+          const nextIdx = (curIdx + 1) % eligibleTargets.length;
+          activeNinjaTargetId = eligibleTargets[nextIdx].id;
+        }
+      } else {
+        activeNinjaTargetId = null;
+      }
+    } else {
+      activeNinjaTargetId = null;
+      ninjaCycleTimer = 0;
     }
 
     // Update Racers
@@ -1958,11 +2050,20 @@
     rankDisplay.textContent = myRank + (suffixes[myRank] || 'th');
     speedDisplay.textContent = Math.round(player.vx * 0.16) + ' km/h';
 
-    // Update Marker dots
+    // Update Track Avatars with dynamic rank z-index and Katana target pulse
     const markers = [markerPlayer, markerBot1, markerBot2, markerBot3];
     racers.forEach((r, idx) => {
-      const pct = Math.min(100, Math.max(0, (r.x / GOAL_X) * 100));
-      if (markers[idx]) markers[idx].style.left = pct + '%';
+      const marker = markers[idx];
+      if (!marker) return;
+      const pct = Math.min(95, Math.max(3, (r.x / GOAL_X) * 92 + 3));
+      marker.style.left = pct + '%';
+      const rankIdx = sorted.findIndex(sr => sr.id === r.id);
+      marker.style.zIndex = r.isPlayer ? 10 : (8 - rankIdx);
+      if (activeNinjaTargetId === r.id && !r.dead) {
+        marker.classList.add('ninja-targeted');
+      } else {
+        marker.classList.remove('ninja-targeted');
+      }
     });
   }
 
