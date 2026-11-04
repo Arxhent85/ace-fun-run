@@ -721,13 +721,18 @@
 
       this.group.position.set(finalX, finalY, this.z);
 
-      // Tilting & Somersault Rotation (Natural leaning into turns!)
-      // When moving to screen Left (targetX > x), bank body left (+Z rotation leans left on screen)
+      // Calculate terrain slope pitch angle (leaning naturally into climbs & descents!)
+      const dz = 1.0;
+      const slopeDy = this.engine.getHillY(this.z + dz) - this.engine.getHillY(this.z - dz);
+      const slopePitch = Math.atan2(slopeDy, dz * 2.0);
+
+      // Tilting & Somersault Rotation (Natural leaning into turns and hills!)
       const laneTilt = (this.targetX - this.x) * 0.08;
       if (this.isFlipping) {
         this.group.rotation.set(this.flipAngle, 0, laneTilt);
       } else {
-        this.group.rotation.set(0, 0, laneTilt);
+        // Rotate X axis to follow slope incline
+        this.group.rotation.set(-slopePitch, 0, laneTilt);
       }
 
       // Animated Running Limbs (Arms pump, sneakers step)
@@ -754,8 +759,9 @@
         this.headMesh.position.y = 1.76;
       }
 
-      // Contact Shadow
+      // Contact Shadow aligned with terrain slope
       this.shadowMesh.position.set(finalX, groundY + 0.05, this.z);
+      this.shadowMesh.rotation.set(-Math.PI / 2 - slopePitch, 0, 0);
       const shadowScale = Math.max(0.2, 1.0 - this.jumpY * 0.22);
       this.shadowMesh.scale.set(shadowScale, shadowScale, shadowScale);
     }
@@ -838,34 +844,40 @@
       this.scene.background = new THREE.Color(0xff8038);
       this.scene.fog = new THREE.FogExp2(0xff9944, 0.0020);
 
-      // Perspective Camera (Behind-the-Back Follower)
-      this.camera = new THREE.PerspectiveCamera(54, w / h, 0.5, 450);
+      // Perspective Camera (Behind-the-Back Follower with deep view distance)
+      this.camera = new THREE.PerspectiveCamera(54, w / h, 0.5, 600);
 
-      // Lighting Setup (Sun, Sky Ambient, Hemisphere Ground Fill)
-      this.ambientLight = new THREE.AmbientLight(0xffffff, 0.60);
+      // Lighting Setup (Sun, Sky Ambient, Hemisphere Ground Fill, BotW Rim Light)
+      this.ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
       this.scene.add(this.ambientLight);
 
-      this.hemiLight = new THREE.HemisphereLight(0xffe2b8, 0x3d7028, 0.70);
+      this.hemiLight = new THREE.HemisphereLight(0xffe4b5, 0x2e6b27, 0.75);
       this.scene.add(this.hemiLight);
 
-      this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.30);
+      this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.35);
       this.sunLight.castShadow = true;
       this.sunLight.shadow.mapSize.width = 1024;
       this.sunLight.shadow.mapSize.height = 1024;
       this.sunLight.shadow.camera.near = 1.0;
-      this.sunLight.shadow.camera.far = 160;
-      this.sunLight.shadow.camera.left = -28;
-      this.sunLight.shadow.camera.right = 28;
-      this.sunLight.shadow.camera.top = 28;
-      this.sunLight.shadow.camera.bottom = -28;
+      this.sunLight.shadow.camera.far = 180;
+      this.sunLight.shadow.camera.left = -30;
+      this.sunLight.shadow.camera.right = 30;
+      this.sunLight.shadow.camera.top = 30;
+      this.sunLight.shadow.camera.bottom = -30;
       this.scene.add(this.sunLight);
       this.scene.add(this.sunLight.target);
+
+      // BotW-style rim light for crisp player & foliage silhouettes
+      this.rimLight = new THREE.DirectionalLight(0xffdfba, 0.45);
+      this.rimLight.castShadow = false;
+      this.scene.add(this.rimLight);
+      this.scene.add(this.rimLight.target);
 
       this.particles = new ParticleSystem3D(this.scene);
     }
 
     // ------------------------------------------------------------------------
-    // TRACK MATHEMATICS (Smooth continuous curves, rolling hills, bridges)
+    // TRACK MATHEMATICS (Continuous curves, dramatic Fun Run roller-coaster hills & bridges)
     // ------------------------------------------------------------------------
     getCurveX(z) {
       return Math.sin(z * 0.012) * 16.0 + Math.sin(z * 0.005) * 10.0;
@@ -875,15 +887,31 @@
       return (z >= 240 && z <= 390) || (z >= 740 && z <= 890);
     }
 
-    getHillY(z) {
-      let h = Math.sin(z * 0.016) * 4.8 + Math.sin(z * 0.006) * 7.2;
+    getRawHillY(z) {
+      // Fun Run Dramatic Elevations:
+      // 1. Broad rolling mountain terrain waves
+      let h = Math.sin(z * 0.014) * 12.0;
+      // 2. High roller-coaster climbs and sudden thrilling drop-offs
+      h += Math.sin(z * 0.030 + 0.9) * 8.5;
+      // 3. Fast Fun Run moguls / camel-humps (exciting jumping opportunities!)
+      h += Math.cos(z * 0.065) * 3.8;
+
+      // 4. Dramatic High Suspension Bridges spanning deep chasms
       if (this.isBridge(z)) {
         let start = (z < 500) ? 240 : 740;
         let span = 150;
         let t = (z - start) / span;
-        h += Math.sin(t * Math.PI) * 5.0;
+        // Arching high bridge across the chasm
+        h += Math.sin(t * Math.PI) * 10.0;
       }
       return h;
+    }
+
+    getHillY(z) {
+      if (this._hillY0 === undefined) {
+        this._hillY0 = this.getRawHillY(0);
+      }
+      return this.getRawHillY(z) - this._hillY0;
     }
 
     getGroundY(x, z) {
@@ -891,50 +919,117 @@
       const distFromCenter = Math.abs(x - cx);
       const trackH = this.getHillY(z);
       if (this.isBridge(z)) {
-        if (distFromCenter <= 7.2) return trackH;
-        return trackH - 24.0;
+        if (distFromCenter <= 7.3) return trackH;
+        // Deep canyon chasm under bridge
+        return trackH - 34.0;
       }
-      const outerSlope = Math.max(0, distFromCenter - 7.0) * -0.06;
-      const hillWave = Math.sin(x * 0.03 + z * 0.01) * 1.5;
+      const outerSlope = Math.max(0, distFromCenter - 7.0) * -0.07;
+      const hillWave = Math.sin(x * 0.035 + z * 0.015) * 2.2;
       return trackH + outerSlope + hillWave;
     }
 
     // ------------------------------------------------------------------------
-    // ENVIRONMENT & SCENERY (Mountains, Clouds, Track Mesh, Trees)
+    // ENVIRONMENT & SCENERY (Procedural Sky Dome, Snow-capped Mountains, Clouds, Track, Foliage)
     // ------------------------------------------------------------------------
     buildSkyAndMountains() {
       if (this.skyGroup) this.scene.remove(this.skyGroup);
       this.skyGroup = new THREE.Group();
 
-      // 1. Distant Horizon Mountain Ridges
-      const mountainGeo = new THREE.ConeGeometry(38, 55, 5);
-      const mountainMat1 = new THREE.MeshLambertMaterial({ color: 0x1b431e });
-      const mountainMat2 = new THREE.MeshLambertMaterial({ color: 0x27592b });
+      // 1. Procedural Sky Dome Shader (Zelda BotW / Fun Run sunset palette)
+      if (this.skyDome) this.scene.remove(this.skyDome);
+      const skyGeo = new THREE.SphereGeometry(450, 32, 16);
+      const skyMat = new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        uniforms: {
+          uTopColor: { value: new THREE.Color('#311b4d') },      // Twilight deep purple
+          uHorizonColor: { value: new THREE.Color('#ff7026') },  // Vibrant sunset orange
+          uBottomColor: { value: new THREE.Color('#223f14') },   // Earthy base green
+          uSunPos: { value: new THREE.Vector3(120, 140, 240).normalize() },
+          uSunColor: { value: new THREE.Color('#fff4b0') }
+        },
+        vertexShader: `
+          varying vec3 vWorldPos;
+          void main() {
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            gl_Position = projectionMatrix * viewMatrix * wp;
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 uTopColor;
+          uniform vec3 uHorizonColor;
+          uniform vec3 uBottomColor;
+          uniform vec3 uSunPos;
+          uniform vec3 uSunColor;
+          varying vec3 vWorldPos;
+          void main() {
+            vec3 dir = normalize(vWorldPos);
+            float h = dir.y;
+            vec3 col;
+            if (h > 0.0) {
+              col = mix(uHorizonColor, uTopColor, pow(h, 0.62));
+            } else {
+              col = mix(uHorizonColor, uBottomColor, pow(clamp(-h * 4.0, 0.0, 1.0), 0.75));
+            }
+            // Sun disc & luminous corona
+            float sunDot = max(0.0, dot(dir, normalize(uSunPos)));
+            float sunDisc = step(0.9984, sunDot);
+            float sunGlow = pow(sunDot, 14.0) * 0.7 + pow(sunDot, 4.0) * 0.28;
+            col += uSunColor * (sunDisc * 1.8 + sunGlow);
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `
+      });
+      this.skyDome = new THREE.Mesh(skyGeo, skyMat);
+      this.scene.add(this.skyDome);
 
-      for (let z = 60; z < this.finishLineZ + 150; z += 90) {
+      // 2. Snow-capped Alpine Mountains (from Fun Run menu art & Zelda)
+      const mountainBodyGeo = new THREE.ConeGeometry(42, 62, 5);
+      const mountainSnowGeo = new THREE.ConeGeometry(18, 25, 5);
+      const mountainMat1 = new THREE.MeshLambertMaterial({ color: 0x274354 }); // Slate mountain rock
+      const mountainMat2 = new THREE.MeshLambertMaterial({ color: 0x1b431e }); // Alpine evergreen rock
+      const snowMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); // Crisp white snow cap
+
+      for (let z = 50; z < this.finishLineZ + 180; z += 75) {
         const cx = this.getCurveX(z);
         for (let side of [-1, 1]) {
-          const m = new THREE.Mesh(mountainGeo, Math.random() > 0.5 ? mountainMat1 : mountainMat2);
-          m.position.set(cx + side * (120 + Math.random() * 40), 18 + Math.random() * 12, z);
-          m.scale.set(1.0 + Math.random() * 0.6, 1.0 + Math.random() * 0.5, 1.0 + Math.random() * 0.6);
-          this.skyGroup.add(m);
+          const mGroup = new THREE.Group();
+          const baseMat = Math.random() > 0.4 ? mountainMat1 : mountainMat2;
+          const body = new THREE.Mesh(mountainBodyGeo, baseMat);
+          body.position.y = 31;
+          mGroup.add(body);
+
+          const snow = new THREE.Mesh(mountainSnowGeo, snowMat);
+          snow.position.y = 51;
+          mGroup.add(snow);
+
+          const scale = 1.0 + Math.random() * 0.75;
+          mGroup.scale.set(scale, scale * (0.8 + Math.random() * 0.5), scale);
+          const xDist = side * (130 + Math.random() * 50);
+          mGroup.position.set(cx + xDist, 8 + Math.random() * 15, z);
+          this.skyGroup.add(mGroup);
         }
       }
 
-      // 2. Floating 3D Cartoon Clouds (Zelda style)
+      // 3. Volumetric Cartoon Drifting Clouds
       this.clouds = [];
-      const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.88 });
+      const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.90 });
       const cloudSphere = new THREE.SphereGeometry(6, 8, 8);
 
-      for (let z = 20; z < this.finishLineZ + 100; z += 70) {
+      for (let z = 20; z < this.finishLineZ + 120; z += 60) {
         const cloud = new THREE.Group();
         const baseCx = this.getCurveX(z);
-        cloud.position.set(baseCx + (Math.random() - 0.5) * 80, 48 + Math.random() * 15, z);
+        cloud.position.set(baseCx + (Math.random() - 0.5) * 90, 46 + Math.random() * 16, z);
 
-        for (let c = 0; c < 5; c++) {
+        for (let c = 0; c < 6; c++) {
           const puff = new THREE.Mesh(cloudSphere, cloudMat);
-          puff.position.set((c - 2) * 4.2 + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 4);
-          puff.scale.setScalar(0.75 + Math.random() * 0.5);
+          puff.position.set(
+            (c - 2.5) * 4.2 + (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2.8,
+            (Math.random() - 0.5) * 4
+          );
+          puff.scale.setScalar(0.75 + Math.random() * 0.55);
           cloud.add(puff);
         }
 
@@ -948,11 +1043,11 @@
     buildTrackMesh() {
       if (this.trackMesh) this.scene.remove(this.trackMesh);
 
-      const segStep = 3.0;
+      const segStep = 2.5; // Fine resolution for silky smooth slopes
       const segCount = Math.ceil((this.finishLineZ + 150) / segStep);
 
-      // Width profile: 14 vertices per cross-section
-      const lateralOffsets = [-50, -18, -9.0, -7.5, -6.8, -4.6, -2.3, 0, 2.3, 4.6, 6.8, 7.5, 9.0, 18, 50];
+      // Width profile: 15 vertices per cross-section
+      const lateralOffsets = [-55, -20, -9.5, -7.8, -7.0, -4.7, -2.3, 0, 2.3, 4.7, 7.0, 7.8, 9.5, 20, 55];
       const pointsPerSeg = lateralOffsets.length;
 
       const positions = [];
@@ -979,40 +1074,41 @@
           const vz = z + nz * w;
           let vy = cy;
 
-          let r = 0.27, g = 0.67, b = 0.24;
+          let r = 0.28, g = 0.72, b = 0.25;
 
-          if (Math.abs(w) > 17) {
-            // Far outer rolling terrain
+          if (Math.abs(w) > 18) {
+            // Far outer rolling terrain (Zelda BotW deep meadow green)
             vy = this.getGroundY(vx, vz);
-            r = 0.14; g = 0.42; b = 0.14;
+            r = 0.16; g = 0.46; b = 0.16;
           } else if (Math.abs(w) > 8.5) {
-            // Earthy curb slope
-            vy = onBridge ? (cy - 14.0) : (cy - 0.5);
-            r = 0.38; g = 0.24; b = 0.13;
+            // Earthy curb slope (warm soil)
+            vy = onBridge ? (cy - 16.0) : (cy - 0.55);
+            r = 0.42; g = 0.26; b = 0.14;
           } else if (Math.abs(w) > 7.0) {
             // Raised curb border
-            vy = cy + 0.20;
-            // Alternating Red & White race kerb blocks!
+            vy = cy + 0.22;
             if (!onBridge) {
+              // Alternating Red & White race kerb blocks!
               const isRedKerb = (Math.floor(i / 2) % 2 === 0);
-              r = isRedKerb ? 0.88 : 0.95;
-              g = isRedKerb ? 0.15 : 0.95;
-              b = isRedKerb ? 0.15 : 0.95;
+              r = isRedKerb ? 0.90 : 0.95;
+              g = isRedKerb ? 0.14 : 0.95;
+              b = isRedKerb ? 0.14 : 0.95;
             } else {
-              r = 0.45; g = 0.26; b = 0.12;
+              // Bridge wooden curb beam
+              r = 0.48; g = 0.28; b = 0.14;
             }
           } else {
             // Running Track Surface
             if (onBridge) {
               // Wooden Suspension Bridge Planks
-              r = isEvenSeg ? 0.55 : 0.45;
-              g = isEvenSeg ? 0.33 : 0.27;
-              b = isEvenSeg ? 0.16 : 0.13;
+              r = isEvenSeg ? 0.56 : 0.46;
+              g = isEvenSeg ? 0.34 : 0.28;
+              b = isEvenSeg ? 0.18 : 0.14;
             } else {
-              // Vibrant Green Mowing Stripes
-              r = isEvenSeg ? 0.26 : 0.32;
-              g = isEvenSeg ? 0.68 : 0.76;
-              b = isEvenSeg ? 0.24 : 0.28;
+              // Vibrant Green Mowing Stripes (Zelda BotW vibrant green)
+              r = isEvenSeg ? 0.28 : 0.34;
+              g = isEvenSeg ? 0.72 : 0.80;
+              b = isEvenSeg ? 0.25 : 0.30;
             }
           }
 
@@ -1044,7 +1140,7 @@
 
       const mat = new THREE.MeshStandardMaterial({
         vertexColors: true,
-        roughness: 0.82,
+        roughness: 0.80,
         metalness: 0.08
       });
 
@@ -1058,31 +1154,51 @@
       this.bridgeGroup = new THREE.Group();
       const intervals = [[240, 390], [740, 890]];
 
-      const postGeo = new THREE.CylinderGeometry(0.18, 0.2, 2.2, 6);
-      const postMat = new THREE.MeshLambertMaterial({ color: 0x5c3311 });
-      const pierGeo = new THREE.BoxGeometry(0.8, 25, 0.8);
-      const pierMat = new THREE.MeshLambertMaterial({ color: 0x3d2212 });
+      const postGeo = new THREE.CylinderGeometry(0.20, 0.22, 2.4, 7);
+      const postMat = new THREE.MeshLambertMaterial({ color: 0x543015 });
+      const pierGeo = new THREE.BoxGeometry(0.9, 36, 0.9);
+      const pierMat = new THREE.MeshLambertMaterial({ color: 0x381f0d });
+      const ropeMat = new THREE.MeshLambertMaterial({ color: 0xd7a15c });
 
       for (const [startZ, endZ] of intervals) {
-        for (let z = startZ; z <= endZ; z += 6.0) {
+        let prevPL = null;
+        let prevPR = null;
+
+        for (let z = startZ; z <= endZ; z += 5.0) {
           const cx = this.getCurveX(z);
           const cy = this.getHillY(z);
 
           const pL = new THREE.Mesh(postGeo, postMat);
-          pL.position.set(cx - 7.2, cy + 1.1, z);
+          pL.position.set(cx - 7.3, cy + 1.2, z);
           this.bridgeGroup.add(pL);
 
           const pR = new THREE.Mesh(postGeo, postMat);
-          pR.position.set(cx + 7.2, cy + 1.1, z);
+          pR.position.set(cx + 7.3, cy + 1.2, z);
           this.bridgeGroup.add(pR);
 
-          if ((z - startZ) % 18 === 0) {
+          // Rope segment between posts
+          if (prevPL) {
+            const ropeGeo = new THREE.CylinderGeometry(0.06, 0.06, 5.2, 5);
+            ropeGeo.rotateX(Math.PI / 2);
+            const rL = new THREE.Mesh(ropeGeo, ropeMat);
+            rL.position.set(cx - 7.3, cy + 2.1, z - 2.5);
+            this.bridgeGroup.add(rL);
+
+            const rR = new THREE.Mesh(ropeGeo, ropeMat);
+            rR.position.set(cx + 7.3, cy + 2.1, z - 2.5);
+            this.bridgeGroup.add(rR);
+          }
+          prevPL = pL;
+          prevPR = pR;
+
+          // Pier pillars descending into the canyon
+          if ((z - startZ) % 15 === 0) {
             const pierL = new THREE.Mesh(pierGeo, pierMat);
-            pierL.position.set(cx - 7.2, cy - 12.5, z);
+            pierL.position.set(cx - 7.3, cy - 18.0, z);
             this.bridgeGroup.add(pierL);
 
             const pierR = new THREE.Mesh(pierGeo, pierMat);
-            pierR.position.set(cx + 7.2, cy - 12.5, z);
+            pierR.position.set(cx + 7.3, cy - 18.0, z);
             this.bridgeGroup.add(pierR);
           }
         }
@@ -1142,6 +1258,131 @@
       }
 
       this.scene.add(this.sceneryGroup);
+    }
+
+    buildFoliage() {
+      if (this.foliageGroup) this.scene.remove(this.foliageGroup);
+      this.foliageGroup = new THREE.Group();
+
+      // 1. Instanced 3D Grass Tufts (Zelda BotW Meadow Style)
+      // Low-poly 3-blade clump geometry
+      const bladeGeo = new THREE.BufferGeometry();
+      const pos = [];
+      const col = [];
+      const indices = [];
+
+      const bladeAngles = [-0.35, 0.05, 0.42];
+      const bladeHeights = [0.65, 0.85, 0.70];
+      const bladeWidths = [0.12, 0.14, 0.12];
+
+      bladeAngles.forEach((ang, idx) => {
+        const h = bladeHeights[idx];
+        const w = bladeWidths[idx];
+        const sinA = Math.sin(ang);
+        const cosA = Math.cos(ang);
+        const bendX = sinA * 0.28;
+        const bendZ = (idx === 1 ? 0.12 : -0.08);
+
+        const baseV = idx * 3;
+        // Bottom left, bottom right, top tip
+        pos.push(
+          -cosA * w * 0.5, 0, -sinA * w * 0.5,
+          cosA * w * 0.5, 0, sinA * w * 0.5,
+          bendX, h, bendZ
+        );
+
+        // Gradient coloring: deep root green to sunlit tip
+        col.push(
+          0.16, 0.48, 0.14,
+          0.16, 0.48, 0.14,
+          0.44, 0.84, 0.26
+        );
+
+        indices.push(baseV, baseV + 1, baseV + 2);
+        indices.push(baseV + 1, baseV, baseV + 2);
+      });
+
+      bladeGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      bladeGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      bladeGeo.setIndex(indices);
+      bladeGeo.computeVertexNormals();
+
+      const grassMat = new THREE.MeshLambertMaterial({
+        vertexColors: true,
+        side: THREE.DoubleSide
+      });
+
+      const grassCount = 1400;
+      const grassMesh = new THREE.InstancedMesh(bladeGeo, grassMat, grassCount);
+      grassMesh.castShadow = false;
+      grassMesh.receiveShadow = true;
+
+      const dummy = new THREE.Object3D();
+      let grassIdx = 0;
+
+      for (let i = 0; i < grassCount; i++) {
+        const z = 15 + (i / grassCount) * (this.finishLineZ + 60);
+        if (this.isBridge(z)) continue;
+
+        const side = (i % 2 === 0) ? -1 : 1;
+        const lateralDist = side * (8.2 + (Math.sin(i * 13.7) * 0.5 + 0.5) * 6.5);
+        const cx = this.getCurveX(z);
+        const x = cx + lateralDist;
+        const y = this.getGroundY(x, z);
+
+        dummy.position.set(x, y, z);
+        dummy.rotation.y = (i * 2.39996) % (Math.PI * 2);
+        const s = 0.8 + ((i * 17) % 11) * 0.05;
+        dummy.scale.set(s, s * (0.85 + Math.random() * 0.3), s);
+        dummy.updateMatrix();
+
+        grassMesh.setMatrixAt(grassIdx++, dummy.matrix);
+      }
+      grassMesh.count = grassIdx;
+      grassMesh.instanceMatrix.needsUpdate = true;
+      this.foliageGroup.add(grassMesh);
+
+      // 2. Instanced Colorful Wildflowers
+      const flowerCount = 300;
+      const flowerGeo = new THREE.DodecahedronGeometry(0.18, 0);
+      const flowerMat = new THREE.MeshLambertMaterial();
+      const flowerMesh = new THREE.InstancedMesh(flowerGeo, flowerMat, flowerCount);
+
+      const flowerPalette = [
+        new THREE.Color(0xff1744), // Poppy Red
+        new THREE.Color(0xffea00), // Buttercup Yellow
+        new THREE.Color(0x2979ff), // Sky Blue
+        new THREE.Color(0xffffff), // Daisy White
+        new THREE.Color(0xff4081)  // Hot Pink
+      ];
+
+      let fIdx = 0;
+      for (let i = 0; i < flowerCount; i++) {
+        const z = 20 + (i / flowerCount) * (this.finishLineZ + 50);
+        if (this.isBridge(z)) continue;
+
+        const side = (i % 2 === 0) ? -1 : 1;
+        const lateralDist = side * (8.0 + (Math.sin(i * 7.9) * 0.5 + 0.5) * 4.5);
+        const cx = this.getCurveX(z);
+        const x = cx + lateralDist;
+        const y = this.getGroundY(x, z) + 0.32;
+
+        dummy.position.set(x, y, z);
+        dummy.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, 0);
+        const s = 0.9 + Math.random() * 0.5;
+        dummy.scale.set(s, s, s);
+        dummy.updateMatrix();
+
+        flowerMesh.setMatrixAt(fIdx, dummy.matrix);
+        flowerMesh.setColorAt(fIdx, flowerPalette[i % flowerPalette.length]);
+        fIdx++;
+      }
+      flowerMesh.count = fIdx;
+      flowerMesh.instanceMatrix.needsUpdate = true;
+      if (flowerMesh.instanceColor) flowerMesh.instanceColor.needsUpdate = true;
+      this.foliageGroup.add(flowerMesh);
+
+      this.scene.add(this.foliageGroup);
     }
 
     buildFinishGate() {
@@ -1216,94 +1457,405 @@
       }
     }
 
-    createRock(x, y, z, laneX) {
-      const geo = new THREE.DodecahedronGeometry(1.2, 0);
-      geo.scale(1.25, 0.9, 1.15);
-      const mat = new THREE.MeshStandardMaterial({ color: 0x546e7a, roughness: 0.9, metalness: 0.1 });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(x, y, z);
-      mesh.rotation.set(Math.random(), Math.random(), Math.random());
-      mesh.castShadow = true;
-      this.scene.add(mesh);
-      this.rocks.push({ mesh, x, z, laneX, active: true });
-    }
+    // ------------------------------------------------------------------------
+    // HIGH-POLISH 3D ITEM MODELS (Zelda & Fun Run authentic styling)
+    // ------------------------------------------------------------------------
+    createMysteryCrateMesh() {
+      const group = new THREE.Group();
 
-    createCrate(x, y, z, laneX) {
-      const boxGeo = new THREE.BoxGeometry(1.4, 1.4, 1.4);
-      const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 128;
-      const c = canvas.getContext('2d');
-      c.fillStyle = '#8d5524';
-      c.fillRect(0, 0, 128, 128);
-      c.strokeStyle = '#ffd166';
-      c.lineWidth = 10;
-      c.strokeRect(5, 5, 118, 118);
-      c.fillStyle = '#ffffff';
-      c.font = '900 80px "Luckiest Guy", Impact';
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.fillText('?', 64, 64);
-      const tex = new THREE.CanvasTexture(canvas);
-      const mat = new THREE.MeshLambertMaterial({ map: tex });
-      const mesh = new THREE.Mesh(boxGeo, mat);
-      mesh.position.set(x, y, z);
-      this.scene.add(mesh);
-      this.crates.push({ mesh, x, z, baseY: y, active: true, respawnTimer: 0 });
-    }
-
-    createSpeedPad(x, y, z, laneX) {
-      // Forward-pointing speed chevrons (points directly along +Z into the distance!)
-      const geo = new THREE.PlaneGeometry(2.6, 3.6);
-      geo.rotateX(Math.PI / 2); // Top of texture points to +Z (FORWARD)!
+      // 1. Main Crate Body
+      const boxGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
 
       const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 128;
-      const c = canvas.getContext('2d');
-      c.fillStyle = 'rgba(0, 0, 0, 0)';
-      c.fillRect(0, 0, 128, 128);
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
 
-      // Draw 3 forward chevrons pointing UP (which maps to +Z forward!)
-      c.fillStyle = '#ffea00';
-      c.shadowColor = '#ffea00';
-      c.shadowBlur = 10;
+      // Red wooden planks (Fun Run mystery box)
+      ctx.fillStyle = '#c62828';
+      ctx.fillRect(0, 0, 256, 256);
+
+      // Plank grooves
+      ctx.strokeStyle = '#8e0000';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(0, 85); ctx.lineTo(256, 85);
+      ctx.moveTo(0, 170); ctx.lineTo(256, 170);
+      ctx.stroke();
+
+      // Yellow diamond
+      ctx.fillStyle = '#ffb300';
+      ctx.beginPath();
+      ctx.moveTo(128, 28);
+      ctx.lineTo(228, 128);
+      ctx.lineTo(128, 228);
+      ctx.lineTo(28, 128);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#ff6f00';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      // Bold white '?' with drop shadow
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#212121';
+      ctx.lineWidth = 10;
+      ctx.font = '900 130px "Luckiest Guy", Impact, Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeText('?', 128, 134);
+      ctx.fillText('?', 128, 134);
+
+      // Corner rivets
+      ctx.fillStyle = '#ffd54f';
+      ctx.strokeStyle = '#5d4037';
+      ctx.lineWidth = 2;
+      const rivets = [[18, 18], [238, 18], [18, 238], [238, 238]];
+      for (let [rx, ry] of rivets) {
+        ctx.beginPath();
+        ctx.arc(rx, ry, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const crateMat = new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 0.60,
+        metalness: 0.15
+      });
+      const crateMesh = new THREE.Mesh(boxGeo, crateMat);
+      crateMesh.castShadow = true;
+      group.add(crateMesh);
+
+      // 2. Gold metallic corner brackets on all 8 corners
+      const cornerMat = new THREE.MeshStandardMaterial({
+        color: 0xffca28,
+        metalness: 0.85,
+        roughness: 0.25
+      });
+      const cornerGeo = new THREE.BoxGeometry(0.38, 0.38, 0.38);
+      for (let cx of [-0.75, 0.75]) {
+        for (let cy of [-0.75, 0.75]) {
+          for (let cz of [-0.75, 0.75]) {
+            const cMesh = new THREE.Mesh(cornerGeo, cornerMat);
+            cMesh.position.set(cx, cy, cz);
+            group.add(cMesh);
+          }
+        }
+      }
+
+      // 3. Floating glowing aura ring underneath
+      const auraGeo = new THREE.RingGeometry(0.5, 1.05, 16);
+      auraGeo.rotateX(-Math.PI / 2);
+      const auraMat = new THREE.MeshBasicMaterial({
+        color: 0xffd54f,
+        transparent: true,
+        opacity: 0.60,
+        side: THREE.DoubleSide
+      });
+      const aura = new THREE.Mesh(auraGeo, auraMat);
+      aura.position.y = -1.1;
+      group.add(aura);
+
+      return group;
+    }
+
+    createSawbladeMesh() {
+      const group = new THREE.Group();
+
+      const shape = new THREE.Shape();
+      const teeth = 10;
+      const rOuter = 1.35;
+      const rInner = 0.95;
+
+      for (let i = 0; i < teeth; i++) {
+        const a0 = (i / teeth) * Math.PI * 2;
+        const a1 = a0 + (Math.PI * 2 / teeth) * 0.35;
+        const a2 = a0 + (Math.PI * 2 / teeth) * 0.85;
+
+        const x0 = Math.cos(a0) * rInner;
+        const y0 = Math.sin(a0) * rInner;
+        if (i === 0) shape.moveTo(x0, y0);
+        else shape.lineTo(x0, y0);
+
+        const x1 = Math.cos(a1) * rOuter;
+        const y1 = Math.sin(a1) * rOuter;
+        shape.lineTo(x1, y1);
+
+        const x2 = Math.cos(a2) * rInner;
+        const y2 = Math.sin(a2) * rInner;
+        shape.lineTo(x2, y2);
+      }
+      shape.closePath();
+
+      const hole = new THREE.Path();
+      hole.absarc(0, 0, 0.35, 0, Math.PI * 2, true);
+      shape.holes.push(hole);
+
+      const bladeGeo = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.12,
+        bevelEnabled: true,
+        bevelSegments: 2,
+        steps: 1,
+        bevelSize: 0.03,
+        bevelThickness: 0.03
+      });
+      bladeGeo.center();
+
+      const bladeMat = new THREE.MeshStandardMaterial({
+        color: 0xd6e0e6,
+        metalness: 0.92,
+        roughness: 0.18
+      });
+      const bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
+      bladeMesh.castShadow = true;
+      group.add(bladeMesh);
+
+      // Red hazard/blood ring
+      const ringGeo = new THREE.RingGeometry(0.40, 0.72, 16);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xb71c1c, side: THREE.DoubleSide });
+      const ringF = new THREE.Mesh(ringGeo, ringMat);
+      ringF.position.z = 0.07;
+      group.add(ringF);
+      const ringB = new THREE.Mesh(ringGeo, ringMat);
+      ringB.position.z = -0.07;
+      group.add(ringB);
+
+      // Center arbor bolt
+      const boltGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.20, 12);
+      boltGeo.rotateX(Math.PI / 2);
+      const boltMat = new THREE.MeshStandardMaterial({ color: 0x455a64, metalness: 0.9, roughness: 0.2 });
+      const bolt = new THREE.Mesh(boltGeo, boltMat);
+      group.add(bolt);
+
+      return group;
+    }
+
+    createBearTrapMesh() {
+      const group = new THREE.Group();
+
+      const baseFrameGeo = new THREE.TorusGeometry(0.95, 0.08, 6, 18);
+      baseFrameGeo.rotateX(Math.PI / 2);
+      baseFrameGeo.scale(1.2, 1.0, 0.9);
+      const steelMat = new THREE.MeshStandardMaterial({
+        color: 0x37474f,
+        metalness: 0.85,
+        roughness: 0.35
+      });
+      const baseFrame = new THREE.Mesh(baseFrameGeo, steelMat);
+      baseFrame.position.y = 0.05;
+      group.add(baseFrame);
+
+      const triggerGeo = new THREE.CylinderGeometry(0.40, 0.42, 0.08, 14);
+      const triggerMat = new THREE.MeshStandardMaterial({
+        color: 0x546e7a,
+        metalness: 0.75,
+        roughness: 0.4
+      });
+      const trigger = new THREE.Mesh(triggerGeo, triggerMat);
+      trigger.position.y = 0.08;
+      group.add(trigger);
+
+      // Left Jaw
+      const jawLeft = new THREE.Group();
+      const jawArcGeo = new THREE.TorusGeometry(0.88, 0.07, 4, 12, Math.PI);
+      jawArcGeo.rotateX(Math.PI / 2);
+      jawArcGeo.rotateY(Math.PI / 2);
+      const arcMeshL = new THREE.Mesh(jawArcGeo, steelMat);
+      jawLeft.add(arcMeshL);
+
+      const toothGeo = new THREE.ConeGeometry(0.11, 0.36, 4);
+      toothGeo.rotateX(Math.PI);
+      const toothMat = new THREE.MeshStandardMaterial({
+        color: 0xb0bec5,
+        metalness: 0.9,
+        roughness: 0.2
+      });
+
+      for (let i = 0; i < 5; i++) {
+        const angle = ((i + 1) / 6) * Math.PI;
+        const tooth = new THREE.Mesh(toothGeo, toothMat);
+        tooth.position.set(-Math.cos(angle) * 0.88, 0.18, Math.sin(angle) * 0.88 - 0.44);
+        tooth.rotation.x = -0.35;
+        jawLeft.add(tooth);
+      }
+      jawLeft.position.set(-0.15, 0.08, 0);
+      jawLeft.rotation.z = -0.45;
+      group.add(jawLeft);
+      group.jawLeft = jawLeft;
+
+      // Right Jaw
+      const jawRight = new THREE.Group();
+      const arcMeshR = new THREE.Mesh(jawArcGeo, steelMat);
+      arcMeshR.rotation.y = Math.PI;
+      jawRight.add(arcMeshR);
+
+      for (let i = 0; i < 5; i++) {
+        const angle = ((i + 1) / 6) * Math.PI;
+        const tooth = new THREE.Mesh(toothGeo, toothMat);
+        tooth.position.set(Math.cos(angle) * 0.88, 0.18, Math.sin(angle) * 0.88 - 0.44);
+        tooth.rotation.x = -0.35;
+        jawRight.add(tooth);
+      }
+      jawRight.position.set(0.15, 0.08, 0);
+      jawRight.rotation.z = 0.45;
+      group.add(jawRight);
+      group.jawRight = jawRight;
+
+      return group;
+    }
+
+    createSpeedPadMesh() {
+      const geo = new THREE.PlaneGeometry(2.8, 4.2);
+      geo.rotateX(-Math.PI / 2);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+      ctx.fillRect(0, 0, 256, 256);
 
       for (let row = 0; row < 3; row++) {
-        const topY = 16 + row * 38;
-        c.beginPath();
-        c.moveTo(64, topY);
-        c.lineTo(110, topY + 28);
-        c.lineTo(92, topY + 34);
-        c.lineTo(64, topY + 16);
-        c.lineTo(36, topY + 34);
-        c.lineTo(18, topY + 28);
-        c.closePath();
-        c.fill();
+        const yCenter = 45 + row * 80;
+        ctx.shadowColor = '#00e5ff';
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = '#ffea00';
+        ctx.beginPath();
+        ctx.moveTo(128, yCenter - 30);
+        ctx.lineTo(230, yCenter + 25);
+        ctx.lineTo(195, yCenter + 35);
+        ctx.lineTo(128, yCenter + 0);
+        ctx.lineTo(61, yCenter + 35);
+        ctx.lineTo(26, yCenter + 25);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(128, yCenter - 22);
+        ctx.lineTo(210, yCenter + 22);
+        ctx.lineTo(195, yCenter + 28);
+        ctx.lineTo(128, yCenter + 0);
+        ctx.lineTo(61, yCenter + 28);
+        ctx.lineTo(46, yCenter + 22);
+        ctx.closePath();
+        ctx.fill();
       }
 
       const tex = new THREE.CanvasTexture(canvas);
-      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0.95
+      });
       const mesh = new THREE.Mesh(geo, mat);
+      mesh.tex = tex;
+      return mesh;
+    }
+
+    createBouncePadMesh() {
+      const group = new THREE.Group();
+
+      const frameGeo = new THREE.CylinderGeometry(1.45, 1.5, 0.2, 20);
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x424242, metalness: 0.8, roughness: 0.3 });
+      const frame = new THREE.Mesh(frameGeo, frameMat);
+      frame.position.y = 0.1;
+      group.add(frame);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#ff007f';
+      ctx.beginPath();
+      ctx.arc(64, 64, 62, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(64, 64, 44, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ff007f';
+      ctx.beginPath();
+      ctx.arc(64, 64, 26, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffea00';
+      ctx.beginPath();
+      ctx.arc(64, 64, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      const tex = new THREE.CanvasTexture(canvas);
+      const surfaceGeo = new THREE.CylinderGeometry(1.35, 1.35, 0.05, 20);
+      const surfaceMat = new THREE.MeshBasicMaterial({ map: tex });
+      const surface = new THREE.Mesh(surfaceGeo, surfaceMat);
+      surface.position.y = 0.22;
+      group.add(surface);
+
+      return group;
+    }
+
+    createRock(x, y, z, laneX) {
+      const group = new THREE.Group();
+      const geo = new THREE.DodecahedronGeometry(1.25, 1);
+      geo.scale(1.2, 0.85, 1.1);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x455a64,
+        roughness: 0.85,
+        metalness: 0.15,
+        flatShading: true
+      });
+      const rock = new THREE.Mesh(geo, mat);
+      rock.castShadow = true;
+      group.add(rock);
+
+      // Stylized moss top cap
+      const mossGeo = new THREE.SphereGeometry(0.85, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.45);
+      const mossMat = new THREE.MeshLambertMaterial({ color: 0x33691e });
+      const moss = new THREE.Mesh(mossGeo, mossMat);
+      moss.position.y = 0.5;
+      moss.scale.set(1.1, 0.6, 1.0);
+      group.add(moss);
+
+      group.position.set(x, y, z);
+      group.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
+      this.scene.add(group);
+      this.rocks.push({ mesh: group, x, z, laneX, active: true });
+    }
+
+    createCrate(x, y, z, laneX) {
+      const mesh = this.createMysteryCrateMesh();
+      mesh.position.set(x, y, z);
+      this.scene.add(mesh);
+      this.crates.push({ mesh, x, z, laneX, baseY: y, active: true, respawnTimer: 0, popTimer: 0 });
+    }
+
+    createSpeedPad(x, y, z, laneX) {
+      const mesh = this.createSpeedPadMesh();
       mesh.position.set(x, y, z);
       this.scene.add(mesh);
       this.speedPads.push({ mesh, x, z, laneX, active: true });
     }
 
     createBouncePad(x, y, z, laneX) {
-      const geo = new THREE.CylinderGeometry(1.2, 1.3, 0.22, 16);
-      const mat = new THREE.MeshStandardMaterial({ color: 0xff007f, roughness: 0.3 });
-      const mesh = new THREE.Mesh(geo, mat);
+      const mesh = this.createBouncePadMesh();
       mesh.position.set(x, y, z);
       this.scene.add(mesh);
       this.bouncePads.push({ mesh, x, z, laneX, active: true });
     }
 
     spawnSawblade(x, z, owner) {
-      const geo = new THREE.CylinderGeometry(1.3, 1.3, 0.15, 12);
-      geo.rotateX(Math.PI / 2);
-      const mat = new THREE.MeshStandardMaterial({ color: 0xb0bec5, metalness: 0.8, roughness: 0.2 });
-      const mesh = new THREE.Mesh(geo, mat);
+      const mesh = this.createSawbladeMesh();
       const cy = this.getHillY(z) + 0.8;
       mesh.position.set(this.getCurveX(z) + x, cy, z + 2.0);
       this.scene.add(mesh);
@@ -1311,9 +1863,7 @@
     }
 
     spawnTrap(x, z, owner) {
-      const geo = new THREE.BoxGeometry(1.6, 0.18, 1.6);
-      const mat = new THREE.MeshStandardMaterial({ color: 0x37474f, metalness: 0.7, roughness: 0.3 });
-      const mesh = new THREE.Mesh(geo, mat);
+      const mesh = this.createBearTrapMesh();
       const cy = this.getHillY(z) + 0.1;
       mesh.position.set(this.getCurveX(z) + x, cy, z);
       this.scene.add(mesh);
@@ -1336,6 +1886,7 @@
       for (let b of this.bouncePads) this.scene.remove(b.mesh);
       for (let p of this.projectiles) this.scene.remove(p.mesh);
       for (let t of this.traps) this.scene.remove(t.mesh);
+      if (this.foliageGroup) this.scene.remove(this.foliageGroup);
       this.rocks = [];
       this.crates = [];
       this.speedPads = [];
@@ -1529,6 +2080,7 @@
       this.buildTrackMesh();
       this.buildBridgeDetails();
       this.buildSceneryTrees();
+      this.buildFoliage();
       this.buildFinishGate();
       this.spawnWorldElements();
 
@@ -1568,16 +2120,17 @@
           }
         }
 
-        // 2. Mystery Crates
+        // 2. Mystery Crates (Respawns after exactly 3.0 seconds!)
         for (let crate of this.crates) {
           if (!crate.active) continue;
           const dz = Math.abs(r.z - crate.z);
-          const dx = Math.abs(r.x - (crate.x - this.getCurveX(crate.z)));
+          const dx = Math.abs(r.x - crate.laneX);
           if (dz < 1.4 && dx < 1.6) {
             crate.active = false;
             crate.mesh.visible = false;
-            crate.respawnTimer = 5.0;
+            crate.respawnTimer = 3.0; // 3 seconds respawn time!
             sfx.play('pickup');
+            this.particles.spawnSparks(crate.x, crate.baseY, crate.z, 20);
 
             const weapons = ['blade', 'trap', 'speed', 'shield', 'lightning'];
             r.currentWeapon = weapons[Math.floor(Math.random() * weapons.length)];
@@ -1588,7 +2141,7 @@
         // 3. Speed Booster Pads
         for (let pad of this.speedPads) {
           const dz = Math.abs(r.z - pad.z);
-          const dx = Math.abs(r.x - (pad.x - this.getCurveX(pad.z)));
+          const dx = Math.abs(r.x - pad.laneX);
           if (dz < 1.6 && dx < 1.6 && r.jumpY < 0.6) {
             r.speedBoostTimer = 2.5;
             r.speed = r.baseSpeed * 1.55;
@@ -1599,7 +2152,7 @@
         // 4. Bounce Trampolines
         for (let pad of this.bouncePads) {
           const dz = Math.abs(r.z - pad.z);
-          const dx = Math.abs(r.x - (pad.x - this.getCurveX(pad.z)));
+          const dx = Math.abs(r.x - pad.laneX);
           if (dz < 1.4 && dx < 1.5 && r.jumpY < 0.6) {
             r.vy = 26.0;
             r.isJumping = true;
@@ -1611,14 +2164,19 @@
           }
         }
 
-        // 5. Placed Bear Traps
+        // 5. Placed Bear Traps (Violent snap animation)
         for (let trap of this.traps) {
           if (!trap.active) continue;
           const dz = Math.abs(r.z - trap.z);
           const dx = Math.abs(r.x - trap.x);
           if (dz < 1.2 && dx < 1.3 && r.jumpY < 0.5) {
             trap.active = false;
-            this.scene.remove(trap.mesh);
+            // Snap jaws shut
+            if (trap.mesh.jawLeft) trap.mesh.jawLeft.rotation.z = 0;
+            if (trap.mesh.jawRight) trap.mesh.jawRight.rotation.z = 0;
+            setTimeout(() => {
+              this.scene.remove(trap.mesh);
+            }, 650);
             r.takeDamage('trap');
           }
         }
@@ -1661,27 +2219,47 @@
         c.position.x += dt * 0.8;
       }
 
-      // Rotate Crates & Handle Respawns
+      // Rotate Crates & Handle 3-Second Respawns with Pop Animation
       this.crates.forEach(c => {
         if (c.active) {
-          c.mesh.rotation.y += dt * 2.2;
-          c.mesh.position.y = c.baseY + Math.sin(currentTime * 0.004 + c.z) * 0.2;
+          c.mesh.rotation.y += dt * 2.5;
+          c.mesh.rotation.z = Math.sin(currentTime * 0.003 + c.z) * 0.12;
+          c.mesh.position.y = c.baseY + Math.sin(currentTime * 0.004 + c.z) * 0.35;
         } else if (c.respawnTimer > 0) {
           c.respawnTimer -= dt;
           if (c.respawnTimer <= 0) {
             c.active = true;
             c.mesh.visible = true;
+            c.popTimer = 0.35;
+            c.mesh.scale.set(0.15, 0.15, 0.15);
+            this.particles.spawnSparks(c.x, c.baseY, c.z, 16);
           }
+        }
+        if (c.popTimer > 0) {
+          c.popTimer -= dt;
+          const prog = Math.max(0, 1.0 - c.popTimer / 0.35);
+          const popScale = 1.0 + Math.sin(prog * Math.PI) * 0.35;
+          c.mesh.scale.set(popScale, popScale, popScale);
         }
       });
 
-      // Update Projectiles
+      // Animate flowing speed pad chevrons
+      for (let pad of this.speedPads) {
+        if (pad.mesh && pad.mesh.tex) {
+          pad.mesh.tex.offset.y = -(currentTime * 0.0028) % 1.0;
+        }
+      }
+
+      // Update Projectiles (Sawblades spin at 35 rad/s and spray sparks)
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const p = this.projectiles[i];
         p.z += p.speed * dt;
-        p.mesh.rotation.z += dt * 22;
+        p.mesh.rotation.z += dt * 35;
         const cy = this.getHillY(p.z) + 0.8;
         p.mesh.position.set(this.getCurveX(p.z) + p.x, cy, p.z);
+        if (Math.random() < 0.35) {
+          this.particles.spawnSparks(this.getCurveX(p.z) + p.x, cy - 0.4, p.z, 2);
+        }
         if (p.z > this.finishLineZ + 50 || p.z - this.player.z > 150) {
           this.scene.remove(p.mesh);
           this.projectiles.splice(i, 1);
@@ -1696,7 +2274,7 @@
       const groundY = this.getHillY(p.z);
 
       const targetCamX = curveX + p.x * 0.75;
-      const targetCamY = groundY + 4.6 + p.jumpY * 0.35;
+      const targetCamY = groundY + 4.8 + p.jumpY * 0.35;
       const targetCamZ = p.z - 11.5;
 
       this.camera.position.x += (targetCamX - this.camera.position.x) * 12.0 * dt;
@@ -1709,14 +2287,25 @@
         this.cameraShake = Math.max(0, this.cameraShake - 2.5 * dt);
       }
 
-      const lookAheadZ = p.z + 14.0;
+      // Pitch camera to anticipate upcoming hills and drops
+      const lookAheadZ = p.z + 18.0;
       const lookX = this.getCurveX(lookAheadZ) + p.x * 0.25;
-      const lookY = this.getHillY(lookAheadZ) + 2.0;
+      const lookY = this.getHillY(lookAheadZ) + 2.5;
       this.camera.lookAt(lookX, lookY, lookAheadZ);
 
-      // Sun Light Target Tracking Player
-      this.sunLight.position.set(targetCamX + 22, targetCamY + 35, targetCamZ + 15);
+      // SkyDome tracks camera position so it never clips or drifts away
+      if (this.skyDome) {
+        this.skyDome.position.set(targetCamX, targetCamY, targetCamZ);
+      }
+
+      // Sun Light & BotW Rim Light Target Tracking Player
+      this.sunLight.position.set(targetCamX + 24, targetCamY + 38, targetCamZ + 16);
       this.sunLight.target.position.set(targetCamX, targetCamY, targetCamZ + 20);
+
+      if (this.rimLight) {
+        this.rimLight.position.set(targetCamX - 22, targetCamY + 28, targetCamZ - 14);
+        this.rimLight.target.position.set(targetCamX, targetCamY, targetCamZ + 20);
+      }
 
       // Render WebGL Scene
       this.renderer.render(this.scene, this.camera);
