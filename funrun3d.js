@@ -563,7 +563,7 @@
       }
     }
 
-    usePowerup() {
+    usePowerup(direction = 'backward') {
       if (!this.currentWeapon || this.dead) return;
       const wp = this.currentWeapon;
       this.currentWeapon = null;
@@ -574,7 +574,22 @@
         this.engine.spawnSawblade(this.x, this.z, this);
       } else if (wp === 'trap') {
         sfx.play('trap_act');
-        this.engine.spawnTrap(this.x, this.z - 3.0, this);
+        if (direction === 'forward') {
+          // Thrown forward to hit opponents ahead or land on the track ahead!
+          this.engine.spawnThrownTrap(this.x, this.z, this);
+        } else {
+          // Standard backward drop
+          this.engine.spawnTrap(this.x, this.z - 3.2, this);
+        }
+      } else if (wp === 'punchBox') {
+        sfx.play('bounce');
+        if (direction === 'forward') {
+          // Thrown forward: boxing glove on spring strikes enemies ahead!
+          this.engine.spawnThrownPunchBox(this.x, this.z, this);
+        } else {
+          // Standard backward drop: surprise box with spring boxing glove
+          this.engine.spawnPunchBox(this.x, this.z - 3.2, this);
+        }
       } else if (wp === 'speed') {
         sfx.play('speed_act');
         this.speedBoostTimer = 2.8;
@@ -613,6 +628,15 @@
         if (this.isPlayer) {
           this.engine.triggerBloodScreen();
           this.engine.cameraShake = 0.7;
+        }
+      } else if (reason === 'punch') {
+        sfx.play('bounce');
+        sfx.play('blood');
+        this.engine.particles.spawnBlood(this.x, this.engine.getHillY(this.z) + 1.2, this.z, 25);
+        this.engine.particles.spawnSparks(this.x, this.engine.getHillY(this.z) + 1.2, this.z, 22);
+        if (this.isPlayer) {
+          this.engine.triggerBloodScreen();
+          this.engine.cameraShake = 0.85;
         }
       } else if (reason === 'lightning') {
         sfx.play('lightning_hit');
@@ -697,8 +721,9 @@
           this.aiTimer = 1.2 + Math.random() * 2.0;
         }
 
-        if (this.currentWeapon && Math.random() < 0.03) {
-          this.usePowerup();
+        if (this.currentWeapon && Math.random() < 0.04) {
+          const opponentAhead = this.engine.racers.some(other => other !== this && other.z > this.z && (other.z - this.z) < 35.0);
+          this.usePowerup(opponentAhead ? 'forward' : 'backward');
         }
 
         for (let r of this.engine.rocks) {
@@ -800,8 +825,10 @@
       this.bouncePads = [];
       this.projectiles = [];
       this.traps = [];
+      this.punchBoxes = [];
       this.clouds = [];
       this.particles = null;
+      this.keys = {};
 
       // UI References
       this.uiOverlay = document.getElementById('ui3d-overlay');
@@ -844,8 +871,8 @@
       this.scene.background = new THREE.Color(0xff8038);
       this.scene.fog = new THREE.FogExp2(0xff9944, 0.0020);
 
-      // Perspective Camera (Behind-the-Back Follower with deep view distance)
-      this.camera = new THREE.PerspectiveCamera(54, w / h, 0.5, 600);
+      // Perspective Camera (Behind-the-Back Follower with deep view distance & near plane safety)
+      this.camera = new THREE.PerspectiveCamera(54, w / h, 0.15, 600);
 
       // Lighting Setup (Sun, Sky Ambient, Hemisphere Ground Fill, BotW Rim Light)
       this.ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
@@ -1046,8 +1073,8 @@
       const segStep = 2.5; // Fine resolution for silky smooth slopes
       const segCount = Math.ceil((this.finishLineZ + 150) / segStep);
 
-      // Width profile: 15 vertices per cross-section
-      const lateralOffsets = [-55, -20, -9.5, -7.8, -7.0, -4.7, -2.3, 0, 2.3, 4.7, 7.0, 7.8, 9.5, 20, 55];
+      // Width profile: 19 vertices per cross-section with razor-sharp 3D curb walls
+      const lateralOffsets = [-60, -25, -12.0, -8.2, -8.1, -7.0, -6.9, -4.6, -2.3, 0, 2.3, 4.6, 6.9, 7.0, 8.1, 8.2, 12.0, 25, 60];
       const pointsPerSeg = lateralOffsets.length;
 
       const positions = [];
@@ -1067,48 +1094,58 @@
         const nz = -dx / len;
 
         const isEvenSeg = (i % 2 === 0);
+        const isRedKerb = (Math.floor(i / 2) % 2 === 0);
 
         for (let j = 0; j < pointsPerSeg; j++) {
           const w = lateralOffsets[j];
+          const absW = Math.abs(w);
           const vx = cx + nx * w;
           const vz = z + nz * w;
           let vy = cy;
 
-          let r = 0.28, g = 0.72, b = 0.25;
+          let r = 0.24, g = 0.62, b = 0.22;
 
-          if (Math.abs(w) > 18) {
-            // Far outer rolling terrain (Zelda BotW deep meadow green)
+          if (absW > 24) {
+            // Far outer rolling terrain (Zelda BotW deep meadow hills)
             vy = this.getGroundY(vx, vz);
-            r = 0.16; g = 0.46; b = 0.16;
-          } else if (Math.abs(w) > 8.5) {
-            // Earthy curb slope (warm soil)
-            vy = onBridge ? (cy - 16.0) : (cy - 0.55);
-            r = 0.42; g = 0.26; b = 0.14;
-          } else if (Math.abs(w) > 7.0) {
-            // Raised curb border
-            vy = cy + 0.22;
+            r = 0.13; g = 0.38; b = 0.13;
+          } else if (absW > 11.5) {
+            // Earthy hillside transition
+            vy = onBridge ? (cy - 30.0) : (cy - 0.85);
+            r = 0.35; g = 0.22; b = 0.12;
+          } else if (absW > 8.15) {
+            // Outer curb drop wall
+            vy = onBridge ? (cy - 24.0) : (cy - 0.25);
+            r = 0.38; g = 0.22; b = 0.11;
+          } else if (absW >= 6.95) {
+            // Raised 3D Kerb Border (Alternating Checkered Red & White Blocks!)
+            vy = cy + 0.26;
             if (!onBridge) {
-              // Alternating Red & White race kerb blocks!
-              const isRedKerb = (Math.floor(i / 2) % 2 === 0);
-              r = isRedKerb ? 0.90 : 0.95;
-              g = isRedKerb ? 0.14 : 0.95;
-              b = isRedKerb ? 0.14 : 0.95;
+              r = isRedKerb ? 0.92 : 0.96;
+              g = isRedKerb ? 0.12 : 0.96;
+              b = isRedKerb ? 0.12 : 0.96;
             } else {
-              // Bridge wooden curb beam
-              r = 0.48; g = 0.28; b = 0.14;
+              // Wooden bridge guard rail
+              r = 0.45; g = 0.26; b = 0.12;
             }
           } else {
-            // Running Track Surface
+            // Running Track Surface (w <= 6.9)
             if (onBridge) {
               // Wooden Suspension Bridge Planks
-              r = isEvenSeg ? 0.56 : 0.46;
-              g = isEvenSeg ? 0.34 : 0.28;
-              b = isEvenSeg ? 0.18 : 0.14;
+              r = isEvenSeg ? 0.52 : 0.42;
+              g = isEvenSeg ? 0.32 : 0.25;
+              b = isEvenSeg ? 0.16 : 0.12;
             } else {
-              // Vibrant Green Mowing Stripes (Zelda BotW vibrant green)
-              r = isEvenSeg ? 0.28 : 0.34;
-              g = isEvenSeg ? 0.72 : 0.80;
-              b = isEvenSeg ? 0.25 : 0.30;
+              // White dashed lane markers at w = ±2.3
+              const isLaneLine = Math.abs(absW - 2.3) < 0.12;
+              if (isLaneLine && (i % 4 < 2)) {
+                r = 0.95; g = 0.95; b = 0.95;
+              } else {
+                // Lush BotW manicured lawn mowing stripes
+                r = isEvenSeg ? 0.22 : 0.28;
+                g = isEvenSeg ? 0.58 : 0.68;
+                b = isEvenSeg ? 0.20 : 0.24;
+              }
             }
           }
 
@@ -1140,7 +1177,7 @@
 
       const mat = new THREE.MeshStandardMaterial({
         vertexColors: true,
-        roughness: 0.80,
+        roughness: 0.75,
         metalness: 0.08
       });
 
@@ -1272,16 +1309,16 @@
       const indices = [];
 
       const bladeAngles = [-0.35, 0.05, 0.42];
-      const bladeHeights = [0.65, 0.85, 0.70];
-      const bladeWidths = [0.12, 0.14, 0.12];
+      const bladeHeights = [1.15, 1.48, 1.25];
+      const bladeWidths = [0.22, 0.28, 0.22];
 
       bladeAngles.forEach((ang, idx) => {
         const h = bladeHeights[idx];
         const w = bladeWidths[idx];
         const sinA = Math.sin(ang);
         const cosA = Math.cos(ang);
-        const bendX = sinA * 0.28;
-        const bendZ = (idx === 1 ? 0.12 : -0.08);
+        const bendX = sinA * 0.38;
+        const bendZ = (idx === 1 ? 0.18 : -0.12);
 
         const baseV = idx * 3;
         // Bottom left, bottom right, top tip
@@ -1293,9 +1330,9 @@
 
         // Gradient coloring: deep root green to sunlit tip
         col.push(
-          0.16, 0.48, 0.14,
-          0.16, 0.48, 0.14,
-          0.44, 0.84, 0.26
+          0.14, 0.44, 0.12,
+          0.14, 0.44, 0.12,
+          0.48, 0.88, 0.26
         );
 
         indices.push(baseV, baseV + 1, baseV + 2);
@@ -1312,7 +1349,7 @@
         side: THREE.DoubleSide
       });
 
-      const grassCount = 1400;
+      const grassCount = 1800;
       const grassMesh = new THREE.InstancedMesh(bladeGeo, grassMat, grassCount);
       grassMesh.castShadow = false;
       grassMesh.receiveShadow = true;
@@ -1325,15 +1362,16 @@
         if (this.isBridge(z)) continue;
 
         const side = (i % 2 === 0) ? -1 : 1;
-        const lateralDist = side * (8.2 + (Math.sin(i * 13.7) * 0.5 + 0.5) * 6.5);
+        // Placed directly along the curb edges and on outer hills
+        const lateralDist = side * (7.6 + (Math.sin(i * 13.7) * 0.5 + 0.5) * 5.5);
         const cx = this.getCurveX(z);
         const x = cx + lateralDist;
         const y = this.getGroundY(x, z);
 
         dummy.position.set(x, y, z);
         dummy.rotation.y = (i * 2.39996) % (Math.PI * 2);
-        const s = 0.8 + ((i * 17) % 11) * 0.05;
-        dummy.scale.set(s, s * (0.85 + Math.random() * 0.3), s);
+        const s = 1.0 + ((i * 17) % 11) * 0.06;
+        dummy.scale.set(s, s * (0.9 + Math.random() * 0.4), s);
         dummy.updateMatrix();
 
         grassMesh.setMatrixAt(grassIdx++, dummy.matrix);
@@ -1343,8 +1381,8 @@
       this.foliageGroup.add(grassMesh);
 
       // 2. Instanced Colorful Wildflowers
-      const flowerCount = 300;
-      const flowerGeo = new THREE.DodecahedronGeometry(0.18, 0);
+      const flowerCount = 350;
+      const flowerGeo = new THREE.DodecahedronGeometry(0.28, 0);
       const flowerMat = new THREE.MeshLambertMaterial();
       const flowerMesh = new THREE.InstancedMesh(flowerGeo, flowerMat, flowerCount);
 
@@ -1362,14 +1400,14 @@
         if (this.isBridge(z)) continue;
 
         const side = (i % 2 === 0) ? -1 : 1;
-        const lateralDist = side * (8.0 + (Math.sin(i * 7.9) * 0.5 + 0.5) * 4.5);
+        const lateralDist = side * (7.5 + (Math.sin(i * 7.9) * 0.5 + 0.5) * 4.2);
         const cx = this.getCurveX(z);
         const x = cx + lateralDist;
-        const y = this.getGroundY(x, z) + 0.32;
+        const y = this.getGroundY(x, z) + 0.38;
 
         dummy.position.set(x, y, z);
         dummy.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, 0);
-        const s = 0.9 + Math.random() * 0.5;
+        const s = 1.1 + Math.random() * 0.6;
         dummy.scale.set(s, s, s);
         dummy.updateMatrix();
 
@@ -1392,40 +1430,80 @@
       const cx = this.getCurveX(z);
       const cy = this.getHillY(z);
 
-      const pillarGeo = new THREE.BoxGeometry(0.9, 9.5, 0.9);
-      const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+      const pillarGeo = new THREE.BoxGeometry(0.95, 9.5, 0.95);
+      const woodMat = new THREE.MeshLambertMaterial({ color: 0x5c3311 });
       const pL = new THREE.Mesh(pillarGeo, woodMat);
       pL.position.set(cx - 7.5, cy + 4.75, z);
+      pL.castShadow = true;
       const pR = new THREE.Mesh(pillarGeo, woodMat);
       pR.position.set(cx + 7.5, cy + 4.75, z);
+      pR.castShadow = true;
       this.finishGateGroup.add(pL);
       this.finishGateGroup.add(pR);
 
       // Top Crossbar
       const barGeo = new THREE.BoxGeometry(16.5, 2.4, 0.9);
-      const bar = new THREE.Mesh(barGeo, new THREE.MeshLambertMaterial({ color: 0xffd166 }));
+      const bar = new THREE.Mesh(barGeo, woodMat);
       bar.position.set(cx, cy + 8.5, z);
       this.finishGateGroup.add(bar);
 
-      // Checkered Canvas Banner
+      // Checkered Racing Canvas Banner (Double-sided and visible to oncoming racers!)
       const bannerCanvas = document.createElement('canvas');
-      bannerCanvas.width = 512;
-      bannerCanvas.height = 128;
+      bannerCanvas.width = 1024;
+      bannerCanvas.height = 256;
       const bctx = bannerCanvas.getContext('2d');
-      bctx.fillStyle = '#ffd166';
-      bctx.fillRect(0, 0, 512, 128);
-      bctx.fillStyle = '#111111';
-      bctx.font = '900 80px "Luckiest Guy", Impact, Arial';
+
+      // Vibrant Red/Gold banner background
+      bctx.fillStyle = '#c62828';
+      bctx.fillRect(0, 0, 1024, 256);
+
+      // Black & White Checkered Racing borders top and bottom
+      const checkSize = 32;
+      for (let x = 0; x < 1024; x += checkSize) {
+        for (let row = 0; row < 2; row++) {
+          bctx.fillStyle = ((x / checkSize + row) % 2 === 0) ? '#ffffff' : '#111111';
+          bctx.fillRect(x, row * checkSize, checkSize, checkSize);
+        }
+        for (let row = 0; row < 2; row++) {
+          bctx.fillStyle = ((x / checkSize + row) % 2 === 0) ? '#ffffff' : '#111111';
+          bctx.fillRect(x, 256 - (2 - row) * checkSize, checkSize, checkSize);
+        }
+      }
+
+      // Golden border frame
+      bctx.strokeStyle = '#ffd700';
+      bctx.lineWidth = 8;
+      bctx.strokeRect(8, 68, 1008, 120);
+
+      // Bold 3D "FINISH" Text
+      bctx.font = '900 96px "Luckiest Guy", Impact, Arial Black, sans-serif';
       bctx.textAlign = 'center';
       bctx.textBaseline = 'middle';
-      bctx.fillText('FINISH', 256, 64);
+
+      // Drop shadow
+      bctx.fillStyle = '#000000';
+      bctx.fillText('★  FINISH  ★', 515, 131);
+
+      // Text stroke and fill
+      bctx.fillStyle = '#ffea00';
+      bctx.strokeStyle = '#1a1a1a';
+      bctx.lineWidth = 14;
+      bctx.strokeText('★  FINISH  ★', 512, 128);
+      bctx.fillText('★  FINISH  ★', 512, 128);
+
       const bannerTex = new THREE.CanvasTexture(bannerCanvas);
-      const bannerPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(14, 2.2),
-        new THREE.MeshBasicMaterial({ map: bannerTex })
-      );
-      bannerPlane.position.set(cx, cy + 8.5, z + 0.48);
-      this.finishGateGroup.add(bannerPlane);
+      const bannerMat = new THREE.MeshBasicMaterial({ map: bannerTex, side: THREE.DoubleSide });
+
+      // Front Plane facing the oncoming racer (z - 0.48) with rotation.y = Math.PI
+      const bannerPlaneFront = new THREE.Mesh(new THREE.PlaneGeometry(15.2, 2.3), bannerMat);
+      bannerPlaneFront.position.set(cx, cy + 8.5, z - 0.48);
+      bannerPlaneFront.rotation.y = Math.PI;
+      this.finishGateGroup.add(bannerPlaneFront);
+
+      // Back Plane
+      const bannerPlaneBack = new THREE.Mesh(new THREE.PlaneGeometry(15.2, 2.3), bannerMat);
+      bannerPlaneBack.position.set(cx, cy + 8.5, z + 0.48);
+      this.finishGateGroup.add(bannerPlaneBack);
 
       this.scene.add(this.finishGateGroup);
     }
@@ -1870,6 +1948,128 @@
       this.traps.push({ mesh, x, z, active: true });
     }
 
+    spawnThrownTrap(x, z, owner) {
+      const mesh = this.createBearTrapMesh();
+      const startY = this.getHillY(z) + 1.4;
+      mesh.position.set(this.getCurveX(z) + x, startY, z + 2.0);
+      this.scene.add(mesh);
+      this.projectiles.push({
+        mesh,
+        x,
+        z: z + 2.0,
+        y: startY,
+        vy: 8.0,
+        speed: 52.0,
+        owner,
+        type: 'thrownTrap',
+        active: true
+      });
+    }
+
+    createPunchBoxMesh() {
+      const group = new THREE.Group();
+
+      // 1. Festive Surprise Box (Fun Run Punch-in-a-Box)
+      const boxGeo = new THREE.BoxGeometry(1.3, 1.2, 1.3);
+      const boxMat = new THREE.MeshStandardMaterial({
+        color: 0xc2185b,
+        roughness: 0.5,
+        metalness: 0.15
+      });
+      const box = new THREE.Mesh(boxGeo, boxMat);
+      box.position.y = 0.6;
+      box.castShadow = true;
+      group.add(box);
+
+      // Gold Ribbon Stripes around box
+      const ribMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, metalness: 0.7 });
+      const ribH = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.22, 1.32), ribMat);
+      ribH.position.y = 0.6;
+      group.add(ribH);
+
+      const ribV = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.22, 1.32), ribMat);
+      ribV.position.y = 0.6;
+      group.add(ribV);
+
+      // 2. Coiled Steel Spring
+      const springGroup = new THREE.Group();
+      const coilMat = new THREE.MeshStandardMaterial({ color: 0x90a4ae, metalness: 0.9, roughness: 0.2 });
+      for (let s = 0; s < 5; s++) {
+        const ringGeo = new THREE.TorusGeometry(0.22, 0.04, 6, 12);
+        ringGeo.rotateX(Math.PI / 2);
+        const ring = new THREE.Mesh(ringGeo, coilMat);
+        ring.position.y = 1.25 + s * 0.15;
+        springGroup.add(ring);
+      }
+      group.add(springGroup);
+      group.spring = springGroup;
+
+      // 3. Giant Cartoon Boxing Glove
+      const gloveGroup = new THREE.Group();
+      const gloveMat = new THREE.MeshLambertMaterial({ color: 0xd50000 });
+      const cuffMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+
+      // Fist body
+      const fistGeo = new THREE.SphereGeometry(0.48, 12, 10);
+      fistGeo.scale(1.2, 0.95, 1.3);
+      const fist = new THREE.Mesh(fistGeo, gloveMat);
+      fist.castShadow = true;
+      gloveGroup.add(fist);
+
+      // Thumb
+      const thumbGeo = new THREE.SphereGeometry(0.22, 8, 6);
+      thumbGeo.scale(1.0, 0.7, 1.3);
+      const thumb = new THREE.Mesh(thumbGeo, gloveMat);
+      thumb.position.set(-0.35, 0.12, 0.2);
+      thumb.rotation.y = -0.3;
+      gloveGroup.add(thumb);
+
+      // Wrist Cuff
+      const cuffGeo = new THREE.CylinderGeometry(0.38, 0.40, 0.18, 12);
+      const cuff = new THREE.Mesh(cuffGeo, cuffMat);
+      cuff.position.set(0, -0.32, -0.15);
+      gloveGroup.add(cuff);
+
+      // Star on glove
+      const starGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.04, 5);
+      starGeo.rotateX(Math.PI / 2);
+      const star = new THREE.Mesh(starGeo, ribMat);
+      star.position.set(0, 0.2, 0.58);
+      gloveGroup.add(star);
+
+      gloveGroup.position.set(0, 1.9, 0);
+      group.add(gloveGroup);
+      group.glove = gloveGroup;
+
+      return group;
+    }
+
+    spawnPunchBox(x, z, owner) {
+      const mesh = this.createPunchBoxMesh();
+      const cy = this.getHillY(z) + 0.05;
+      mesh.position.set(this.getCurveX(z) + x, cy, z);
+      this.scene.add(mesh);
+      this.punchBoxes.push({ mesh, x, z, active: true, punchTimer: 0 });
+    }
+
+    spawnThrownPunchBox(x, z, owner) {
+      const mesh = this.createPunchBoxMesh();
+      const startY = this.getHillY(z) + 1.6;
+      mesh.position.set(this.getCurveX(z) + x, startY, z + 2.0);
+      this.scene.add(mesh);
+      this.projectiles.push({
+        mesh,
+        x,
+        z: z + 2.0,
+        y: startY,
+        vy: 8.5,
+        speed: 52.0,
+        owner,
+        type: 'thrownPunchBox',
+        active: true
+      });
+    }
+
     triggerLightning(attacker) {
       this.racers.forEach(r => {
         if (r !== attacker && !r.dead) {
@@ -1886,6 +2086,7 @@
       for (let b of this.bouncePads) this.scene.remove(b.mesh);
       for (let p of this.projectiles) this.scene.remove(p.mesh);
       for (let t of this.traps) this.scene.remove(t.mesh);
+      for (let pb of this.punchBoxes) this.scene.remove(pb.mesh);
       if (this.foliageGroup) this.scene.remove(this.foliageGroup);
       this.rocks = [];
       this.crates = [];
@@ -1893,6 +2094,7 @@
       this.bouncePads = [];
       this.projectiles = [];
       this.traps = [];
+      this.punchBoxes = [];
     }
 
     // ------------------------------------------------------------------------
@@ -1917,6 +2119,7 @@
       if (iconImg) {
         if (itemType === 'blade') iconImg.src = 'assets/images/game/powerup/blade/icon.png';
         else if (itemType === 'trap') iconImg.src = 'assets/images/game/powerup/trap/icon.png';
+        else if (itemType === 'punchBox') iconImg.src = 'assets/images/game/powerup/bounceTrap/icon.png';
         else if (itemType === 'lightning') iconImg.src = 'assets/images/game/powerup/lightning/icon.png';
         else if (itemType === 'shield') iconImg.src = 'assets/images/game/powerup/shield/icon.png';
         else if (itemType === 'speed') iconImg.src = 'assets/images/game/powerup/speed/icon.png';
@@ -1935,8 +2138,14 @@
     initEvents() {
       window.addEventListener('resize', () => this.resize());
 
+      // Track key states for combos (e.g. Up + X for throwing forward)
+      window.addEventListener('keyup', (e) => {
+        this.keys[e.key] = false;
+      });
+
       // Keyboard Controls (Left is Left, Right is Right!)
       window.addEventListener('keydown', (e) => {
+        this.keys[e.key] = true;
         if (!this.isPlaying || !this.player) return;
         if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
           // Move to Screen Left (laneIndex 0 -> x = +4.5)
@@ -1949,7 +2158,10 @@
         } else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') {
           this.player.jump();
         } else if (e.key === 'x' || e.key === 'X' || e.key === 'Shift' || e.key === 'Enter') {
-          if (this.player.currentWeapon) this.player.usePowerup();
+          if (this.player.currentWeapon) {
+            const isThrowingForward = this.keys['ArrowUp'] || this.keys['w'] || this.keys['W'];
+            this.player.usePowerup(isThrowingForward ? 'forward' : 'backward');
+          }
         }
       });
 
@@ -2007,15 +2219,53 @@
         this.jumpBtn.addEventListener('touchstart', triggerJump, { passive: false });
       }
 
-      // Wooden Fire Action Button (Power-Up)
+      // Wooden Fire Action Button (Power-Up) with Swipe-Up Forward Throw vs Tap Backward Drop
       if (this.weaponBtn) {
-        this.weaponBtn.addEventListener('click', () => {
-          if (this.player) this.player.usePowerup();
-        });
+        let btnTouchStartY = 0;
+        let isSwipingForward = false;
+
         this.weaponBtn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
           e.stopPropagation();
-          if (this.player) this.player.usePowerup();
+          sfx.init();
+          btnTouchStartY = e.touches[0].clientY;
+          isSwipingForward = false;
         }, { passive: false });
+
+        this.weaponBtn.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const currentY = e.touches[0].clientY;
+          const diffY = currentY - btnTouchStartY;
+          if (diffY < -24) {
+            isSwipingForward = true;
+            this.weaponBtn.style.transform = 'translateY(-14px) scale(1.12)';
+          } else {
+            isSwipingForward = false;
+            this.weaponBtn.style.transform = 'translateY(0) scale(1.0)';
+          }
+        }, { passive: false });
+
+        this.weaponBtn.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.weaponBtn.style.transform = 'translateY(0) scale(1.0)';
+          if (!this.player || !this.player.currentWeapon) return;
+          if (isSwipingForward) {
+            this.player.usePowerup('forward');
+          } else {
+            this.player.usePowerup('backward');
+          }
+        }, { passive: false });
+
+        this.weaponBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (this.player && this.player.currentWeapon) {
+            const forward = this.keys['ArrowUp'] || this.keys['w'] || this.keys['W'];
+            this.player.usePowerup(forward ? 'forward' : 'backward');
+          }
+        });
       }
 
       if (this.exitBtn) {
@@ -2132,7 +2382,7 @@
             sfx.play('pickup');
             this.particles.spawnSparks(crate.x, crate.baseY, crate.z, 20);
 
-            const weapons = ['blade', 'trap', 'speed', 'shield', 'lightning'];
+            const weapons = ['blade', 'trap', 'punchBox', 'speed', 'shield', 'lightning'];
             r.currentWeapon = weapons[Math.floor(Math.random() * weapons.length)];
             if (r.isPlayer) this.showWeaponButton(r.currentWeapon);
           }
@@ -2180,6 +2430,29 @@
             r.takeDamage('trap');
           }
         }
+
+        // 5b. Stationary Punch-in-a-Box (Spring punches victim violently)
+        for (let pb of this.punchBoxes) {
+          if (!pb.active) continue;
+          const dz = Math.abs(r.z - pb.z);
+          const dx = Math.abs(r.x - pb.x);
+          if (dz < 1.3 && dx < 1.4 && r.jumpY < 0.6) {
+            pb.active = false;
+            // Pop glove forward on spring
+            if (pb.mesh.spring) {
+              pb.mesh.spring.scale.set(1.4, 2.8, 1.4);
+              pb.mesh.spring.position.y += 0.35;
+            }
+            if (pb.mesh.glove) {
+              pb.mesh.glove.position.y += 1.6;
+              pb.mesh.glove.position.z += 0.8;
+            }
+            setTimeout(() => {
+              this.scene.remove(pb.mesh);
+            }, 750);
+            r.takeDamage('punch');
+          }
+        }
       }
 
       // 6. Projectiles vs Racers
@@ -2190,10 +2463,16 @@
           if (r !== p.owner && !r.dead) {
             const dz = Math.abs(r.z - p.z);
             const dx = Math.abs(r.x - p.x);
-            if (dz < 1.5 && dx < 1.5) {
+            if (dz < 1.6 && dx < 1.5) {
               p.active = false;
               this.scene.remove(p.mesh);
-              r.takeDamage('blade');
+              if (p.type === 'thrownTrap') {
+                r.takeDamage('trap');
+              } else if (p.type === 'thrownPunchBox') {
+                r.takeDamage('punch');
+              } else {
+                r.takeDamage('blade');
+              }
               break;
             }
           }
@@ -2250,16 +2529,43 @@
         }
       }
 
-      // Update Projectiles (Sawblades spin at 35 rad/s and spray sparks)
+      // Update Projectiles (Sawblades, thrown bear traps, thrown punchboxes)
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const p = this.projectiles[i];
-        p.z += p.speed * dt;
-        p.mesh.rotation.z += dt * 35;
-        const cy = this.getHillY(p.z) + 0.8;
-        p.mesh.position.set(this.getCurveX(p.z) + p.x, cy, p.z);
-        if (Math.random() < 0.35) {
-          this.particles.spawnSparks(this.getCurveX(p.z) + p.x, cy - 0.4, p.z, 2);
+        if (p.type === 'thrownTrap' || p.type === 'thrownPunchBox') {
+          // Ballistic arc flight forward
+          p.z += p.speed * dt;
+          p.vy -= 26.0 * dt; // Gravity
+          p.y += p.vy * dt;
+          p.mesh.rotation.x += dt * 8.0; // Tumble forward in air
+
+          const groundH = this.getHillY(p.z) + (p.type === 'thrownTrap' ? 0.1 : 0.05);
+          if (p.y <= groundH) {
+            // Landed on track! Arm as stationary trap or punchBox
+            p.mesh.rotation.x = 0;
+            p.mesh.position.set(this.getCurveX(p.z) + p.x, groundH, p.z);
+            if (p.type === 'thrownTrap') {
+              this.traps.push({ mesh: p.mesh, x: p.x, z: p.z, active: true });
+            } else {
+              this.punchBoxes.push({ mesh: p.mesh, x: p.x, z: p.z, active: true, punchTimer: 0 });
+            }
+            this.particles.spawnDust(this.getCurveX(p.z) + p.x, groundH + 0.3, p.z, 6);
+            this.projectiles.splice(i, 1);
+            continue;
+          } else {
+            p.mesh.position.set(this.getCurveX(p.z) + p.x, p.y, p.z);
+          }
+        } else {
+          // Sawblades spin at 35 rad/s and spray sparks
+          p.z += p.speed * dt;
+          p.mesh.rotation.z += dt * 35;
+          const cy = this.getHillY(p.z) + 0.8;
+          p.mesh.position.set(this.getCurveX(p.z) + p.x, cy, p.z);
+          if (Math.random() < 0.35) {
+            this.particles.spawnSparks(this.getCurveX(p.z) + p.x, cy - 0.4, p.z, 2);
+          }
         }
+
         if (p.z > this.finishLineZ + 50 || p.z - this.player.z > 150) {
           this.scene.remove(p.mesh);
           this.projectiles.splice(i, 1);
@@ -2268,18 +2574,48 @@
 
       this.checkCollisions();
 
-      // Camera Follower (Silky smooth 3rd person tracking directly behind player)
+      // Camera Follower (Silky smooth 3rd person tracking directly behind player with downhill anti-clipping)
       const p = this.player;
       const curveX = this.getCurveX(p.z);
       const groundY = this.getHillY(p.z);
 
       const targetCamX = curveX + p.x * 0.75;
-      const targetCamY = groundY + 4.8 + p.jumpY * 0.35;
       const targetCamZ = p.z - 11.5;
+
+      // Anti-clipping downhill protection:
+      // When running downhill, the camera at (targetCamZ) might be over an uphill crest!
+      const groundAtCam = this.getHillY(targetCamZ);
+
+      // Check intermediate terrain points between camera and player to ensure line of sight is never blocked by a hill crest
+      let highestObstacleY = groundAtCam;
+      for (let step = 0.25; step <= 0.75; step += 0.25) {
+        const checkZ = targetCamZ + (p.z - targetCamZ) * step;
+        const checkH = this.getHillY(checkZ);
+        if (checkH > highestObstacleY) highestObstacleY = checkH;
+      }
+
+      // Base desired camera height relative to player
+      let desiredCamY = groundY + 4.9 + p.jumpY * 0.35;
+
+      // If terrain behind or between camera and player is higher, raise the camera above it
+      if (desiredCamY < groundAtCam + 3.2) {
+        desiredCamY = groundAtCam + 3.2;
+      }
+      if (desiredCamY < highestObstacleY + 2.8) {
+        desiredCamY = highestObstacleY + 2.8;
+      }
+
+      const targetCamY = desiredCamY;
 
       this.camera.position.x += (targetCamX - this.camera.position.x) * 12.0 * dt;
       this.camera.position.y += (targetCamY - this.camera.position.y) * 10.0 * dt;
       this.camera.position.z = targetCamZ;
+
+      // Hard clamp: camera must NEVER penetrate below terrain under current camera position
+      const currentGroundBelowCam = this.getHillY(this.camera.position.z);
+      if (this.camera.position.y < currentGroundBelowCam + 2.6) {
+        this.camera.position.y = currentGroundBelowCam + 2.6;
+      }
 
       if (this.cameraShake > 0) {
         this.camera.position.x += (Math.random() - 0.5) * this.cameraShake;
@@ -2287,10 +2623,10 @@
         this.cameraShake = Math.max(0, this.cameraShake - 2.5 * dt);
       }
 
-      // Pitch camera to anticipate upcoming hills and drops
-      const lookAheadZ = p.z + 18.0;
-      const lookX = this.getCurveX(lookAheadZ) + p.x * 0.25;
-      const lookY = this.getHillY(lookAheadZ) + 2.5;
+      // Pitch camera to keep player character centered and anticipate upcoming track
+      const lookAheadZ = p.z + 16.0;
+      const lookX = this.getCurveX(p.z) + p.x * 0.3;
+      const lookY = groundY + p.jumpY + 1.8;
       this.camera.lookAt(lookX, lookY, lookAheadZ);
 
       // SkyDome tracks camera position so it never clips or drifts away
