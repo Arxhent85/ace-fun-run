@@ -1073,6 +1073,7 @@ canvas {
   z-index: 1;
   background: #0b1510;
   display: block;
+  filter: contrast(1.12) saturate(1.16);
 }
 
 #gameCanvas3d.hidden {
@@ -1572,9 +1573,10 @@ canvas {
 .level3d-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
+  max-height: 54vh;
   overflow-y: auto;
-  padding: 4px 2px;
+  padding: 4px 6px 4px 2px;
 }
 
 .level3d-card {
@@ -1607,6 +1609,45 @@ canvas {
 .level3d-card.theme-3d-2 { border-left: 7px solid #38bdf8; }
 .level3d-card.theme-3d-3 { border-left: 7px solid #f472b6; }
 .level3d-card.theme-3d-4 { border-left: 7px solid #2dd4bf; }
+.level3d-card.theme-3d-5 { border-left: 7px solid #f97316; }
+.level3d-card.theme-3d-6 { border-left: 7px solid #22c55e; }
+.level3d-card.theme-3d-7 { border-left: 7px solid #eab308; }
+.level3d-card.theme-3d-8 { border-left: 7px solid #a855f7; }
+
+.results3d-card {
+  max-width: 540px !important;
+  background: radial-gradient(circle at top, #273754, #121a2b) !important;
+  border-color: #38bdf8 !important;
+}
+
+.results3d-primary-row {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.results3d-next-btn {
+  width: 100%;
+  padding: 12px 24px !important;
+  font-size: 19px !important;
+}
+
+.result-is-player {
+  outline: 2px solid #00e676;
+  box-shadow: 0 0 14px rgba(0, 230, 118, 0.45) !important;
+}
+
+.result-time-val {
+  font-family: monospace;
+  font-weight: 900;
+  font-size: 17px;
+}
+
+.result-time-val small {
+  font-size: 12px;
+  opacity: 0.85;
+  margin-left: 4px;
+}
 
 .level3d-card-banner {
   display: flex;

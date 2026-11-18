@@ -1339,7 +1339,11 @@
     1: { icon: '🌲', name: 'Sunset Valley', length: '1.180m' },
     2: { icon: '❄️', name: 'Snowset Peaks', length: '1.260m' },
     3: { icon: '🌸', name: 'Sugar Slope', length: '1.220m' },
-    4: { icon: '🏝️', name: 'Lagoon Canyon', length: '1.300m' }
+    4: { icon: '🏝️', name: 'Lagoon Canyon', length: '1.300m' },
+    5: { icon: '🌋', name: 'Volcano Ridge', length: '1.340m' },
+    6: { icon: '🌿', name: 'Emerald Jungle', length: '1.280m' },
+    7: { icon: '🏜️', name: 'Desert Oasis', length: '1.360m' },
+    8: { icon: '🌌', name: 'Starlight Summit', length: '1.420m' }
   };
 
   let selectedLevel3d = 1;
@@ -1467,26 +1471,31 @@
   if (homeOpen2dBtn) homeOpen2dBtn.addEventListener('click', openMapModal);
   if (homeQuick2dBtn) homeQuick2dBtn.addEventListener('click', launchClassicRace);
 
-  const lvlCards = [
-    document.getElementById('card3d-lvl1'),
-    document.getElementById('card3d-lvl2'),
-    document.getElementById('card3d-lvl3'),
-    document.getElementById('card3d-lvl4')
-  ];
-  lvlCards.forEach((card, idx) => {
-    if (card) {
-      card.addEventListener('click', () => {
-        sounds.play('jump');
-        lvlCards.forEach(c => c && c.classList.remove('selected'));
-        card.classList.add('selected');
-        selectedLevel3d = idx + 1;
-        syncTrackSummaryUI();
-      });
-      card.addEventListener('dblclick', () => {
-        selectedLevel3d = idx + 1;
-        syncTrackSummaryUI();
-        launchPocket3dRace();
-      });
+  const lvlCards = Array.from(document.querySelectorAll('.level3d-card'));
+  function select3dLevelCard(lvl) {
+    selectedLevel3d = lvl;
+    lvlCards.forEach(c => {
+      const cLvl = parseInt(c.getAttribute('data-level') || '1', 10);
+      c.classList.toggle('selected', cLvl === lvl);
+    });
+    syncTrackSummaryUI();
+  }
+
+  lvlCards.forEach((card) => {
+    const lvl = parseInt(card.getAttribute('data-level') || '1', 10);
+    card.addEventListener('click', () => {
+      sounds.play('jump');
+      select3dLevelCard(lvl);
+    });
+    card.addEventListener('dblclick', () => {
+      select3dLevelCard(lvl);
+      launchPocket3dRace();
+    });
+  });
+
+  window.addEventListener('funrun3d:levelchange', (e) => {
+    if (e && e.detail && e.detail.level) {
+      select3dLevelCard(e.detail.level);
     }
   });
 

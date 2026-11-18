@@ -174,7 +174,7 @@
           <section class="game-hub-card hub-3d">
             <div class="hub-card-top">
               <span class="hub-badge hub-badge-3d">★ 3D EDITION</span>
-              <span class="hub-count-badge">4 EINZIGARTIGE 3D-STRECKEN</span>
+              <span class="hub-count-badge">8 EINZIGARTIGE 3D-STRECKEN</span>
             </div>
             <h2 class="hub-game-title">POCKET RUN 3D</h2>
             <p class="hub-game-desc">
@@ -368,10 +368,38 @@
             <div class="level3d-tags"><span>3 Brücken</span><span>2 Lagunen</span><span>Klippen</span></div>
             <div class="level3d-desc">Große Küstenschleifen mit doppelten Lagunen-Seen und Klippensprüngen.</div>
           </div>
+          <!-- Level 5 -->
+          <div class="level3d-card theme-3d-5" data-level="5" id="card3d-lvl5">
+            <div class="level3d-card-banner"><span>LEVEL 5</span><span>1.340m</span></div>
+            <div class="level3d-name">🌋 Volcano Ridge</div>
+            <div class="level3d-tags"><span>Lava-Schlucht</span><span>Steile Kämme</span><span>Funken</span></div>
+            <div class="level3d-desc">Glühende Basalt-Strecke über Lava-Canyons mit harten Fels-Slaloms.</div>
+          </div>
+          <!-- Level 6 -->
+          <div class="level3d-card theme-3d-6" data-level="6" id="card3d-lvl6">
+            <div class="level3d-card-banner"><span>LEVEL 6</span><span>1.280m</span></div>
+            <div class="level3d-name">🌿 Emerald Jungle</div>
+            <div class="level3d-tags"><span>3 Flussbrücken</span><span>Trampoline</span><span>Dschungel</span></div>
+            <div class="level3d-desc">Tiefer Regenwald voller Sprung-Trampoline und enger Dschungel-Kurven.</div>
+          </div>
+          <!-- Level 7 -->
+          <div class="level3d-card theme-3d-7" data-level="7" id="card3d-lvl7">
+            <div class="level3d-card-banner"><span>LEVEL 7</span><span>1.360m</span></div>
+            <div class="level3d-name">🏜️ Desert Oasis</div>
+            <div class="level3d-tags"><span>2 Oasen</span><span>High-Speed</span><span>Dünen</span></div>
+            <div class="level3d-desc">Weite goldene Sanddünen mit Speed-Pad-Ketten und türkisen Oasen.</div>
+          </div>
+          <!-- Level 8 -->
+          <div class="level3d-card theme-3d-8" data-level="8" id="card3d-lvl8">
+            <div class="level3d-card-banner"><span>LEVEL 8</span><span>1.420m</span></div>
+            <div class="level3d-name">🌌 Starlight Summit</div>
+            <div class="level3d-tags"><span>3 Nachtbrücken</span><span>Nordlicht</span><span>Finale</span></div>
+            <div class="level3d-desc">Die lange Nacht-Meisterstrecke mit leuchtenden Laternen und steilen Gipfeln.</div>
+          </div>
         </div>
 
         <div class="level3d-tips">
-          🎮 <b>Steuerung:</b> Spur wechseln (←/→ oder Wischen) • Doppelsprung (Leertaste / ↑ / Wischen hoch) • Item (X / Feuer-Button, nach vorn wischen = nach vorne werfen)
+          🎮 <b>Steuerung:</b> Spur (←/→ oder Wischen) • Doppelsprung (Space/↑/Hoch-Wischen) • Item: Tippen/X = Standard • <b>Hoch-Wischen / ↑+X = Vorwärts</b> • <b>Runter-Wischen / ↓+X = Sägeblatt nach hinten!</b>
         </div>
 
         <div class="browser-footer">
@@ -383,19 +411,22 @@
     </div>
 
     <!-- 3D VICTORY / RESULTS SCREEN -->
-    <div id="results3d-screen" class="modal-screen hidden" style="display: none;">
-      <div class="results-card">
+    <div id="results3d-screen" class="modal-screen hidden">
+      <div class="results-card results3d-card">
         <h2 class="comic-title" id="result3d-title">ZIEL ERREICHT!</h2>
-        <p id="result3d-subtitle" style="color: #ffeb3b; font-weight: bold; margin-bottom: 15px;">POCKET RUN 3D — ERGEBNIS</p>
+        <p id="result3d-subtitle" style="color: #ffeb3b; font-weight: bold; margin-bottom: 14px;">POCKET RUN 3D — ZEITEN</p>
 
         <ul class="leaderboard-list" id="results3d-list">
           <!-- Dynamically populated -->
         </ul>
 
+        <div class="results3d-primary-row">
+          <button class="start-btn results3d-next-btn" id="btn3d-next-level">▶ NÄCHSTES LEVEL</button>
+        </div>
         <div class="results-actions-row">
-          <button class="start-btn" id="btn3d-restart">🏁 NOCHMAL</button>
+          <button class="secondary-btn" id="btn3d-restart">🔄 NOCHMAL</button>
           <button class="secondary-btn" id="btn3d-levels">🗺️ STRECKEN</button>
-          <button class="secondary-btn results-home-btn" id="btn3d-menu">🏠 MENÜ</button>
+          <button class="secondary-btn results-home-btn" id="btn3d-menu">🏠 HAUPTMENÜ</button>
         </div>
       </div>
     </div>

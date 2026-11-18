@@ -335,14 +335,22 @@
 
       const rng = createSeededRng(100 + level * 77);
 
-      // Base soil/path tone per level
-      let baseCol = '#8a5630', rutCol = '#693d1e', highlightCol = '#a66d42', grassEdgeCol = '#3b7d2e', pebbleCols = ['#6d6156', '#8d8174', '#4e443c'];
+      // Base soil/path tone per level (high-contrast AAA palettes for Levels 1-8)
+      let baseCol = '#7c4a24', rutCol = '#532d12', highlightCol = '#a36536', grassEdgeCol = '#2d6e22', pebbleCols = ['#5c5147', '#827467', '#3f362e'];
       if (level === 2) {
-        baseCol = '#7590aa'; rutCol = '#536f8a'; highlightCol = '#b8d7f0'; grassEdgeCol = '#dceeff'; pebbleCols = ['#4f6073', '#9db5cc', '#eef6ff'];
+        baseCol = '#5d7c9c'; rutCol = '#3d5873'; highlightCol = '#a8cce8'; grassEdgeCol = '#cbe5ff'; pebbleCols = ['#3a4e63', '#84a4c2', '#e4f2ff'];
       } else if (level === 3) {
-        baseCol = '#e69d73'; rutCol = '#c8774e'; highlightCol = '#fbd3b6'; grassEdgeCol = '#ff92b8'; pebbleCols = ['#fff5cc', '#ff80ab', '#80deea'];
+        baseCol = '#d17b54'; rutCol = '#a45430'; highlightCol = '#f2b899'; grassEdgeCol = '#e65b92'; pebbleCols = ['#ffe8a3', '#ff528e', '#4dd0e1'];
       } else if (level === 4) {
-        baseCol = '#d4a373'; rutCol = '#b07d4f'; highlightCol = '#faedcd'; grassEdgeCol = '#2ec4b6'; pebbleCols = ['#fef3c7', '#e76f51', '#2ec4b6'];
+        baseCol = '#c48b53'; rutCol = '#966131'; highlightCol = '#ebd0a2'; grassEdgeCol = '#14a398'; pebbleCols = ['#fde68a', '#d95d39', '#14b8a6'];
+      } else if (level === 5) {
+        baseCol = '#3d373b'; rutCol = '#221e21'; highlightCol = '#665a5e'; grassEdgeCol = '#f97316'; pebbleCols = ['#fb923c', '#57534e', '#1c1917'];
+      } else if (level === 6) {
+        baseCol = '#5c4028'; rutCol = '#3b2514'; highlightCol = '#85603e'; grassEdgeCol = '#15803d'; pebbleCols = ['#4d7c0f', '#78350f', '#365314'];
+      } else if (level === 7) {
+        baseCol = '#d49a4c'; rutCol = '#a87028'; highlightCol = '#f7d594'; grassEdgeCol = '#d97706'; pebbleCols = ['#fef3c7', '#b45309', '#92400e'];
+      } else if (level === 8) {
+        baseCol = '#334155'; rutCol = '#1e293b'; highlightCol = '#64748b'; grassEdgeCol = '#38bdf8'; pebbleCols = ['#38bdf8', '#a855f7', '#e2e8f0'];
       }
 
       ctx.fillStyle = baseCol;
@@ -441,13 +449,21 @@
         const y0 = p * plankH;
         const tone = (rng() - 0.5) * 18;
         if (level === 2) {
-          ctx.fillStyle = `rgb(${112 + tone}, ${96 + tone}, ${86 + tone})`;
+          ctx.fillStyle = `rgb(${98 + tone}, ${86 + tone}, ${78 + tone})`;
         } else if (level === 3) {
-          ctx.fillStyle = `rgb(${210 + tone}, ${142 + tone * 0.5}, ${96 + tone * 0.4})`;
+          ctx.fillStyle = `rgb(${194 + tone}, ${124 + tone * 0.5}, ${82 + tone * 0.4})`;
         } else if (level === 4) {
-          ctx.fillStyle = `rgb(${172 + tone}, ${136 + tone * 0.6}, ${88 + tone * 0.4})`;
+          ctx.fillStyle = `rgb(${158 + tone}, ${120 + tone * 0.6}, ${74 + tone * 0.4})`;
+        } else if (level === 5) {
+          ctx.fillStyle = `rgb(${68 + tone * 0.6}, ${56 + tone * 0.5}, ${54 + tone * 0.5})`;
+        } else if (level === 6) {
+          ctx.fillStyle = `rgb(${96 + tone}, ${66 + tone * 0.6}, ${36 + tone * 0.4})`;
+        } else if (level === 7) {
+          ctx.fillStyle = `rgb(${176 + tone}, ${130 + tone * 0.6}, ${72 + tone * 0.4})`;
+        } else if (level === 8) {
+          ctx.fillStyle = `rgb(${64 + tone * 0.6}, ${76 + tone * 0.6}, ${108 + tone * 0.6})`;
         } else {
-          ctx.fillStyle = `rgb(${118 + tone}, ${72 + tone * 0.7}, ${36 + tone * 0.4})`;
+          ctx.fillStyle = `rgb(${108 + tone}, ${64 + tone * 0.7}, ${30 + tone * 0.4})`;
         }
         ctx.fillRect(0, y0, W, plankH - 4);
 
@@ -1067,7 +1083,7 @@
       }
     }
 
-    usePowerup(direction = 'backward') {
+    usePowerup(direction = 'default') {
       if (!this.currentWeapon || this.dead) return;
       const wp = this.currentWeapon;
       this.currentWeapon = null;
@@ -1075,7 +1091,8 @@
 
       if (wp === 'blade') {
         sfx.play('blade_act');
-        this.engine.spawnSawblade(this.x, this.z, this);
+        const bladeDir = (direction === 'backward') ? 'backward' : 'forward';
+        this.engine.spawnSawblade(this.x, this.z, this, bladeDir);
       } else if (wp === 'trap') {
         sfx.play('trap_act');
         if (direction === 'forward') {
@@ -1358,6 +1375,8 @@
       this.projectiles = [];
       this.traps = [];
       this.punchBoxes = [];
+      this.lightningEffects = [];
+      this.lightningFlashTimer = 0;
       this.clouds = [];
       this.grassMaterials = [];
       this.flowerMaterials = [];
@@ -1390,6 +1409,7 @@
       this.bloodOverlay = document.getElementById('blood-overlay');
       this.resultsScreen = document.getElementById('results3d-screen');
       this.resultsList = document.getElementById('results3d-list');
+      this.nextLevelBtn = document.getElementById('btn3d-next-level');
       this.restartBtn = document.getElementById('btn3d-restart');
       this.levelsBtn = document.getElementById('btn3d-levels');
       this.menuBtn = document.getElementById('btn3d-menu');
@@ -1452,45 +1472,141 @@
       if (level === 4) {
         // Level 4: Lagoon Canyon (Bright Tropical Coast & Sandstone Cliffs)
         return {
-          skyTop: '#0369a1',
-          skyMid: '#38bdf8',
-          skyHorizon: '#fde68a',
-          skyBottom: '#14532d',
-          sunColor: '#fffbeb',
-          fogColor: '#bae6fd',
-          fogDensity: 0.00145,
-          hemiSky: 0xe0f2fe,
-          hemiGround: 0x2d6a4f,
-          sunLightCol: 0xfff8dc,
-          rimLightCol: 0x7dd3fc,
-          grassBase: '#1b5e20',
-          grassMid: '#43a047',
-          grassTip: '#9ccc65',
-          waterDeep: '#0369a1',
-          waterShallow: '#2dd4bf',
+          skyTop: '#035991',
+          skyMid: '#24a8e6',
+          skyHorizon: '#fcd975',
+          skyBottom: '#0f4725',
+          sunColor: '#fff8d6',
+          fogColor: '#9ed8f2',
+          fogDensity: 0.00115,
+          hemiSky: 0xd6f0ff,
+          hemiGround: 0x20573d,
+          sunLightCol: 0xfff4cc,
+          rimLightCol: 0x67e8f9,
+          grassBase: '#114d18',
+          grassMid: '#2f8a36',
+          grassTip: '#84cc16',
+          waterDeep: '#025c8a',
+          waterShallow: '#14b8a6',
           curbA: 0xf59e0b,
-          curbB: 0x2dd4bf,
+          curbB: 0x14b8a6,
           treeMix: 'hyrule'
         };
       }
-      // Level 1: Sunset Valley (BotW Hyrule Plains & Golden Horizon!)
+      if (level === 5) {
+        // Level 5: Volcano Ridge (Molten Lava Gorges, Basalt & Fiery Dusk)
+        return {
+          skyTop: '#240914',
+          skyMid: '#9a241c',
+          skyHorizon: '#ff7b29',
+          skyBottom: '#1c0c09',
+          sunColor: '#ffbf69',
+          fogColor: '#7a2c22',
+          fogDensity: 0.00145,
+          hemiSky: 0xffa07a,
+          hemiGround: 0x2b1512,
+          sunLightCol: 0xffc88a,
+          rimLightCol: 0xff5722,
+          grassBase: '#291a16',
+          grassMid: '#59291e',
+          grassTip: '#b4481e',
+          waterDeep: '#8c0d00',
+          waterShallow: '#ff6600',
+          curbA: 0xf97316,
+          curbB: 0x292524,
+          treeMix: 'pine_heavy'
+        };
+      }
+      if (level === 6) {
+        // Level 6: Emerald Jungle (Deep Tropical Rainforest & Sunbeams)
+        return {
+          skyTop: '#0d4f44',
+          skyMid: '#22a089',
+          skyHorizon: '#b5f2c4',
+          skyBottom: '#0c3018',
+          sunColor: '#fff9cc',
+          fogColor: '#87d1ad',
+          fogDensity: 0.00135,
+          hemiSky: 0xa7f3d0,
+          hemiGround: 0x123b1d,
+          sunLightCol: 0xfff6d1,
+          rimLightCol: 0x4ade80,
+          grassBase: '#0a3314',
+          grassMid: '#156b29',
+          grassTip: '#4ade80',
+          waterDeep: '#064e3b',
+          waterShallow: '#10b981',
+          curbA: 0x16a34a,
+          curbB: 0xfef08a,
+          treeMix: 'hyrule'
+        };
+      }
+      if (level === 7) {
+        // Level 7: Desert Oasis (Golden Sun Dunes & Azure Oasis Waters)
+        return {
+          skyTop: '#164e96',
+          skyMid: '#489ce3',
+          skyHorizon: '#ffd285',
+          skyBottom: '#6b4214',
+          sunColor: '#fff5b8',
+          fogColor: '#e6c89a',
+          fogDensity: 0.00115,
+          hemiSky: 0xffe8b3,
+          hemiGround: 0x7c4a1d,
+          sunLightCol: 0xfff2c2,
+          rimLightCol: 0xfbbf24,
+          grassBase: '#5c4b1a',
+          grassMid: '#8a7a26',
+          grassTip: '#d4b84a',
+          waterDeep: '#0369a1',
+          waterShallow: '#22d3ee',
+          curbA: 0xd97706,
+          curbB: 0xfef3c7,
+          treeMix: 'hyrule'
+        };
+      }
+      if (level === 8) {
+        // Level 8: Starlight Summit (Aurora Night Sky & Luminous Cyan Waters)
+        return {
+          skyTop: '#05081a',
+          skyMid: '#1e1b4b',
+          skyHorizon: '#38bdf8',
+          skyBottom: '#0b1024',
+          sunColor: '#e0f2fe',
+          fogColor: '#1d2b53',
+          fogDensity: 0.00125,
+          hemiSky: 0x93c5fd,
+          hemiGround: 0x1e1b4b,
+          sunLightCol: 0xdbeafe,
+          rimLightCol: 0x38bdf8,
+          grassBase: '#0e2438',
+          grassMid: '#1d4d6b',
+          grassTip: '#38bdf8',
+          waterDeep: '#0c1e4a',
+          waterShallow: '#38bdf8',
+          curbA: 0x38bdf8,
+          curbB: 0xc084fc,
+          treeMix: 'pine_heavy'
+        };
+      }
+      // Level 1: Sunset Valley (Rich High-Contrast BotW Hyrule Plains!)
       return {
-        skyTop: '#1d5bbf',
-        skyMid: '#66bde8',
-        skyHorizon: '#ffd59a',
-        skyBottom: '#24471d',
-        sunColor: '#fff6cc',
-        fogColor: '#d9e7ec',
-        fogDensity: 0.0016,
-        hemiSky: 0xbae6fd,
-        hemiGround: 0x3a6e2b,
-        sunLightCol: 0xfff9e6,
-        rimLightCol: 0xffe4b5,
-        grassBase: '#143818',
-        grassMid: '#246e2a',
-        grassTip: '#54b43e',
-        waterDeep: '#00264d',
-        waterShallow: '#14b2d1',
+        skyTop: '#154ba8',
+        skyMid: '#4ba8de',
+        skyHorizon: '#ffc97d',
+        skyBottom: '#1a3814',
+        sunColor: '#fff2b2',
+        fogColor: '#bfd9e3',
+        fogDensity: 0.00125,
+        hemiSky: 0xa8dffc,
+        hemiGround: 0x26521b,
+        sunLightCol: 0xfff4cf,
+        rimLightCol: 0xffd58a,
+        grassBase: '#0f2e12',
+        grassMid: '#1c5e21',
+        grassTip: '#4ab033',
+        waterDeep: '#002247',
+        waterShallow: '#0fa3c2',
         curbA: 0xd97706,
         curbB: 0xfef3c7,
         treeMix: 'hyrule'
@@ -1498,12 +1614,12 @@
     }
 
     /**
-     * Single source of truth for per-level 3D track geometry, elevation, bridges, lakes, and obstacles.
+     * Single source of truth for per-level 3D track geometry, elevation, bridges, lakes, and obstacles (Levels 1-8).
      */
     getTrackSpec(level = this.currentLevel) {
       if (level === 2) {
-        // Snowset Peaks: Dramatic Alpine switchbacks, tall summit climb & glacial plunge, two high spans
         return {
+          name: 'Snowset Peaks',
           finishLineZ: 1260,
           bridges: [[290, 480], [880, 1050]],
           bridgeLift: 12.5,
@@ -1514,8 +1630,8 @@
         };
       }
       if (level === 3) {
-        // Sugar Slope: Fast rhythmic chicanes, triple-bridge hops, rapid moguls & turbo chains
         return {
+          name: 'Sugar Slope',
           finishLineZ: 1220,
           bridges: [[170, 275], [500, 610], [830, 945]],
           bridgeLift: 9.0,
@@ -1526,8 +1642,8 @@
         };
       }
       if (level === 4) {
-        // Lagoon Canyon: Wide sweeping reverse coastal loops, cliff plunges, twin emerald lakes & 3 bridges
         return {
+          name: 'Lagoon Canyon',
           finishLineZ: 1300,
           bridges: [[210, 345], [565, 725], [935, 1075]],
           bridgeLift: 11.0,
@@ -1540,8 +1656,64 @@
           spawn: { stepMin: 17, stepVar: 8, wCrate: 0.24, wRock: 0.32, wBounce: 0.24, wSpeed: 0.20 }
         };
       }
-      // Level 1: Sunset Valley (Balanced flowing S-curves, rolling meadows, 2 classic bridges & valley lake)
+      if (level === 5) {
+        // Volcano Ridge: Steep volcanic ridge climb, long lava chasm bridges & boulder runs
+        return {
+          name: 'Volcano Ridge',
+          finishLineZ: 1340,
+          bridges: [[260, 440], [820, 1010]],
+          bridgeLift: 13.5,
+          lakes: [{ z: 620, side: 1, offsetX: 46, radius: 46, depth: 13.0, waterDrop: 4.5, w: 92, l: 112 }],
+          curveFn: (z) => Math.sin(z * 0.0145) * 18.0 + Math.sin(z * 0.0068) * 12.0,
+          hillFn: (z) => Math.sin(z * 0.008) * 21.0 + Math.sin(z * 0.029) * 9.5 + Math.cos(z * 0.062) * 4.0,
+          spawn: { stepMin: 17, stepVar: 7, wCrate: 0.24, wRock: 0.40, wBounce: 0.20, wSpeed: 0.16 }
+        };
+      }
+      if (level === 6) {
+        // Emerald Jungle: Winding rainforest chicanes, 3 river spans & bounce-pad chains
+        return {
+          name: 'Emerald Jungle',
+          finishLineZ: 1280,
+          bridges: [[190, 310], [530, 660], [900, 1030]],
+          bridgeLift: 9.5,
+          lakes: [{ z: 420, side: -1, offsetX: 46, radius: 44, depth: 11.5, waterDrop: 4.0, w: 86, l: 102 }],
+          curveFn: (z) => -Math.sin(z * 0.016) * 16.5 + Math.sin(z * 0.008) * 10.5,
+          hillFn: (z) => Math.sin(z * 0.017) * 12.5 + Math.cos(z * 0.036) * 7.8 + Math.sin(z * 0.072) * 3.2,
+          spawn: { stepMin: 18, stepVar: 8, wCrate: 0.26, wRock: 0.22, wBounce: 0.34, wSpeed: 0.18 }
+        };
+      }
+      if (level === 7) {
+        // Desert Oasis: Wide sweeping sand dunes, twin oasis lakes & turbo speed strips
+        return {
+          name: 'Desert Oasis',
+          finishLineZ: 1360,
+          bridges: [[310, 460], [860, 1020]],
+          bridgeLift: 10.5,
+          lakes: [
+            { z: 165, side: -1, offsetX: 48, radius: 46, depth: 11.5, waterDrop: 4.0, w: 90, l: 108 },
+            { z: 660, side: 1, offsetX: 46, radius: 46, depth: 11.5, waterDrop: 4.0, w: 90, l: 108 }
+          ],
+          curveFn: (z) => Math.sin(z * 0.0105) * 21.0 - Math.sin(z * 0.0045) * 11.0,
+          hillFn: (z) => Math.sin(z * 0.0125) * 15.0 + Math.sin(z * 0.032 + 0.7) * 7.5 + Math.cos(z * 0.055) * 3.0,
+          spawn: { stepMin: 18, stepVar: 8, wCrate: 0.24, wRock: 0.20, wBounce: 0.20, wSpeed: 0.36 }
+        };
+      }
+      if (level === 8) {
+        // Starlight Summit: Grand Finale! 1420m aurora mountain track with 3 towering bridges
+        return {
+          name: 'Starlight Summit',
+          finishLineZ: 1420,
+          bridges: [[220, 380], [620, 780], [1020, 1180]],
+          bridgeLift: 14.0,
+          lakes: [{ z: 495, side: 1, offsetX: 47, radius: 46, depth: 12.5, waterDrop: 4.2, w: 90, l: 110 }],
+          curveFn: (z) => Math.sin(z * 0.015) * 19.5 - Math.sin(z * 0.0072) * 12.5,
+          hillFn: (z) => Math.sin(z * 0.010) * 18.0 + Math.sin(z * 0.028 + 0.8) * 10.5 + Math.cos(z * 0.064) * 4.2,
+          spawn: { stepMin: 16, stepVar: 7, wCrate: 0.26, wRock: 0.30, wBounce: 0.22, wSpeed: 0.22 }
+        };
+      }
+      // Level 1: Sunset Valley
       return {
+        name: 'Sunset Valley',
         finishLineZ: 1180,
         bridges: [[240, 390], [740, 890]],
         bridgeLift: 10.0,
@@ -1573,28 +1745,28 @@
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1.06;
+      this.renderer.toneMappingExposure = 0.94;
 
       const maxAniso = this.renderer.capabilities ? Math.min(8, this.renderer.capabilities.getMaxAnisotropy()) : 4;
       this.textures = new TextureFactory(maxAniso);
 
       // 3D Scene & Fog
       this.scene = new THREE.Scene();
-      this.scene.background = new THREE.Color(0x66bde8);
-      this.scene.fog = new THREE.FogExp2(0xd9e7ec, 0.0016);
+      this.scene.background = new THREE.Color(0x4ba8de);
+      this.scene.fog = new THREE.FogExp2(0xbfd9e3, 0.00125);
 
       // Perspective Camera (Behind-the-Back Follower with deep horizon culling)
       this.camera = new THREE.PerspectiveCamera(56, w / h, 0.15, 750);
 
-      // Zelda-Copy1 4-Light BotW Rig (Ambient, Sky/Grass Hemisphere, Sun Shadow Caster, Silhouette Rim Light)
-      this.ambientLight = new THREE.AmbientLight(0xffffff, 0.48);
+      // High-Contrast AAA 4-Light Rig (Deep shadows + crisp sunlit highlights + silhouette rim)
+      this.ambientLight = new THREE.AmbientLight(0xffffff, 0.24);
       this.scene.add(this.ambientLight);
 
-      this.hemiLight = new THREE.HemisphereLight(0xbae6fd, 0x3a6e2b, 0.56);
+      this.hemiLight = new THREE.HemisphereLight(0xa8dffc, 0x26521b, 0.36);
       this.scene.add(this.hemiLight);
 
       const shadowRes = isMobile ? 1024 : 2048;
-      this.sunLight = new THREE.DirectionalLight(0xfff9e6, 1.18);
+      this.sunLight = new THREE.DirectionalLight(0xfff4cf, 1.42);
       this.sunLight.castShadow = true;
       this.sunLight.shadow.mapSize.width = shadowRes;
       this.sunLight.shadow.mapSize.height = shadowRes;
@@ -1610,7 +1782,7 @@
       this.scene.add(this.sunLight.target);
 
       // BotW-style rim light for crisp racer & foliage highlights
-      this.rimLight = new THREE.DirectionalLight(0xffe4b5, 0.38);
+      this.rimLight = new THREE.DirectionalLight(0xffd58a, 0.45);
       this.rimLight.castShadow = false;
       this.scene.add(this.rimLight);
       this.scene.add(this.rimLight.target);
@@ -1847,9 +2019,15 @@
         const colors = new Float32Array(pos.count * 3);
         const col = new THREE.Color();
         const isSnowBiome = (this.currentLevel === 2);
-        const cFoot = new THREE.Color(isSnowBiome ? 0x3b586e : 0x264d24);
-        const cRock = new THREE.Color(0x52606e);
-        const cSnow = new THREE.Color(0xf4f9ff);
+        const cFoot = new THREE.Color(
+          isSnowBiome ? 0x2c475c
+            : this.currentLevel === 5 ? 0x331814
+            : this.currentLevel === 7 ? 0x8f5b28
+            : this.currentLevel === 8 ? 0x172554
+            : 0x1c3d1a
+        );
+        const cRock = new THREE.Color(this.currentLevel === 5 ? 0x292121 : this.currentLevel === 7 ? 0xb4773a : 0x475569);
+        const cSnow = new THREE.Color(this.currentLevel === 5 ? 0xf97316 : this.currentLevel === 7 ? 0xfde68a : this.currentLevel === 8 ? 0x7dd3fc : 0xf0f7ff);
 
         for (let i = 0; i < pos.count; i++) {
           let vx = pos.getX(i);
@@ -1960,9 +2138,6 @@
       this.trackGroup = new THREE.Group();
 
       const level = this.currentLevel;
-      const isSnow = (level === 2);
-      const isSugar = (level === 3);
-      const isLagoon = (level === 4);
       const segStep = 1.8; // High resolution for smooth curves & slopes
       const segCount = Math.ceil((this.finishLineZ + 160) / segStep);
 
@@ -1972,34 +2147,23 @@
       const leftOffsets = [-105, -62, -32, -16.5, -10.5, -7.8, -7.15, -6.85];
       const rightOffsets = [6.85, 7.15, 7.8, 10.5, 16.5, 32, 62, 105];
 
-      const terrainPalette = isSnow
-        ? {
-            valley: new THREE.Color('#c2ddf2'),
-            hill: new THREE.Color('#e6f3ff'),
-            moss: new THREE.Color('#6488a3'),
-            rock: new THREE.Color('#475569')
-          }
-        : isSugar
-        ? {
-            valley: new THREE.Color('#3ea84b'),
-            hill: new THREE.Color('#57c25b'),
-            moss: new THREE.Color('#2c783b'),
-            rock: new THREE.Color('#785266')
-          }
-        : isLagoon
-        ? {
-            valley: new THREE.Color('#2e9e44'),
-            hill: new THREE.Color('#62c437'),
-            moss: new THREE.Color('#196b2b'),
-            rock: new THREE.Color('#8c6244')
-          }
-        : {
-            // Rich saturated BotW Hyrule emerald meadows matching shader grass seamlessly!
-            valley: new THREE.Color('#2d7d26'),
-            hill: new THREE.Color('#3f9634'),
-            moss: new THREE.Color('#1f591b'),
-            rock: new THREE.Color('#3b424c')
-          };
+      const terrainPalettes = {
+        1: { valley: '#226e1f', hill: '#358a2b', moss: '#174a14', rock: '#333a45' },
+        2: { valley: '#9ec5e6', hill: '#d6ecff', moss: '#527694', rock: '#3b4a5c' },
+        3: { valley: '#2d8f3b', hill: '#45ab4e', moss: '#1d6129', rock: '#694358' },
+        4: { valley: '#228a38', hill: '#4db52f', moss: '#135922', rock: '#855739' },
+        5: { valley: '#332422', hill: '#4f332c', moss: '#1f1514', rock: '#1f1a1c' },
+        6: { valley: '#155c25', hill: '#237a32', moss: '#0d3d18', rock: '#2e3b34' },
+        7: { valley: '#c78c3c', hill: '#e3ae59', moss: '#9c6623', rock: '#7a4b21' },
+        8: { valley: '#1a2b4c', hill: '#294270', moss: '#111b33', rock: '#1e1b4b' }
+      };
+      const tp = terrainPalettes[level] || terrainPalettes[1];
+      const terrainPalette = {
+        valley: new THREE.Color(tp.valley),
+        hill: new THREE.Color(tp.hill),
+        moss: new THREE.Color(tp.moss),
+        rock: new THREE.Color(tp.rock)
+      };
 
       const buildSideTerrain = (offsets) => {
         const ptsPerRow = offsets.length;
@@ -3131,6 +3295,10 @@
           cTmp.setHex(rng() > 0.4 ? 0xffffff : 0xd8f0ff);
         } else if (this.currentLevel === 3) {
           cTmp.setHex(rng() > 0.4 ? 0xfbcfe8 : 0xf472b6);
+        } else if (this.currentLevel === 5) {
+          cTmp.setHex(rng() > 0.4 ? 0xff7b29 : 0xfacc15); // volcano embers
+        } else if (this.currentLevel === 8) {
+          cTmp.setHex(rng() > 0.45 ? 0x38bdf8 : 0xc084fc); // aurora starlight
         } else {
           cTmp.setHSL(0.14 + rng() * 0.08, 0.95, 0.72); // golden firefly/sunmote
         }
@@ -3813,12 +3981,21 @@
       this.bouncePads.push({ mesh, x, z, laneX, active: true });
     }
 
-    spawnSawblade(x, z, owner) {
+    spawnSawblade(x, z, owner, direction = 'forward') {
       const mesh = this.createSawbladeMesh();
-      const cy = this.getHillY(z) + 0.8;
-      mesh.position.set(this.getCurveX(z) + x, cy, z + 2.0);
+      const isBack = (direction === 'backward');
+      const spawnZ = z + (isBack ? -2.4 : 2.2);
+      const cy = this.getHillY(spawnZ) + 0.8;
+      mesh.position.set(this.getCurveX(spawnZ) + x, cy, spawnZ);
       this.scene.add(mesh);
-      this.projectiles.push({ mesh, x, z: z + 2.0, speed: 44.0, owner, active: true });
+      this.projectiles.push({
+        mesh,
+        x,
+        z: spawnZ,
+        speed: isBack ? -42.0 : 46.0,
+        owner,
+        active: true
+      });
     }
 
     spawnTrap(x, z, owner) {
@@ -3951,13 +4128,86 @@
       });
     }
 
+    spawnLightningBolt(targetRacer) {
+      const group = new THREE.Group();
+      const cx = this.getCurveX(targetRacer.z) + targetRacer.x;
+      const groundY = this.getHillY(targetRacer.z);
+      const topY = groundY + 46;
+
+      // Multi-segment jagged 3D lightning bolt (white-hot core + electric cyan glow)
+      const segments = 9;
+      const pts = [];
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const y = THREE.MathUtils.lerp(topY, groundY + 0.4, t);
+        const jitter = (i === 0 || i === segments) ? 0 : (1.0 - Math.abs(t - 0.5)) * 2.6;
+        pts.push(new THREE.Vector3(
+          (Math.random() - 0.5) * jitter,
+          y - groundY,
+          (Math.random() - 0.5) * jitter * 0.6
+        ));
+      }
+
+      const curve = new THREE.CatmullRomCurve3(pts);
+      const coreGeo = new THREE.TubeGeometry(curve, 18, 0.22, 6, false);
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0 });
+      const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+      group.add(coreMesh);
+
+      const glowGeo = new THREE.TubeGeometry(curve, 18, 0.62, 6, false);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.72,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+      group.add(glowMesh);
+
+      // Ground impact shockwave ring + electric flash sphere
+      const ringGeo = new THREE.TorusGeometry(1.1, 0.22, 8, 24);
+      ringGeo.rotateX(Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xfef08a,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const shockRing = new THREE.Mesh(ringGeo, ringMat);
+      shockRing.position.y = 0.25;
+      group.add(shockRing);
+
+      const flashLight = new THREE.PointLight(0x7dd3fc, 6.0, 28);
+      flashLight.position.set(0, 3.5, 0);
+      group.add(flashLight);
+
+      group.position.set(cx, groundY, targetRacer.z);
+      this.scene.add(group);
+      this.particles.spawnSparks(cx, groundY + 1.2, targetRacer.z, 22);
+
+      this.lightningEffects.push({
+        group,
+        coreMat,
+        glowMat,
+        shockRing,
+        ringMat,
+        flashLight,
+        age: 0,
+        maxAge: 0.68
+      });
+    }
+
     triggerLightning(attacker) {
       this.racers.forEach(r => {
         if (r !== attacker && !r.dead) {
+          this.spawnLightningBolt(r);
           r.takeDamage('lightning');
         }
       });
-      this.cameraShake = 0.8;
+      this.lightningFlashTimer = 0.38;
+      this.cameraShake = 0.95;
     }
 
     clearWorldElements() {
@@ -3968,6 +4218,7 @@
       for (let p of this.projectiles) this.scene.remove(p.mesh);
       for (let t of this.traps) this.scene.remove(t.mesh);
       for (let pb of this.punchBoxes) this.scene.remove(pb.mesh);
+      for (let lf of this.lightningEffects) this.scene.remove(lf.group);
       this.rocks = [];
       this.crates = [];
       this.speedPads = [];
@@ -3975,6 +4226,8 @@
       this.projectiles = [];
       this.traps = [];
       this.punchBoxes = [];
+      this.lightningEffects = [];
+      this.lightningFlashTimer = 0;
     }
 
     // ------------------------------------------------------------------------
@@ -4039,8 +4292,9 @@
           this.player.jump();
         } else if (e.key === 'x' || e.key === 'X' || e.key === 'Shift' || e.key === 'Enter') {
           if (this.player.currentWeapon) {
-            const isThrowingForward = this.keys['ArrowUp'] || this.keys['w'] || this.keys['W'];
-            this.player.usePowerup(isThrowingForward ? 'forward' : 'backward');
+            const isForward = this.keys['ArrowUp'] || this.keys['w'] || this.keys['W'];
+            const isBackward = this.keys['ArrowDown'] || this.keys['s'] || this.keys['S'];
+            this.player.usePowerup(isForward ? 'forward' : (isBackward ? 'backward' : 'default'));
           }
         }
       });
@@ -4099,17 +4353,17 @@
         this.jumpBtn.addEventListener('touchstart', triggerJump, { passive: false });
       }
 
-      // Wooden Fire Action Button (Power-Up) with Swipe-Up Forward Throw vs Tap Backward Drop
+      // Wooden Fire Action Button (Power-Up): Swipe UP = Forward, Swipe DOWN = Backward (incl. Sawblade!), Tap = Default
       if (this.weaponBtn) {
         let btnTouchStartY = 0;
-        let isSwipingForward = false;
+        let swipeDir = 'default';
 
         this.weaponBtn.addEventListener('touchstart', (e) => {
           e.preventDefault();
           e.stopPropagation();
           sfx.init();
           btnTouchStartY = e.touches[0].clientY;
-          isSwipingForward = false;
+          swipeDir = 'default';
         }, { passive: false });
 
         this.weaponBtn.addEventListener('touchmove', (e) => {
@@ -4117,11 +4371,14 @@
           e.stopPropagation();
           const currentY = e.touches[0].clientY;
           const diffY = currentY - btnTouchStartY;
-          if (diffY < -24) {
-            isSwipingForward = true;
+          if (diffY < -22) {
+            swipeDir = 'forward';
             this.weaponBtn.style.transform = 'translateY(-14px) scale(1.12)';
+          } else if (diffY > 22) {
+            swipeDir = 'backward';
+            this.weaponBtn.style.transform = 'translateY(14px) scale(1.12)';
           } else {
-            isSwipingForward = false;
+            swipeDir = 'default';
             this.weaponBtn.style.transform = 'translateY(0) scale(1.0)';
           }
         }, { passive: false });
@@ -4131,11 +4388,7 @@
           e.stopPropagation();
           this.weaponBtn.style.transform = 'translateY(0) scale(1.0)';
           if (!this.player || !this.player.currentWeapon) return;
-          if (isSwipingForward) {
-            this.player.usePowerup('forward');
-          } else {
-            this.player.usePowerup('backward');
-          }
+          this.player.usePowerup(swipeDir);
         }, { passive: false });
 
         this.weaponBtn.addEventListener('click', (e) => {
@@ -4143,13 +4396,21 @@
           e.stopPropagation();
           if (this.player && this.player.currentWeapon) {
             const forward = this.keys['ArrowUp'] || this.keys['w'] || this.keys['W'];
-            this.player.usePowerup(forward ? 'forward' : 'backward');
+            const backward = this.keys['ArrowDown'] || this.keys['s'] || this.keys['S'];
+            this.player.usePowerup(forward ? 'forward' : (backward ? 'backward' : 'default'));
           }
         });
       }
 
       if (this.exitBtn) {
         this.exitBtn.addEventListener('click', () => this.stopAndReturnToMenu('levels'));
+      }
+      if (this.nextLevelBtn) {
+        this.nextLevelBtn.addEventListener('click', () => {
+          const nextLvl = this.currentLevel < 8 ? this.currentLevel + 1 : 1;
+          window.dispatchEvent(new CustomEvent('funrun3d:levelchange', { detail: { level: nextLvl } }));
+          this.startRace(this.controlMode, nextLvl);
+        });
       }
       if (this.restartBtn) {
         this.restartBtn.addEventListener('click', () => this.startRace(this.controlMode, this.currentLevel));
@@ -4232,7 +4493,10 @@
         this.levelSelectScreen.style.display = 'none';
         this.levelSelectScreen.classList.add('hidden');
       }
-      if (this.resultsScreen) this.resultsScreen.classList.add('hidden');
+      if (this.resultsScreen) {
+        this.resultsScreen.style.display = 'none';
+        this.resultsScreen.classList.add('hidden');
+      }
       if (this.uiOverlay) this.uiOverlay.classList.remove('hidden');
 
       this.canvas.classList.remove('hidden');
@@ -4547,7 +4811,7 @@
           }
         } else {
           p.z += p.speed * dt;
-          p.mesh.rotation.z += dt * 35;
+          p.mesh.rotation.z += dt * (p.speed >= 0 ? 38 : -38);
           const cy = this.getHillY(p.z) + 0.8;
           p.mesh.position.set(this.getCurveX(p.z) + p.x, cy, p.z);
           if (Math.random() < 0.35) {
@@ -4555,10 +4819,40 @@
           }
         }
 
-        if (p.z > this.finishLineZ + 50 || p.z - this.player.z > 150) {
+        if (p.z > this.finishLineZ + 50 || p.z < -20 || Math.abs(p.z - this.player.z) > 150) {
           this.scene.remove(p.mesh);
           this.projectiles.splice(i, 1);
         }
+      }
+
+      // Animate 3D Lightning Bolts, Shockwaves & Sky Flash
+      if (this.lightningFlashTimer > 0) {
+        this.lightningFlashTimer = Math.max(0, this.lightningFlashTimer - dt);
+        if (this.ambientLight) {
+          const pulse = Math.sin(this.lightningFlashTimer * 48) > 0 ? 1.0 : 0.45;
+          this.ambientLight.intensity = 0.24 + (this.lightningFlashTimer / 0.38) * 1.45 * pulse;
+        }
+      } else if (this.ambientLight && this.ambientLight.intensity !== 0.24) {
+        this.ambientLight.intensity = 0.24;
+      }
+
+      for (let i = this.lightningEffects.length - 1; i >= 0; i--) {
+        const lf = this.lightningEffects[i];
+        lf.age += dt;
+        const progress = lf.age / lf.maxAge;
+        if (progress >= 1.0) {
+          this.scene.remove(lf.group);
+          this.lightningEffects.splice(i, 1);
+          continue;
+        }
+        const flicker = Math.sin(lf.age * 95) > -0.25 ? 1.0 : 0.25;
+        const fade = Math.max(0, 1.0 - progress);
+        lf.coreMat.opacity = fade * flicker;
+        lf.glowMat.opacity = fade * 0.78 * flicker;
+        lf.flashLight.intensity = fade * 8.0 * flicker;
+        const ringScale = 1.0 + progress * 4.5;
+        lf.shockRing.scale.set(ringScale, ringScale, ringScale);
+        lf.ringMat.opacity = fade * 0.95;
       }
 
       this.checkCollisions();
@@ -4662,12 +4956,14 @@
       const currentTotalTime = (Date.now() - this.raceStartTime) / 1000;
       this.racers.forEach(r => {
         if (r.finishTime === null) {
-          r.finishTime = currentTotalTime + (this.finishLineZ - r.z) / Math.max(r.speed, 5);
+          r.finishTime = currentTotalTime + Math.max(0.05, (this.finishLineZ - r.z) / Math.max(r.speed, 12));
         }
       });
 
       const finalRanking = [...this.racers].sort((a, b) => a.finishTime - b.finishTime);
       const playerRank = finalRanking.findIndex(r => r.isPlayer) + 1;
+      const bestTime = finalRanking[0] ? finalRanking[0].finishTime : currentTotalTime;
+      const spec = this.getTrackSpec(this.currentLevel);
 
       const titleEl = document.getElementById('result3d-title');
       if (titleEl) {
@@ -4675,17 +4971,37 @@
         titleEl.style.color = playerRank === 1 ? '#ffea00' : '#ffffff';
       }
 
+      const subtitleEl = document.getElementById('result3d-subtitle');
+      if (subtitleEl) {
+        subtitleEl.textContent = `LEVEL ${this.currentLevel} • ${(spec.name || 'POCKET RUN').toUpperCase()} — ZEITEN`;
+      }
+
+      if (this.nextLevelBtn) {
+        const nextLvl = this.currentLevel < 8 ? this.currentLevel + 1 : 1;
+        const nextSpec = this.getTrackSpec(nextLvl);
+        this.nextLevelBtn.textContent = this.currentLevel < 8
+          ? `▶ LEVEL ${nextLvl}: ${nextSpec.name.toUpperCase()}`
+          : `▶ LEVEL 1: ${nextSpec.name.toUpperCase()}`;
+      }
+
+      const medals = ['🥇', '🥈', '🥉', '4.'];
       let lbHTML = '';
       finalRanking.forEach((r, idx) => {
+        const rankClass = `rank-${idx + 1}`;
+        const delta = idx === 0 ? '' : ` (+${(r.finishTime - bestTime).toFixed(2)}s)`;
+        const displayName = r.isPlayer ? 'Du ★' : r.name;
         lbHTML += `
-          <li class="leaderboard-item ${r.isPlayer ? 'rank-1' : ''}" style="display:flex; justify-content:space-between; padding:8px 12px; margin-bottom:6px; background:rgba(0,0,0,0.5); border-radius:8px;">
-            <span style="color:#ffea00; font-weight:bold;">#${idx + 1} ${r.name}</span>
-            <span style="color:#ffffff; font-family:monospace;">${formatTime(r.finishTime)}</span>
+          <li class="leaderboard-item ${rankClass} ${r.isPlayer ? 'result-is-player' : ''}">
+            <span>${medals[idx] || '#' + (idx + 1)} ${displayName}</span>
+            <span class="result-time-val">${formatTime(r.finishTime)}<small>${delta}</small></span>
           </li>
         `;
       });
       if (this.resultsList) this.resultsList.innerHTML = lbHTML;
-      if (this.resultsScreen) this.resultsScreen.classList.remove('hidden');
+      if (this.resultsScreen) {
+        this.resultsScreen.style.display = 'flex';
+        this.resultsScreen.classList.remove('hidden');
+      }
       sfx.play('start');
     }
 
@@ -4699,7 +5015,10 @@
       document.body.classList.remove('mode-3d');
       if (this.canvas) this.canvas.classList.add('hidden');
       if (this.uiOverlay) this.uiOverlay.classList.add('hidden');
-      if (this.resultsScreen) this.resultsScreen.classList.add('hidden');
+      if (this.resultsScreen) {
+        this.resultsScreen.style.display = 'none';
+        this.resultsScreen.classList.add('hidden');
+      }
       if (this.bloodOverlay) this.bloodOverlay.classList.add('hidden');
 
       const canvas2d = document.getElementById('gameCanvas');
