@@ -36,24 +36,28 @@
 
   // DOM Elements - Menus & Modals
   const mainMenuScreen = document.getElementById('main-menu-screen');
-  const mainPlayBtn = document.getElementById('main-play-btn');
   const mainFullscreenBtn = document.getElementById('main-fullscreen-btn');
   const menuSettingsBtn = document.getElementById('menu-settings-btn');
-  const menuRankingBtn = document.getElementById('menu-ranking-btn');
   const menuTutorialBtn = document.getElementById('menu-tutorial-btn');
   const menuCharacterBtn = document.getElementById('menu-character-btn');
-  const menuMapBtn = document.getElementById('menu-map-btn');
+
+  const homeOpen3dBtn = document.getElementById('home-open-3d-btn');
+  const homeQuick3dBtn = document.getElementById('home-quick-3d-btn');
+  const home3dTrackLabel = document.getElementById('home-3d-track-label');
+  const homeOpen2dBtn = document.getElementById('home-open-2d-btn');
+  const homeQuick2dBtn = document.getElementById('home-quick-2d-btn');
+  const home2dTrackLabel = document.getElementById('home-2d-track-label');
+  const homeCharImg = document.getElementById('home-char-img');
+  const homeCharName = document.getElementById('home-char-name');
 
   const mapModal = document.getElementById('map-modal');
   const mapCloseBtn = document.getElementById('map-close-btn');
+  const mapBackBtn = document.getElementById('map-back-btn');
   const mapConfirmBtn = document.getElementById('map-confirm-btn');
   const mapGridContainer = document.getElementById('map-grid-container');
-
-  const modeSelectScreen = document.getElementById('mode-select-screen');
-  const modePracticeBtn = document.getElementById('mode-practice-btn');
-  const modeQuickplayBtn = document.getElementById('mode-quickplay-btn');
-  const modeFriendsBtn = document.getElementById('mode-friends-btn');
-  const modeHomeBtn = document.getElementById('mode-home-btn');
+  const mapThemeTabs = document.querySelectorAll('#map-theme-tabs .theme-tab-btn');
+  const mapSelectedSummary = document.getElementById('map-selected-summary');
+  const mapCharBtn = document.getElementById('map-char-btn');
 
   const powerupsGuideModal = document.getElementById('powerups-guide-modal');
   const guideCloseBtn = document.getElementById('guide-close-btn');
@@ -68,9 +72,6 @@
   const soundToggleBtn = document.getElementById('sound-toggle-btn');
   const settingsFullscreenBtn = document.getElementById('settings-fullscreen-btn');
 
-  const rankingModal = document.getElementById('ranking-modal');
-  const rankingCloseBtn = document.getElementById('ranking-close-btn');
-
   // DOM Elements - In-Game HUD
   const uiOverlay = document.getElementById('ui-overlay');
   const hudExitBtn = document.getElementById('hud-exit-btn');
@@ -84,6 +85,7 @@
   const resultsScreen = document.getElementById('results-screen');
   const resultsList = document.getElementById('results-list');
   const restartBtn = document.getElementById('restart-btn');
+  const resultsLevelsBtn = document.getElementById('results-levels-btn');
   const resultsMenuBtn = document.getElementById('results-menu-btn');
   const bloodOverlay = document.getElementById('blood-overlay');
   const markerPlayer = document.getElementById('marker-player');
@@ -100,10 +102,6 @@
   if (uiOverlay) {
     uiOverlay.style.display = 'none';
     uiOverlay.classList.add('hidden');
-  }
-  if (modeSelectScreen) {
-    modeSelectScreen.style.display = 'none';
-    modeSelectScreen.classList.add('hidden');
   }
   if (mainMenuScreen) {
     mainMenuScreen.style.display = 'flex';
@@ -1312,6 +1310,10 @@
       const text = fullscreenBtn.querySelector('.hud-text');
       if (text) text.textContent = isFs ? 'Fenster' : 'Vollbild';
     }
+    if (mainFullscreenBtn) {
+      const lbl = mainFullscreenBtn.querySelector('.fs-label');
+      if (lbl) lbl.textContent = isFs ? 'Fenster' : 'Vollbild';
+    }
     if (settingsFullscreenBtn) {
       settingsFullscreenBtn.textContent = isFs ? 'FENSTER' : 'VOLLBILD';
     }
@@ -1331,90 +1333,82 @@
     });
   }
 
-  // Game Selection Modal (Pocket Run vs Classic)
-  const gameSelectScreen = document.getElementById('game-select-screen');
-  const optPocketBtn = document.getElementById('opt-pocket-btn');
-  const optClassicBtn = document.getElementById('opt-classic-btn');
-  const gameSelectBackBtn = document.getElementById('game-select-back-btn');
+  // Sync Labels & Animal Badge Across Hub and Level Browsers
+  const ANIMAL_NAMES = { bear: 'Bär', fox: 'Fuchs', beaver: 'Biber', baldeagle: 'Adler' };
+  const LEVELS_3D_INFO = {
+    1: { icon: '🌲', name: 'Sunset Valley', length: '1.180m' },
+    2: { icon: '❄️', name: 'Snowset Peaks', length: '1.260m' },
+    3: { icon: '🌸', name: 'Sugar Slope', length: '1.220m' },
+    4: { icon: '🏝️', name: 'Lagoon Canyon', length: '1.300m' }
+  };
 
-  // Navigation: Main Menu -> Click PLAY -> Choose Pocket Run or Classic
-  mainPlayBtn.addEventListener('click', () => {
-    sounds.init();
-    sounds.play('jump');
-    mainMenuScreen.style.display = 'none';
-    mainMenuScreen.classList.add('hidden');
-    if (gameSelectScreen) {
-      gameSelectScreen.style.display = 'flex';
-      gameSelectScreen.classList.remove('hidden');
-    } else {
-      modeSelectScreen.style.display = 'flex';
-      modeSelectScreen.classList.remove('hidden');
+  let selectedLevel3d = 1;
+  let selectedThemeFilter = 'all';
+
+  function syncAnimalUI(animal) {
+    const src = `assets/images/gui/market/accessories/${animal}.png`;
+    const label = ANIMAL_NAMES[animal] || 'Bär';
+    if (homeCharImg) homeCharImg.src = src;
+    if (homeCharName) homeCharName.textContent = `${label} ▾`;
+    document.querySelectorAll('.sync-char-img').forEach(img => { img.src = src; });
+    document.querySelectorAll('.sync-char-name').forEach(el => { el.textContent = label; });
+    const markerPlayerImg = document.getElementById('marker-player-img');
+    if (markerPlayerImg) markerPlayerImg.src = src;
+  }
+
+  function syncTrackSummaryUI() {
+    const l3 = LEVELS_3D_INFO[selectedLevel3d] || LEVELS_3D_INFO[1];
+    if (home3dTrackLabel) home3dTrackLabel.textContent = `${l3.icon} ${l3.name} • ${l3.length}`;
+    if (lvl3dSelectedSummary) lvl3dSelectedSummary.textContent = `Level ${selectedLevel3d} • ${l3.name} (${l3.length})`;
+
+    const meta2d = mapsCatalog.find(m => m.key === selectedMapKey);
+    const idStr = meta2d ? `#${meta2d.id}` : '#1';
+    const themeStr = (meta2d && meta2d.themeName) || 'Wald';
+    const summary2d = `${idStr} ${selectedMapName} • ${themeStr}`;
+    if (home2dTrackLabel) home2dTrackLabel.textContent = summary2d;
+    if (mapSelectedSummary) mapSelectedSummary.textContent = summary2d;
+  }
+
+  function showHomeMenu() {
+    if (countdownDisplay) countdownDisplay.classList.remove('show');
+    if (mapModal) {
+      mapModal.style.display = 'none';
+      mapModal.classList.add('hidden');
     }
-    gameState = 'game_select';
-  });
-
-  // 1. Choose Classic (2D Original)
-  if (optClassicBtn) {
-    optClassicBtn.addEventListener('click', () => {
-      sounds.play('jump');
-      if (gameSelectScreen) {
-        gameSelectScreen.style.display = 'none';
-        gameSelectScreen.classList.add('hidden');
-      }
-      modeSelectScreen.style.display = 'flex';
-      modeSelectScreen.classList.remove('hidden');
-      gameState = 'mode_select';
-    });
-  }
-
-  // 2. Choose Pocket Run (3D Edition)
-  if (optPocketBtn) {
-    optPocketBtn.addEventListener('click', () => {
-      sounds.play('jump');
-      if (gameSelectScreen) {
-        gameSelectScreen.style.display = 'none';
-        gameSelectScreen.classList.add('hidden');
-      }
-      if (levelSelect3dScreen) {
-        levelSelect3dScreen.style.display = 'flex';
-        levelSelect3dScreen.classList.remove('hidden');
-      }
-    });
-  }
-
-  // Back from Game Select to Main Menu
-  if (gameSelectBackBtn) {
-    gameSelectBackBtn.addEventListener('click', () => {
-      sounds.play('jump');
-      if (gameSelectScreen) {
-        gameSelectScreen.style.display = 'none';
-        gameSelectScreen.classList.add('hidden');
-      }
+    if (levelSelect3dScreen) {
+      levelSelect3dScreen.style.display = 'none';
+      levelSelect3dScreen.classList.add('hidden');
+    }
+    if (resultsScreen) {
+      resultsScreen.style.display = 'none';
+      resultsScreen.classList.add('hidden');
+    }
+    if (uiOverlay) {
+      uiOverlay.style.display = 'none';
+      uiOverlay.classList.add('hidden');
+    }
+    if (mainMenuScreen) {
       mainMenuScreen.style.display = 'flex';
       mainMenuScreen.classList.remove('hidden');
-      gameState = 'main_menu';
-    });
+    }
+    gameState = 'main_menu';
   }
 
-  modeHomeBtn.addEventListener('click', () => {
-    sounds.play('jump');
-    modeSelectScreen.style.display = 'none';
-    modeSelectScreen.classList.add('hidden');
-    mainMenuScreen.style.display = 'flex';
-    mainMenuScreen.classList.remove('hidden');
-    gameState = 'main_menu';
-  });
-
-  async function startRaceFlow() {
+  async function launchClassicRace() {
     sounds.init();
-    mainMenuScreen.style.display = 'none';
-    mainMenuScreen.classList.add('hidden');
-    modeSelectScreen.style.display = 'none';
-    modeSelectScreen.classList.add('hidden');
-    resultsScreen.style.display = 'none';
-    resultsScreen.classList.add('hidden');
-    uiOverlay.style.display = 'flex';
-    uiOverlay.classList.remove('hidden');
+    if (mainMenuScreen) {
+      mainMenuScreen.style.display = 'none';
+      mainMenuScreen.classList.add('hidden');
+    }
+    closeMapModal();
+    if (resultsScreen) {
+      resultsScreen.style.display = 'none';
+      resultsScreen.classList.add('hidden');
+    }
+    if (uiOverlay) {
+      uiOverlay.style.display = 'flex';
+      uiOverlay.classList.remove('hidden');
+    }
     if (selectedMapKey !== currentMapKey) {
       await loadMap(selectedMapKey, selectedMapName);
     } else {
@@ -1423,42 +1417,61 @@
     startCountdown();
   }
 
-  modePracticeBtn.addEventListener('click', startRaceFlow);
-  modeQuickplayBtn.addEventListener('click', startRaceFlow);
-  modeFriendsBtn.addEventListener('click', startRaceFlow);
-
-  // 3D POCKET RACER MODE INTEGRATION
-  const top3dBtn = document.getElementById('top-3d-btn');
-  const main3dBtn = document.getElementById('main-3d-btn');
-  const mode3dSignpost = document.getElementById('mode-3d-signpost');
+  // POCKET RUN 3D INTEGRATION & LEVEL SELECTOR
   const levelSelect3dScreen = document.getElementById('levelselect3d-screen');
   const btn3dStartTouch = document.getElementById('btn3d-start-touch');
   const btn3dCancel = document.getElementById('btn3d-cancel');
+  const btn3dCloseX = document.getElementById('btn3d-close-x');
   const btn3dFullscreen = document.getElementById('btn3d-fullscreen');
-
-  let selectedLevel3d = 1;
+  const lvl3dCharBtn = document.getElementById('lvl3d-char-btn');
+  const lvl3dSelectedSummary = document.getElementById('lvl3d-selected-summary');
 
   function open3dLevelSelect() {
     sounds.init();
     sounds.play('jump');
-    mainMenuScreen.style.display = 'none';
-    mainMenuScreen.classList.add('hidden');
-    modeSelectScreen.style.display = 'none';
-    modeSelectScreen.classList.add('hidden');
+    if (countdownDisplay) countdownDisplay.classList.remove('show');
+    if (mainMenuScreen) {
+      mainMenuScreen.style.display = 'none';
+      mainMenuScreen.classList.add('hidden');
+    }
     if (levelSelect3dScreen) {
       levelSelect3dScreen.style.display = 'flex';
       levelSelect3dScreen.classList.remove('hidden');
     }
+    syncTrackSummaryUI();
+    gameState = 'level_3d';
   }
 
-  if (top3dBtn) top3dBtn.addEventListener('click', open3dLevelSelect);
-  if (main3dBtn) main3dBtn.addEventListener('click', open3dLevelSelect);
-  if (mode3dSignpost) mode3dSignpost.addEventListener('click', open3dLevelSelect);
+  function launchPocket3dRace() {
+    sounds.init();
+    sounds.play('start');
+    if (countdownDisplay) countdownDisplay.classList.remove('show');
+    if (mainMenuScreen) {
+      mainMenuScreen.style.display = 'none';
+      mainMenuScreen.classList.add('hidden');
+    }
+    if (levelSelect3dScreen) {
+      levelSelect3dScreen.style.display = 'none';
+      levelSelect3dScreen.classList.add('hidden');
+    }
+    canvas.classList.add('hidden');
+    gameState = 'racing_3d';
+    if (window.funRun3D) {
+      window.funRun3D.setPlayerAnimal(selectedAnimal);
+      window.funRun3D.startRace('touch', selectedLevel3d);
+    }
+  }
+
+  if (homeOpen3dBtn) homeOpen3dBtn.addEventListener('click', open3dLevelSelect);
+  if (homeQuick3dBtn) homeQuick3dBtn.addEventListener('click', launchPocket3dRace);
+  if (homeOpen2dBtn) homeOpen2dBtn.addEventListener('click', openMapModal);
+  if (homeQuick2dBtn) homeQuick2dBtn.addEventListener('click', launchClassicRace);
 
   const lvlCards = [
     document.getElementById('card3d-lvl1'),
     document.getElementById('card3d-lvl2'),
-    document.getElementById('card3d-lvl3')
+    document.getElementById('card3d-lvl3'),
+    document.getElementById('card3d-lvl4')
   ];
   lvlCards.forEach((card, idx) => {
     if (card) {
@@ -1467,135 +1480,115 @@
         lvlCards.forEach(c => c && c.classList.remove('selected'));
         card.classList.add('selected');
         selectedLevel3d = idx + 1;
+        syncTrackSummaryUI();
+      });
+      card.addEventListener('dblclick', () => {
+        selectedLevel3d = idx + 1;
+        syncTrackSummaryUI();
+        launchPocket3dRace();
       });
     }
   });
 
-  if (btn3dStartTouch) {
-    btn3dStartTouch.addEventListener('click', () => {
-      sounds.init();
-      sounds.play('start');
-      if (levelSelect3dScreen) {
-        levelSelect3dScreen.style.display = 'none';
-        levelSelect3dScreen.classList.add('hidden');
-      }
-      canvas.classList.add('hidden');
-      gameState = 'racing_3d';
-      if (window.funRun3D) {
-        window.funRun3D.setPlayerAnimal(selectedAnimal);
-        window.funRun3D.startRace('touch', selectedLevel3d);
-      }
-    });
-  }
+  if (btn3dStartTouch) btn3dStartTouch.addEventListener('click', launchPocket3dRace);
+  if (btn3dCancel) btn3dCancel.addEventListener('click', () => { sounds.play('jump'); showHomeMenu(); });
+  if (btn3dCloseX) btn3dCloseX.addEventListener('click', () => { sounds.play('jump'); showHomeMenu(); });
+  if (btn3dFullscreen) btn3dFullscreen.addEventListener('click', toggleFullscreen);
+  window.addEventListener('funrun3d:exit', (e) => {
+    const target = e && e.detail ? e.detail.target : 'home';
+    gameState = target === 'levels' ? 'level_3d' : 'main_menu';
+  });
 
-  if (btn3dCancel) {
-    btn3dCancel.addEventListener('click', () => {
+  // In-game Exit Button (returns cleanly to Classic 2D level browser)
+  if (hudExitBtn) {
+    hudExitBtn.addEventListener('click', () => {
       sounds.play('jump');
-      if (levelSelect3dScreen) {
-        levelSelect3dScreen.style.display = 'none';
-        levelSelect3dScreen.classList.add('hidden');
-      }
-      mainMenuScreen.style.display = 'flex';
-      mainMenuScreen.classList.remove('hidden');
-      gameState = 'main_menu';
+      resetRace();
+      openMapModal();
     });
   }
 
-  if (btn3dFullscreen) {
-    btn3dFullscreen.addEventListener('click', toggleFullscreen);
+  if (resultsLevelsBtn) {
+    resultsLevelsBtn.addEventListener('click', () => {
+      sounds.play('jump');
+      openMapModal();
+    });
   }
 
-  // In-game Exit Button (returns to main menu)
-  hudExitBtn.addEventListener('click', () => {
-    sounds.play('jump');
-    gameState = 'main_menu';
-    uiOverlay.style.display = 'none';
-    uiOverlay.classList.add('hidden');
-    resultsScreen.style.display = 'none';
-    resultsScreen.classList.add('hidden');
-    modeSelectScreen.style.display = 'none';
-    modeSelectScreen.classList.add('hidden');
-    mainMenuScreen.style.display = 'flex';
-    mainMenuScreen.classList.remove('hidden');
-    resetRace();
-  });
-
-  resultsMenuBtn.addEventListener('click', () => {
-    sounds.play('jump');
-    resultsScreen.style.display = 'none';
-    resultsScreen.classList.add('hidden');
-    uiOverlay.style.display = 'none';
-    uiOverlay.classList.add('hidden');
-    modeSelectScreen.style.display = 'none';
-    modeSelectScreen.classList.add('hidden');
-    mainMenuScreen.style.display = 'flex';
-    mainMenuScreen.classList.remove('hidden');
-    gameState = 'main_menu';
-  });
+  if (resultsMenuBtn) {
+    resultsMenuBtn.addEventListener('click', () => {
+      sounds.play('jump');
+      showHomeMenu();
+    });
+  }
 
   // Modals Management
   function closeGuideModal() {
-    sounds.play('jump');
+    if (!powerupsGuideModal) return;
     powerupsGuideModal.style.display = 'none';
     powerupsGuideModal.classList.add('hidden');
   }
 
-  menuTutorialBtn.addEventListener('click', () => {
-    sounds.play('jump');
-    powerupsGuideModal.style.display = 'flex';
-    powerupsGuideModal.classList.remove('hidden');
-  });
-  guideCloseBtn.addEventListener('click', closeGuideModal);
+  if (menuTutorialBtn) {
+    menuTutorialBtn.addEventListener('click', () => {
+      sounds.play('jump');
+      powerupsGuideModal.style.display = 'flex';
+      powerupsGuideModal.classList.remove('hidden');
+    });
+  }
+  if (guideCloseBtn) guideCloseBtn.addEventListener('click', () => { sounds.play('jump'); closeGuideModal(); });
   const guideBottomCloseBtn = document.getElementById('guide-bottom-close-btn');
-  if (guideBottomCloseBtn) guideBottomCloseBtn.addEventListener('click', closeGuideModal);
-  powerupsGuideModal.addEventListener('click', (e) => {
-    // Closes on click anywhere (including background or card)
-    closeGuideModal();
-  });
+  if (guideBottomCloseBtn) guideBottomCloseBtn.addEventListener('click', () => { sounds.play('jump'); closeGuideModal(); });
+  if (powerupsGuideModal) {
+    powerupsGuideModal.addEventListener('click', () => {
+      sounds.play('jump');
+      closeGuideModal();
+    });
+  }
 
-  menuSettingsBtn.addEventListener('click', () => {
-    sounds.play('jump');
-    settingsModal.style.display = 'flex';
-    settingsModal.classList.remove('hidden');
-  });
+  if (menuSettingsBtn) {
+    menuSettingsBtn.addEventListener('click', () => {
+      sounds.play('jump');
+      settingsModal.style.display = 'flex';
+      settingsModal.classList.remove('hidden');
+    });
+  }
   function closeSettingsModal() {
+    if (!settingsModal) return;
     settingsModal.style.display = 'none';
     settingsModal.classList.add('hidden');
   }
-  settingsCloseBtn.addEventListener('click', closeSettingsModal);
-  settingsModal.addEventListener('click', (e) => {
-    if (e.target === settingsModal) closeSettingsModal();
-  });
-
-  menuRankingBtn.addEventListener('click', () => {
-    sounds.play('jump');
-    rankingModal.style.display = 'flex';
-    rankingModal.classList.remove('hidden');
-  });
-  function closeRankingModal() {
-    rankingModal.style.display = 'none';
-    rankingModal.classList.add('hidden');
+  if (settingsCloseBtn) settingsCloseBtn.addEventListener('click', closeSettingsModal);
+  if (settingsModal) {
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) closeSettingsModal();
+    });
   }
-  rankingCloseBtn.addEventListener('click', closeRankingModal);
-  rankingModal.addEventListener('click', (e) => {
-    if (e.target === rankingModal) closeRankingModal();
-  });
 
-  menuCharacterBtn.addEventListener('click', () => {
+  function openCharacterModal() {
     sounds.play('jump');
-    characterModal.style.display = 'flex';
-    characterModal.classList.remove('hidden');
-  });
-  charCloseBtn.addEventListener('click', () => {
-    characterModal.style.display = 'none';
-    characterModal.classList.add('hidden');
-  });
-  characterModal.addEventListener('click', (e) => {
-    if (e.target === characterModal) {
+    if (characterModal) {
+      characterModal.style.display = 'flex';
+      characterModal.classList.remove('hidden');
+    }
+  }
+  if (menuCharacterBtn) menuCharacterBtn.addEventListener('click', openCharacterModal);
+  if (lvl3dCharBtn) lvl3dCharBtn.addEventListener('click', openCharacterModal);
+  if (mapCharBtn) mapCharBtn.addEventListener('click', openCharacterModal);
+  if (charCloseBtn) {
+    charCloseBtn.addEventListener('click', () => {
       characterModal.style.display = 'none';
       characterModal.classList.add('hidden');
-    }
-  });
+    });
+  }
+  if (characterModal) {
+    characterModal.addEventListener('click', (e) => {
+      if (e.target === characterModal) {
+        characterModal.style.display = 'none';
+        characterModal.classList.add('hidden');
+      }
+    });
+  }
 
   charChoices.forEach(choice => {
     choice.addEventListener('click', () => {
@@ -1603,42 +1596,75 @@
       choice.classList.add('selected');
       selectedAnimal = choice.getAttribute('data-animal');
       player.setAnimal(selectedAnimal);
-      const markerPlayerImg = document.getElementById('marker-player-img');
-      if (markerPlayerImg) {
-        markerPlayerImg.src = `assets/images/gui/market/accessories/${selectedAnimal}.png`;
-      }
+      syncAnimalUI(selectedAnimal);
       if (window.funRun3D) window.funRun3D.setPlayerAnimal(selectedAnimal);
     });
   });
 
-  charConfirmBtn.addEventListener('click', () => {
-    characterModal.style.display = 'none';
-    characterModal.classList.add('hidden');
-  });
+  if (charConfirmBtn) {
+    charConfirmBtn.addEventListener('click', () => {
+      characterModal.style.display = 'none';
+      characterModal.classList.add('hidden');
+    });
+  }
 
-  // Map / Level Selection Modal (25 Maps)
+  // Classic 2D Level Selection Browser (25 Maps with Theme Filters & Length Badges)
+  function getLengthLabel(cols) {
+    if (!cols) return 'Mittel';
+    if (cols < 290) return `Kurz (${cols} Felder)`;
+    if (cols > 325) return `Lang (${cols} Felder)`;
+    return `Mittel (${cols} Felder)`;
+  }
+
   function populateMapGrid() {
     if (!mapGridContainer) return;
     mapGridContainer.innerHTML = '';
-    mapsCatalog.forEach((m) => {
+    const filtered = selectedThemeFilter === 'all'
+      ? mapsCatalog
+      : mapsCatalog.filter(m => (m.theme || 'forest') === selectedThemeFilter);
+
+    const themeIcons = { forest: '🌲', candy: '🍭', beach: '🏖️' };
+
+    filtered.forEach((m) => {
+      const theme = m.theme || 'forest';
       const item = document.createElement('div');
-      item.className = 'map-choice' + (m.key === selectedMapKey ? ' selected' : '');
+      item.className = `map-choice theme-${theme}` + (m.key === selectedMapKey ? ' selected' : '');
       item.setAttribute('data-map', m.key);
       item.innerHTML = `
-        <span class="map-choice-num">#${m.id}</span>
+        <div class="map-choice-top">
+          <span class="map-choice-num">#${m.id}</span>
+          <span class="map-choice-icon">${themeIcons[theme] || '🌲'}</span>
+        </div>
         <span class="map-choice-name">${m.name}</span>
-        <span class="map-choice-theme">${m.themeName || 'Wald'}</span>
+        <span class="map-choice-theme">${m.themeName || 'Wald'} • ${getLengthLabel(m.cols)}</span>
       `;
       item.addEventListener('click', () => {
         document.querySelectorAll('.map-choice').forEach(c => c.classList.remove('selected'));
         item.classList.add('selected');
         selectedMapKey = m.key;
         selectedMapName = m.name;
+        syncTrackSummaryUI();
         sounds.play('jump');
+      });
+      item.addEventListener('dblclick', async () => {
+        selectedMapKey = m.key;
+        selectedMapName = m.name;
+        syncTrackSummaryUI();
+        await launchClassicRace();
       });
       mapGridContainer.appendChild(item);
     });
   }
+
+  mapThemeTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      sounds.play('jump');
+      mapThemeTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      selectedThemeFilter = tab.getAttribute('data-theme') || 'all';
+      populateMapGrid();
+    });
+  });
 
   async function loadMap(mapKey, mapName) {
     try {
@@ -1651,6 +1677,7 @@
       selectedMapName = mapName;
       initLevelEntities();
       resetRace();
+      syncTrackSummaryUI();
       console.log(`Loaded map: ${mapName} (${mapKey})`);
     } catch (err) {
       console.error('Failed to load map:', err);
@@ -1658,12 +1685,28 @@
   }
 
   function openMapModal() {
+    sounds.init();
     sounds.play('jump');
+    if (countdownDisplay) countdownDisplay.classList.remove('show');
+    if (mainMenuScreen) {
+      mainMenuScreen.style.display = 'none';
+      mainMenuScreen.classList.add('hidden');
+    }
+    if (uiOverlay) {
+      uiOverlay.style.display = 'none';
+      uiOverlay.classList.add('hidden');
+    }
+    if (resultsScreen) {
+      resultsScreen.style.display = 'none';
+      resultsScreen.classList.add('hidden');
+    }
     populateMapGrid();
+    syncTrackSummaryUI();
     if (mapModal) {
       mapModal.style.display = 'flex';
       mapModal.classList.remove('hidden');
     }
+    gameState = 'map_select';
   }
 
   function closeMapModal() {
@@ -1673,24 +1716,19 @@
     }
   }
 
-  if (menuMapBtn) menuMapBtn.addEventListener('click', openMapModal);
-  if (mapCloseBtn) mapCloseBtn.addEventListener('click', closeMapModal);
+  if (mapCloseBtn) mapCloseBtn.addEventListener('click', () => { sounds.play('jump'); showHomeMenu(); });
+  if (mapBackBtn) mapBackBtn.addEventListener('click', () => { sounds.play('jump'); showHomeMenu(); });
   if (mapModal) {
     mapModal.addEventListener('click', (e) => {
-      if (e.target === mapModal) closeMapModal();
+      if (e.target === mapModal) showHomeMenu();
     });
   }
   if (mapConfirmBtn) {
-    mapConfirmBtn.addEventListener('click', async () => {
-      closeMapModal();
-      await loadMap(selectedMapKey, selectedMapName);
-      mainMenuScreen.style.display = 'none';
-      mainMenuScreen.classList.add('hidden');
-      uiOverlay.style.display = 'flex';
-      uiOverlay.classList.remove('hidden');
-      startCountdown();
-    });
+    mapConfirmBtn.addEventListener('click', launchClassicRace);
   }
+
+  syncAnimalUI(selectedAnimal);
+  syncTrackSummaryUI();
 
   // Main Menu Fullscreen Button
   if (mainFullscreenBtn) {
@@ -1705,11 +1743,12 @@
     if (e.key === 'Escape') {
       closeGuideModal();
       closeSettingsModal();
-      closeRankingModal();
-      closeMapModal();
       if (characterModal) {
         characterModal.style.display = 'none';
         characterModal.classList.add('hidden');
+      }
+      if (gameState === 'map_select' || gameState === 'level_3d') {
+        showHomeMenu();
       }
     }
   });
@@ -1782,6 +1821,7 @@
   });
 
   function resetRace() {
+    if (countdownDisplay) countdownDisplay.classList.remove('show');
     if (finishTimeout) {
       clearTimeout(finishTimeout);
       finishTimeout = null;

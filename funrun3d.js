@@ -341,6 +341,8 @@
         baseCol = '#7590aa'; rutCol = '#536f8a'; highlightCol = '#b8d7f0'; grassEdgeCol = '#dceeff'; pebbleCols = ['#4f6073', '#9db5cc', '#eef6ff'];
       } else if (level === 3) {
         baseCol = '#e69d73'; rutCol = '#c8774e'; highlightCol = '#fbd3b6'; grassEdgeCol = '#ff92b8'; pebbleCols = ['#fff5cc', '#ff80ab', '#80deea'];
+      } else if (level === 4) {
+        baseCol = '#d4a373'; rutCol = '#b07d4f'; highlightCol = '#faedcd'; grassEdgeCol = '#2ec4b6'; pebbleCols = ['#fef3c7', '#e76f51', '#2ec4b6'];
       }
 
       ctx.fillStyle = baseCol;
@@ -442,6 +444,8 @@
           ctx.fillStyle = `rgb(${112 + tone}, ${96 + tone}, ${86 + tone})`;
         } else if (level === 3) {
           ctx.fillStyle = `rgb(${210 + tone}, ${142 + tone * 0.5}, ${96 + tone * 0.4})`;
+        } else if (level === 4) {
+          ctx.fillStyle = `rgb(${172 + tone}, ${136 + tone * 0.6}, ${88 + tone * 0.4})`;
         } else {
           ctx.fillStyle = `rgb(${118 + tone}, ${72 + tone * 0.7}, ${36 + tone * 0.4})`;
         }
@@ -1387,8 +1391,10 @@
       this.resultsScreen = document.getElementById('results3d-screen');
       this.resultsList = document.getElementById('results3d-list');
       this.restartBtn = document.getElementById('btn3d-restart');
+      this.levelsBtn = document.getElementById('btn3d-levels');
       this.menuBtn = document.getElementById('btn3d-menu');
       this.levelSelectScreen = document.getElementById('levelselect3d-screen');
+      this.countdownInterval = null;
 
       this.initThree();
       this.initEvents();
@@ -1443,6 +1449,30 @@
           treeMix: 'sakura_heavy'
         };
       }
+      if (level === 4) {
+        // Level 4: Lagoon Canyon (Bright Tropical Coast & Sandstone Cliffs)
+        return {
+          skyTop: '#0369a1',
+          skyMid: '#38bdf8',
+          skyHorizon: '#fde68a',
+          skyBottom: '#14532d',
+          sunColor: '#fffbeb',
+          fogColor: '#bae6fd',
+          fogDensity: 0.00145,
+          hemiSky: 0xe0f2fe,
+          hemiGround: 0x2d6a4f,
+          sunLightCol: 0xfff8dc,
+          rimLightCol: 0x7dd3fc,
+          grassBase: '#1b5e20',
+          grassMid: '#43a047',
+          grassTip: '#9ccc65',
+          waterDeep: '#0369a1',
+          waterShallow: '#2dd4bf',
+          curbA: 0xf59e0b,
+          curbB: 0x2dd4bf,
+          treeMix: 'hyrule'
+        };
+      }
       // Level 1: Sunset Valley (BotW Hyrule Plains & Golden Horizon!)
       return {
         skyTop: '#1d5bbf',
@@ -1464,6 +1494,61 @@
         curbA: 0xd97706,
         curbB: 0xfef3c7,
         treeMix: 'hyrule'
+      };
+    }
+
+    /**
+     * Single source of truth for per-level 3D track geometry, elevation, bridges, lakes, and obstacles.
+     */
+    getTrackSpec(level = this.currentLevel) {
+      if (level === 2) {
+        // Snowset Peaks: Dramatic Alpine switchbacks, tall summit climb & glacial plunge, two high spans
+        return {
+          finishLineZ: 1260,
+          bridges: [[290, 480], [880, 1050]],
+          bridgeLift: 12.5,
+          lakes: [{ z: 650, side: -1, offsetX: 48, radius: 44, depth: 12.0, waterDrop: 4.2, w: 86, l: 105 }],
+          curveFn: (z) => Math.sin(z * 0.0155) * 19.0 - Math.sin(z * 0.0065) * 10.0,
+          hillFn: (z) => Math.sin(z * 0.009) * 19.0 + Math.sin(z * 0.024 + 1.1) * 10.0 + Math.cos(z * 0.052) * 4.2,
+          spawn: { stepMin: 19, stepVar: 9, wCrate: 0.22, wRock: 0.38, wBounce: 0.24, wSpeed: 0.16 }
+        };
+      }
+      if (level === 3) {
+        // Sugar Slope: Fast rhythmic chicanes, triple-bridge hops, rapid moguls & turbo chains
+        return {
+          finishLineZ: 1220,
+          bridges: [[170, 275], [500, 610], [830, 945]],
+          bridgeLift: 9.0,
+          lakes: [{ z: 385, side: 1, offsetX: 45, radius: 42, depth: 11.5, waterDrop: 4.0, w: 84, l: 100 }],
+          curveFn: (z) => Math.sin(z * 0.0165) * 13.0 - Math.sin(z * 0.0075) * 11.5,
+          hillFn: (z) => Math.sin(z * 0.021) * 10.5 + Math.sin(z * 0.044 + 0.4) * 7.2 + Math.cos(z * 0.080) * 3.0,
+          spawn: { stepMin: 18, stepVar: 8, wCrate: 0.26, wRock: 0.16, wBounce: 0.26, wSpeed: 0.32 }
+        };
+      }
+      if (level === 4) {
+        // Lagoon Canyon: Wide sweeping reverse coastal loops, cliff plunges, twin emerald lakes & 3 bridges
+        return {
+          finishLineZ: 1300,
+          bridges: [[210, 345], [565, 725], [935, 1075]],
+          bridgeLift: 11.0,
+          lakes: [
+            { z: 450, side: 1, offsetX: 45, radius: 46, depth: 12.0, waterDrop: 4.2, w: 88, l: 108 },
+            { z: 825, side: -1, offsetX: 45, radius: 44, depth: 12.0, waterDrop: 4.2, w: 86, l: 102 }
+          ],
+          curveFn: (z) => -Math.sin(z * 0.013) * 20.5 + Math.sin(z * 0.0052) * 11.5,
+          hillFn: (z) => Math.sin(z * 0.0115) * 14.0 - Math.sin(z * 0.025) * 8.0 + Math.sin(z * 0.056) * 3.5,
+          spawn: { stepMin: 17, stepVar: 8, wCrate: 0.24, wRock: 0.32, wBounce: 0.24, wSpeed: 0.20 }
+        };
+      }
+      // Level 1: Sunset Valley (Balanced flowing S-curves, rolling meadows, 2 classic bridges & valley lake)
+      return {
+        finishLineZ: 1180,
+        bridges: [[240, 390], [740, 890]],
+        bridgeLift: 10.0,
+        lakes: [{ z: 115, side: 1, offsetX: 46, radius: 48, depth: 12.0, waterDrop: 4.2, w: 90, l: 110 }],
+        curveFn: (z) => Math.sin(z * 0.0115) * 15.5 + Math.sin(z * 0.0048) * 9.5,
+        hillFn: (z) => Math.sin(z * 0.014) * 12.0 + Math.sin(z * 0.030 + 0.9) * 8.5 + Math.cos(z * 0.065) * 3.8,
+        spawn: { stepMin: 22, stepVar: 10, wCrate: 0.28, wRock: 0.30, wBounce: 0.20, wSpeed: 0.22 }
       };
     }
 
@@ -1557,19 +1642,27 @@
     }
 
     // ------------------------------------------------------------------------
-    // TRACK MATHEMATICS (Continuous curves, dramatic Fun Run roller-coaster hills & bridges)
+    // TRACK MATHEMATICS (Per-level curves, roller-coaster hills, bridges & lakes)
     // ------------------------------------------------------------------------
     getCurveX(z) {
-      return Math.sin(z * 0.012) * 16.0 + Math.sin(z * 0.005) * 10.0;
+      return this.getTrackSpec().curveFn(z);
+    }
+
+    getBridgeSpanAt(z) {
+      const bridges = this.getTrackSpec().bridges;
+      for (let i = 0; i < bridges.length; i++) {
+        const span = bridges[i];
+        if (z >= span[0] && z <= span[1]) return span;
+      }
+      return null;
     }
 
     isBridge(z) {
-      return (z >= 240 && z <= 390) || (z >= 740 && z <= 890);
+      return this.getBridgeSpanAt(z) !== null;
     }
 
     getCanyonFactor(z) {
-      // Smooth 14m canyon ramp in and out around bridges (232..398 and 732..898)
-      const bridges = [[240, 390], [740, 890]];
+      const bridges = this.getTrackSpec().bridges;
       let maxF = 0;
       for (const [s, e] of bridges) {
         if (z >= s && z <= e) return 1.0;
@@ -1584,16 +1677,30 @@
       return maxF;
     }
 
-    getRawHillY(z) {
-      let h = Math.sin(z * 0.014) * 12.0;
-      h += Math.sin(z * 0.030 + 0.9) * 8.5;
-      h += Math.cos(z * 0.065) * 3.8;
+    isNearCanyonMouth(z) {
+      const bridges = this.getTrackSpec().bridges;
+      for (const [s, e] of bridges) {
+        if ((z > s - 22 && z < s + 5) || (z > e - 5 && z < e + 22)) return true;
+      }
+      return false;
+    }
 
-      if (this.isBridge(z)) {
-        let start = (z < 500) ? 240 : 740;
-        let span = 150;
-        let t = (z - start) / span;
-        h += Math.sin(t * Math.PI) * 10.0;
+    isInLakeZone(z, side) {
+      const lakes = this.getTrackSpec().lakes;
+      for (const lake of lakes) {
+        if (side === lake.side && Math.abs(z - lake.z) < lake.radius + 22) return true;
+      }
+      return false;
+    }
+
+    getRawHillY(z) {
+      const spec = this.getTrackSpec();
+      let h = spec.hillFn(z);
+      const span = this.getBridgeSpanAt(z);
+      if (span) {
+        const length = Math.max(1, span[1] - span[0]);
+        const t = (z - span[0]) / length;
+        h += Math.sin(t * Math.PI) * spec.bridgeLift;
       }
       return h;
     }
@@ -1611,12 +1718,17 @@
       const trackH = this.getHillY(z);
       const canyon = this.getCanyonFactor(z);
 
-      // Scenic lakeside depression on right side near early track (z = 45..185)
+      // Scenic lakeside depressions defined in track spec
       let lakeDip = 0;
-      const lakeDist = Math.hypot(x - (cx + 46), z - 115);
-      if (lakeDist < 48 && distFromCenter > 13.0) {
-        const lt = Math.pow(Math.max(0, 1.0 - lakeDist / 48), 1.8);
-        lakeDip = lt * 12.0;
+      if (distFromCenter > 13.0) {
+        const lakes = this.getTrackSpec().lakes;
+        for (const lake of lakes) {
+          const lakeDist = Math.hypot(x - (cx + lake.side * lake.offsetX), z - lake.z);
+          if (lakeDist < lake.radius) {
+            const lt = Math.pow(Math.max(0, 1.0 - lakeDist / lake.radius), 1.8);
+            lakeDip = Math.max(lakeDip, lt * lake.depth);
+          }
+        }
       }
 
       // Natural rolling BotW meadows and side slopes
@@ -1850,6 +1962,7 @@
       const level = this.currentLevel;
       const isSnow = (level === 2);
       const isSugar = (level === 3);
+      const isLagoon = (level === 4);
       const segStep = 1.8; // High resolution for smooth curves & slopes
       const segCount = Math.ceil((this.finishLineZ + 160) / segStep);
 
@@ -1872,6 +1985,13 @@
             hill: new THREE.Color('#57c25b'),
             moss: new THREE.Color('#2c783b'),
             rock: new THREE.Color('#785266')
+          }
+        : isLagoon
+        ? {
+            valley: new THREE.Color('#2e9e44'),
+            hill: new THREE.Color('#62c437'),
+            moss: new THREE.Color('#196b2b'),
+            rock: new THREE.Color('#8c6244')
           }
         : {
             // Rich saturated BotW Hyrule emerald meadows matching shader grass seamlessly!
@@ -2249,29 +2369,32 @@
 
       const segs = this.isMobile ? 28 : 42;
       const waterMat = createWaterMaterial();
+      const trackSpec = this.getTrackSpec();
 
-      // 1. Two Canyon Gorge Rivers under the Suspension Bridges
-      const spans = [[240, 390], [740, 890]];
-      for (const [s, e] of spans) {
+      // 1. Canyon Gorge Rivers under all Suspension Bridges in this level
+      for (const [s, e] of trackSpec.bridges) {
         const midZ = (s + e) * 0.5;
+        const spanLen = (e - s) + 55;
         const cx = this.getCurveX(midZ);
         const bridgeBaseY = Math.min(this.getHillY(s), this.getHillY(e));
         const waterY = bridgeBaseY - 14.0;
-        const wGeo = new THREE.PlaneGeometry(140, 195, segs, segs);
+        const wGeo = new THREE.PlaneGeometry(145, spanLen, segs, segs);
         wGeo.rotateX(-Math.PI / 2);
         const river = new THREE.Mesh(wGeo, waterMat);
         river.position.set(cx, waterY, midZ);
         this.waterGroup.add(river);
       }
 
-      // 2. Scenic Emerald Valley Lake next to early track (z = 45..185, Right side)
-      const lakeCx = this.getCurveX(115) + 46;
-      const lakeTrackH = this.getHillY(115);
-      const lakeGeo = new THREE.PlaneGeometry(90, 110, segs, segs);
-      lakeGeo.rotateX(-Math.PI / 2);
-      const lakeMesh = new THREE.Mesh(lakeGeo, waterMat);
-      lakeMesh.position.set(lakeCx, lakeTrackH - 4.2, 115);
-      this.waterGroup.add(lakeMesh);
+      // 2. Scenic Valley Lakes from level track spec
+      for (const lake of trackSpec.lakes) {
+        const lakeCx = this.getCurveX(lake.z) + lake.side * lake.offsetX;
+        const lakeTrackH = this.getHillY(lake.z);
+        const lakeGeo = new THREE.PlaneGeometry(lake.w, lake.l, segs, segs);
+        lakeGeo.rotateX(-Math.PI / 2);
+        const lakeMesh = new THREE.Mesh(lakeGeo, waterMat);
+        lakeMesh.position.set(lakeCx, lakeTrackH - lake.waterDrop, lake.z);
+        this.waterGroup.add(lakeMesh);
+      }
 
       this.scene.add(this.waterGroup);
     }
@@ -2279,7 +2402,7 @@
     buildBridgeDetails() {
       if (this.bridgeGroup) this.scene.remove(this.bridgeGroup);
       this.bridgeGroup = new THREE.Group();
-      const intervals = [[240, 390], [740, 890]];
+      const intervals = this.getTrackSpec().bridges;
 
       const postGeo = new THREE.CylinderGeometry(0.22, 0.26, 2.5, 8);
       const postMat = new THREE.MeshStandardMaterial({ color: 0x5c3618, roughness: 0.85, map: this.textures.getBarkTexture() });
@@ -2560,7 +2683,7 @@
 
       for (let z = 18; z < this.finishLineZ + 120; z += 11 + rng() * 6) {
         if (this.getCanyonFactor(z) > 0.05) continue;
-        const nearCanyonMouth = (z > 218 && z < 245) || (z > 385 && z < 412) || (z > 718 && z < 745) || (z > 885 && z < 912);
+        const nearCanyonMouth = this.isNearCanyonMouth(z);
         const trackH = this.getHillY(z);
         const cx = this.getCurveX(z);
 
@@ -2571,7 +2694,7 @@
           for (const dist of layers) {
             const x = cx + side * dist;
             const y = this.getGroundY(x, z);
-            if (y < trackH - 3.6 && z > 45 && z < 185 && side === 1) continue;
+            if (y < trackH - 3.6 && this.isInLakeZone(z, side)) continue;
 
             let kind = 'oak';
             const pick = rng();
@@ -2637,7 +2760,7 @@
         const dist = 8.4 + rng() * 14.0;
         const x = this.getCurveX(z) + side * dist;
         const y = this.getGroundY(x, z);
-        if (y < this.getHillY(z) - 3.6 && z > 45 && z < 185 && side === 1) continue;
+        if (y < this.getHillY(z) - 3.6 && this.isInLakeZone(z, side)) continue;
         rockList.push({ x, y, z, s: 0.65 + rng() * 1.15, ry: rng() * Math.PI * 2 });
       }
       if (rockList.length > 0) {
@@ -2672,6 +2795,7 @@
         const dist = 8.0 + rng() * 6.0;
         const x = this.getCurveX(z) + side * dist;
         const y = this.getGroundY(x, z);
+        if (y < this.getHillY(z) - 3.6 && this.isInLakeZone(z, side)) continue;
         bushList.push({ x, y, z, s: 0.7 + rng() * 0.55, ry: rng() * Math.PI * 2 });
       }
       if (bushList.length > 0) {
@@ -2702,9 +2826,10 @@
 
       const ruinZones = [110, 215, 420, 560, 715, 920, 1080];
       for (const rz of ruinZones) {
+        if (rz >= this.finishLineZ - 40 || this.getCanyonFactor(rz) > 0.1) continue;
         const cx = this.getCurveX(rz);
         for (const side of [-1, 1]) {
-          if (rng() > 0.65) continue;
+          if (rng() > 0.65 || this.isInLakeZone(rz, side)) continue;
           const rx = cx + side * (9.5 + rng() * 4.5);
           const ry = this.getGroundY(rx, rz);
           const p = new THREE.Mesh(pillarGeo, pillarMat);
@@ -2950,7 +3075,7 @@
           const latDist = rng() < 0.55 ? (7.45 + rng() * 6.5) : (14.0 + rng() * 28.0);
           const x = this.getCurveX(z) + side * latDist;
           const y = this.getGroundY(x, z);
-          if (y < this.getHillY(z) - 3.6 && z > 45 && z < 185 && side === 1) continue;
+          if (y < this.getHillY(z) - 3.6 && this.isInLakeZone(z, side)) continue;
 
           dummy.position.set(x, y - 0.04, z);
           dummy.rotation.set(0, rng() * Math.PI * 2, 0);
@@ -2977,7 +3102,7 @@
           const latDist = 7.55 + rng() * 14.0;
           const x = this.getCurveX(z) + side * latDist;
           const y = this.getGroundY(x, z);
-          if (y < this.getHillY(z) - 3.6 && z > 45 && z < 185 && side === 1) continue;
+          if (y < this.getHillY(z) - 3.6 && this.isInLakeZone(z, side)) continue;
 
           dummy.position.set(x, y - 0.02, z);
           dummy.rotation.set(0, rng() * Math.PI * 2, 0);
@@ -3231,19 +3356,26 @@
       this.clearWorldElements();
       // Screen Left (+4.5), Screen Center (0), Screen Right (-4.5)
       const lanes = [4.5, 0, -4.5];
+      const spec = this.getTrackSpec();
+      const s = spec.spawn;
+      const rng = createSeededRng(5000 + this.currentLevel * 777);
 
-      for (let z = 50; z < this.finishLineZ - 30; z += 24 + Math.random() * 12) {
-        const rand = Math.random();
-        const laneX = lanes[Math.floor(Math.random() * lanes.length)];
+      const pCrate = s.wCrate;
+      const pRock = pCrate + s.wRock;
+      const pBounce = pRock + s.wBounce;
+
+      for (let z = 50; z < this.finishLineZ - 35; z += s.stepMin + rng() * s.stepVar) {
+        const roll = rng();
+        const laneX = lanes[Math.floor(rng() * lanes.length)];
         const cx = this.getCurveX(z);
         const cy = this.getHillY(z);
         const worldX = cx + laneX;
 
-        if (rand > 0.65) {
+        if (roll < pCrate) {
           this.createCrate(worldX, cy + 1.6, z, laneX);
-        } else if (rand > 0.36) {
+        } else if (roll < pRock) {
           this.createRock(worldX, cy + 0.7, z, laneX);
-        } else if (rand > 0.20) {
+        } else if (roll < pBounce) {
           this.createBouncePad(worldX, cy + 0.1, z, laneX);
         } else {
           this.createSpeedPad(worldX, cy + 0.08, z, laneX);
@@ -4017,13 +4149,16 @@
       }
 
       if (this.exitBtn) {
-        this.exitBtn.addEventListener('click', () => this.stopAndReturnToMenu());
+        this.exitBtn.addEventListener('click', () => this.stopAndReturnToMenu('levels'));
       }
       if (this.restartBtn) {
         this.restartBtn.addEventListener('click', () => this.startRace(this.controlMode, this.currentLevel));
       }
+      if (this.levelsBtn) {
+        this.levelsBtn.addEventListener('click', () => this.stopAndReturnToMenu('levels'));
+      }
       if (this.menuBtn) {
-        this.menuBtn.addEventListener('click', () => this.stopAndReturnToMenu());
+        this.menuBtn.addEventListener('click', () => this.stopAndReturnToMenu('home'));
       }
     }
 
@@ -4080,14 +4215,23 @@
 
     startRace(mode = 'touch', level = 1) {
       sfx.init();
+      if (this.countdownInterval) {
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
+      }
       this.controlMode = mode;
       this.currentLevel = level;
+      this._hillY0 = undefined;
+      this.finishLineZ = this.getTrackSpec(level).finishLineZ;
       this.isPlaying = false;
 
       // Expand container to 100vw x 100vh for true edge-to-edge 3D
       document.body.classList.add('mode-3d');
 
-      if (this.levelSelectScreen) this.levelSelectScreen.classList.add('hidden');
+      if (this.levelSelectScreen) {
+        this.levelSelectScreen.style.display = 'none';
+        this.levelSelectScreen.classList.add('hidden');
+      }
       if (this.resultsScreen) this.resultsScreen.classList.add('hidden');
       if (this.uiOverlay) this.uiOverlay.classList.remove('hidden');
 
@@ -4101,7 +4245,7 @@
       this.countdownDisplay.textContent = count;
       sfx.play('countdown');
 
-      const timer = setInterval(() => {
+      this.countdownInterval = setInterval(() => {
         count--;
         if (count > 0) {
           this.countdownDisplay.textContent = count;
@@ -4110,7 +4254,8 @@
           this.countdownDisplay.textContent = 'LOS!';
           sfx.play('start');
         } else {
-          clearInterval(timer);
+          clearInterval(this.countdownInterval);
+          this.countdownInterval = null;
           this.countdownDisplay.style.display = 'none';
           this.launchLoop();
         }
@@ -4544,27 +4689,41 @@
       sfx.play('start');
     }
 
-    stopAndReturnToMenu() {
+    stopAndReturnToMenu(target = 'home') {
+      if (this.countdownInterval) {
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
+      }
+      if (this.countdownDisplay) this.countdownDisplay.style.display = 'none';
       this.isPlaying = false;
       document.body.classList.remove('mode-3d');
       if (this.canvas) this.canvas.classList.add('hidden');
       if (this.uiOverlay) this.uiOverlay.classList.add('hidden');
       if (this.resultsScreen) this.resultsScreen.classList.add('hidden');
-      if (this.levelSelectScreen) this.levelSelectScreen.classList.add('hidden');
       if (this.bloodOverlay) this.bloodOverlay.classList.add('hidden');
 
-      const gameSelectScreen = document.getElementById('game-select-screen');
-      if (gameSelectScreen) {
-        gameSelectScreen.style.display = 'none';
-        gameSelectScreen.classList.add('hidden');
-      }
-      const mainMenuScreen = document.getElementById('main-menu-screen');
-      if (mainMenuScreen) {
-        mainMenuScreen.style.display = 'flex';
-        mainMenuScreen.classList.remove('hidden');
-      }
       const canvas2d = document.getElementById('gameCanvas');
       if (canvas2d) canvas2d.classList.remove('hidden');
+
+      const mainMenuScreen = document.getElementById('main-menu-screen');
+      if (target === 'levels' && this.levelSelectScreen) {
+        if (mainMenuScreen) {
+          mainMenuScreen.style.display = 'none';
+          mainMenuScreen.classList.add('hidden');
+        }
+        this.levelSelectScreen.style.display = 'flex';
+        this.levelSelectScreen.classList.remove('hidden');
+      } else {
+        if (this.levelSelectScreen) {
+          this.levelSelectScreen.style.display = 'none';
+          this.levelSelectScreen.classList.add('hidden');
+        }
+        if (mainMenuScreen) {
+          mainMenuScreen.style.display = 'flex';
+          mainMenuScreen.classList.remove('hidden');
+        }
+      }
+      window.dispatchEvent(new CustomEvent('funrun3d:exit', { detail: { target } }));
     }
 
     setPlayerAnimal(animal) {

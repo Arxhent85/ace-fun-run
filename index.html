@@ -134,121 +134,82 @@
       </div>
     </div>
 
-    <!-- SCREEN 1: AUTHENTIC MAIN TITLE MENU (Exact match with user screenshot) -->
-    <div id="main-menu-screen" class="menu-screen">
-      <img src="assets/images/gui/background/background_mainMenu.png" class="menu-bg-img" alt="Fun Run Main Menu">
+    <!-- SCREEN 1: CLEAR DUAL-GAME LAUNCHER HUB (Pocket Run 3D vs Classic 2D) -->
+    <div id="main-menu-screen" class="menu-screen home-hub-screen">
+      <img src="assets/images/gui/background/background_mainMenu.png" class="menu-bg-img home-hub-bg" alt="Fun Run Hintergrund">
+      <div class="home-hub-scrim"></div>
 
-      <!-- Top Bar: Prominent Fullscreen Button right in Main Menu -->
-      <div class="menu-top-bar" style="position: absolute; top: 18px; right: 20px; z-index: 10;">
-        <button class="wood-action-btn-small" id="main-fullscreen-btn" title="Vollbildmodus (F)" style="background: rgba(80, 45, 20, 0.9); border: 2px solid #ffcc00; border-radius: 8px; color: #fff; font-family: 'Fredoka One', cursive, sans-serif; font-size: 15px; padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">
-          <span style="font-size: 18px;">⛶</span>
-          <span>VOLLBILD</span>
-        </button>
-      </div>
-
-      <!-- Big Center Wooden Play Button -->
-      <div class="center-play-group">
-        <button class="wood-play-btn" id="main-play-btn" title="Spielen">
-          <img src="assets/images/gui/button/play.png" alt="PLAY">
-        </button>
-      </div>
-
-      <!-- Bottom Wooden Bar of Buttons -->
-      <div class="main-bottom-bar">
-        <div class="bottom-left-buttons">
-          <button class="menu-icon-btn" id="menu-settings-btn" title="Einstellungen">
-            <img src="assets/images/gui/button/settings.png" alt="Settings">
-          </button>
-          <button class="menu-icon-btn" id="menu-ranking-btn" title="Bestenliste">
-            <img src="assets/images/gui/button/ranking.png" alt="Ranking">
-          </button>
-          <button class="menu-icon-btn" id="menu-tutorial-btn" title="Power-Ups Anleitung">
-            <img src="assets/images/gui/button/tutorial.png" alt="Guide">
-          </button>
-        </div>
-
-        <div class="bottom-right-buttons">
-          <!-- Level / Map Selection Button -->
-          <button class="menu-icon-btn" id="menu-map-btn" title="Level / Strecke wählen">
-            <img src="assets/images/gui/button/map.png" alt="Level">
-          </button>
-          <button class="menu-icon-btn" id="menu-character-btn" title="Figur wählen / Shop">
-            <img src="assets/images/gui/button/market.png" alt="Shop">
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCREEN: GAME SELECTION (Opened when clicking Play: POCKET RUN vs CLASSIC) -->
-    <div id="game-select-screen" class="modal-screen hidden" style="display: none;">
-      <div class="game-select-card">
-        <h2 class="comic-title" style="margin-bottom: 22px; font-size: 32px; color: #ffd166;">WÄHLE DEINEN MODUS</h2>
-        
-        <div class="game-select-options">
-          <!-- 1. POCKET RUN (3D) -->
-          <button class="game-option-btn" id="opt-pocket-btn" title="Pocket Run 3D starten">
-            <div class="option-glow-badge">★ NEU 3D ★</div>
-            <div class="option-wood-box">
-              <span class="option-icon">🚀</span>
-              <span class="option-title">POCKET RUN</span>
-              <span class="option-desc">3D Perspektive • Fallen & Sägen</span>
+      <div class="home-hub">
+        <!-- Header Bar: Active Character, Title & Clean Utilities -->
+        <header class="home-header">
+          <button class="home-char-pill" id="menu-character-btn" title="Figur wechseln">
+            <img src="assets/images/gui/market/accessories/bear.png" id="home-char-img" alt="Figur">
+            <div class="home-char-meta">
+              <span class="home-char-kicker">DEINE FIGUR</span>
+              <span class="home-char-name" id="home-char-name">Bär ▾</span>
             </div>
           </button>
 
-          <!-- 2. CLASSIC (2D) -->
-          <button class="game-option-btn" id="opt-classic-btn" title="Classic 2D starten">
-            <div class="option-glow-badge badge-classic">2D ORIGINAL</div>
-            <div class="option-wood-box">
-              <span class="option-icon">🌲</span>
-              <span class="option-title">CLASSIC</span>
-              <span class="option-desc">Klassischer 2D Sidescroller</span>
-            </div>
-          </button>
-        </div>
-
-        <button class="secondary-btn" id="game-select-back-btn" style="margin-top: 24px; padding: 10px 32px; font-size: 18px;">⬅️ ZURÜCK</button>
-      </div>
-    </div>
-
-    <!-- SCREEN 2: GAME MODE SELECTION MENU (Practice / Quick Play / Friends) -->
-    <div id="mode-select-screen" class="menu-screen hidden">
-      <img src="assets/images/gui/background/background_playMenu.png" class="menu-bg-img" alt="Mode Selection">
-
-      <!-- 3 Wooden Signpost Buttons -->
-      <div class="signpost-container">
-        <!-- 1. Practice Mode -->
-        <button class="signpost-btn" id="mode-practice-btn">
-          <img src="assets/images/gui/button/singlePlayer.png" alt="Practice">
-          <span class="signpost-label">Practice</span>
-        </button>
-
-        <!-- 2. Quick Play Mode -->
-        <button class="signpost-btn quick-play" id="mode-quickplay-btn">
-          <img src="assets/images/gui/button/quickPlay.png" alt="Quick Play">
-          <span class="signpost-label">Quick Play</span>
-        </button>
-
-        <!-- 3. Friends Mode -->
-        <button class="signpost-btn" id="mode-friends-btn">
-          <img src="assets/images/gui/button/friends.png" alt="Friends">
-          <span class="signpost-label">Friends</span>
-        </button>
-
-        <!-- 4. POCKET 3D RACER Mode (Neu) -->
-        <button class="signpost-btn signpost-3d-btn" id="mode-3d-signpost">
-          <div class="signpost-3d-wood-frame">
-            <span class="sparkle-star">★</span>
-            <span class="signpost-3d-text">3D RUN</span>
+          <div class="home-brand">
+            <span class="home-brand-title">FUN RUN</span>
+            <span class="home-brand-sub">WÄHLE DEIN SPIEL</span>
           </div>
-          <span class="signpost-label special-glow">POCKET 3D</span>
-        </button>
-      </div>
 
-      <!-- Bottom Home Back Button -->
-      <div class="mode-bottom-bar">
-        <button class="menu-icon-btn home-btn" id="mode-home-btn" title="Zurück zum Menü">
-          <img src="assets/images/gui/button/home.png" alt="Home">
-        </button>
+          <div class="home-utils">
+            <button class="home-util-btn" id="menu-tutorial-btn" title="Power-Ups & Steuerung">
+              <span>❓</span><span>Items</span>
+            </button>
+            <button class="home-util-btn" id="menu-settings-btn" title="Einstellungen">
+              <span>⚙️</span>
+            </button>
+            <button class="home-util-btn" id="main-fullscreen-btn" title="Vollbildmodus (F)">
+              <span>⛶</span><span class="fs-label">Vollbild</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Clean 2-Game Split Selection -->
+        <div class="game-split-grid">
+          <!-- GAME 1: POCKET RUN 3D -->
+          <section class="game-hub-card hub-3d">
+            <div class="hub-card-top">
+              <span class="hub-badge hub-badge-3d">★ 3D EDITION</span>
+              <span class="hub-count-badge">4 EINZIGARTIGE 3D-STRECKEN</span>
+            </div>
+            <h2 class="hub-game-title">POCKET RUN 3D</h2>
+            <p class="hub-game-desc">
+              Verfolgungs-3D mit Kurven, Hängebrücken, Canyons, Doppelsprung & Power-Ups.
+            </p>
+            <div class="hub-selected-track">
+              <span class="hub-track-kicker">Aktive Strecke:</span>
+              <span class="hub-track-value" id="home-3d-track-label">🌲 Sunset Valley • 1.180m</span>
+            </div>
+            <div class="hub-card-actions">
+              <button class="hub-primary-btn hub-3d-btn" id="home-open-3d-btn">🗺️ STRECKEN WÄHLEN</button>
+              <button class="hub-quick-btn hub-quick-3d" id="home-quick-3d-btn" title="Direkt starten">▶ START</button>
+            </div>
+          </section>
+
+          <!-- GAME 2: CLASSIC 2D -->
+          <section class="game-hub-card hub-2d">
+            <div class="hub-card-top">
+              <span class="hub-badge hub-badge-2d">2D ORIGINAL</span>
+              <span class="hub-count-badge">25 KLASSIK-STRECKEN</span>
+            </div>
+            <h2 class="hub-game-title">CLASSIC 2D</h2>
+            <p class="hub-game-desc">
+              Der klassische 2D-Sidescroller über Wald, Süßigkeiten-Welt & Strand mit Wandklettern.
+            </p>
+            <div class="hub-selected-track">
+              <span class="hub-track-kicker">Aktive Strecke:</span>
+              <span class="hub-track-value" id="home-2d-track-label">#1 Sunset Valley • Wald</span>
+            </div>
+            <div class="hub-card-actions">
+              <button class="hub-primary-btn hub-2d-btn" id="home-open-2d-btn">🗺️ STRECKEN WÄHLEN</button>
+              <button class="hub-quick-btn hub-quick-2d" id="home-quick-2d-btn" title="Direkt starten">▶ START</button>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -290,19 +251,38 @@
       </div>
     </div>
 
-    <!-- MODAL: LEVEL / MAP SELECTION (25 Authentic Fun Run Maps) -->
+    <!-- SCREEN: CLASSIC 2D LEVEL / MAP SELECTION (25 Authentic Fun Run Maps) -->
     <div id="map-modal" class="modal-dialog hidden">
-      <div class="character-card map-select-card" style="max-width: 660px; max-height: 88vh; display: flex; flex-direction: column;">
-        <button class="modal-close-btn" id="map-close-btn">✖</button>
-        <h2 class="dialog-title" style="margin-bottom: 2px;">WÄHLE DAS LEVEL</h2>
-        <p style="color: #ffd166; font-size: 13px; margin-top: 0; margin-bottom: 12px; text-shadow: 1px 1px 2px #000; text-align: center;">
-          25 Originale Level aus dem Fun Run APK
-        </p>
-        <div class="map-grid" id="map-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 52vh; overflow-y: auto; padding: 6px;">
+      <div class="character-card map-select-card classic-browser-card">
+        <div class="browser-header">
+          <div class="browser-title-wrap">
+            <span class="hub-badge hub-badge-2d">CLASSIC 2D</span>
+            <h2 class="dialog-title" style="margin: 0;">STRECKENAUSWAHL</h2>
+          </div>
+          <div class="browser-header-actions">
+            <button class="quick-animal-chip" id="map-char-btn" title="Figur wechseln">
+              <img src="assets/images/gui/market/accessories/bear.png" class="sync-char-img" alt="Figur">
+              <span class="sync-char-name">Bär</span>
+            </button>
+            <button class="modal-close-btn browser-close-inline" id="map-close-btn" title="Zurück">✖</button>
+          </div>
+        </div>
+
+        <div class="map-theme-tabs" id="map-theme-tabs">
+          <button class="theme-tab-btn active" data-theme="all">Alle (25)</button>
+          <button class="theme-tab-btn" data-theme="forest">🌲 Wald (12)</button>
+          <button class="theme-tab-btn" data-theme="candy">🍭 Süßigkeiten (6)</button>
+          <button class="theme-tab-btn" data-theme="beach">🏖️ Strand (7)</button>
+        </div>
+
+        <div class="map-grid" id="map-grid-container">
           <!-- Dynamically populated from maps_catalog.json -->
         </div>
-        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 15px;">
-          <button class="start-btn" id="map-confirm-btn" style="padding: 10px 28px; font-size: 18px;">LEVEL STARTEN</button>
+
+        <div class="browser-footer">
+          <button class="secondary-btn browser-back-btn" id="map-back-btn">⬅️ ZURÜCK</button>
+          <span class="browser-selected-info" id="map-selected-summary">#1 Sunset Valley • Wald</span>
+          <button class="start-btn browser-start-btn" id="map-confirm-btn">🏁 RENNEN STARTEN</button>
         </div>
       </div>
     </div>
@@ -320,79 +300,84 @@
           <span>⛶ Vollbildmodus:</span>
           <button class="wood-toggle-btn" id="settings-fullscreen-btn">VOLLBILD</button>
         </div>
-        <div class="settings-row" style="font-size: 14px; color: #ffeb3b; text-align: center; margin-top: 15px;">
-          ACE FUN RUN - HTML5 Remastered Engine<br>Original Assets & Solar2D Lua Bytecode
-        </div>
       </div>
     </div>
 
-    <!-- MODAL: RANKING / LEADERBOARD -->
-    <div id="ranking-modal" class="modal-dialog hidden">
-      <div class="settings-card">
-        <button class="modal-close-btn" id="ranking-close-btn">✖</button>
-        <h2 class="dialog-title">🏆 BESTENLISTE 🏆</h2>
-        <ul class="leaderboard-list">
-          <li class="leaderboard-item rank-1"><span>#1 MasterRunner</span><span>2450 pts</span></li>
-          <li class="leaderboard-item rank-2"><span>#2 SpeedBear</span><span>2100 pts</span></li>
-          <li class="leaderboard-item rank-3"><span>#3 FoxFlash</span><span>1890 pts</span></li>
-          <li class="leaderboard-item rank-4"><span>#4 EagleEye</span><span>1620 pts</span></li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- VICTORY / RESULTS SCREEN (When race finishes) -->
+    <!-- VICTORY / RESULTS SCREEN (When 2D race finishes) -->
     <div id="results-screen" class="modal-screen hidden" style="display: none;">
       <div class="results-card">
         <h2 class="comic-title" id="result-title">ZIEL ERREICHT!</h2>
-        <p id="result-subtitle" style="color: #ffeb3b; font-weight: bold; margin-bottom: 15px;">ERGEBNIS DES RENNENS</p>
-        
+        <p id="result-subtitle" style="color: #ffeb3b; font-weight: bold; margin-bottom: 15px;">CLASSIC 2D — ERGEBNIS</p>
+
         <ul class="leaderboard-list" id="results-list">
           <!-- Dynamically populated -->
         </ul>
 
-        <div style="display: flex; gap: 15px; margin-top: 15px;">
-          <button class="start-btn" id="restart-btn" style="padding: 12px 25px; font-size: 18px;">🏁 NOCHMAL</button>
-          <button class="secondary-btn" id="results-menu-btn" style="padding: 12px 25px; font-size: 18px;">🏠 ZUM MENÜ</button>
+        <div class="results-actions-row">
+          <button class="start-btn" id="restart-btn">🏁 NOCHMAL</button>
+          <button class="secondary-btn" id="results-levels-btn">🗺️ STRECKEN</button>
+          <button class="secondary-btn results-home-btn" id="results-menu-btn">🏠 MENÜ</button>
         </div>
       </div>
     </div>
 
-    <!-- 3D LEVEL & STEUERUNG WAHL SCREEN -->
+    <!-- 3D LEVEL SELECTION SCREEN -->
     <div id="levelselect3d-screen" class="modal-screen hidden" style="display: none;">
       <div class="level3d-modal-card">
-        <h2 class="comic-title" style="margin-bottom: 6px;">3D POCKET RACER</h2>
-        <p style="color: #ffd166; font-size: 14px; margin-bottom: 18px; text-shadow: 1px 1px 2px #000;">WÄHLE DEINE 3D FUN RUN STRECKE</p>
+        <div class="browser-header">
+          <div class="browser-title-wrap">
+            <span class="hub-badge hub-badge-3d">POCKET RUN 3D</span>
+            <h2 class="dialog-title" style="margin: 0;">STRECKENAUSWAHL</h2>
+          </div>
+          <div class="browser-header-actions">
+            <button class="quick-animal-chip" id="lvl3d-char-btn" title="Figur wechseln">
+              <img src="assets/images/gui/market/accessories/bear.png" class="sync-char-img" alt="Figur">
+              <span class="sync-char-name">Bär</span>
+            </button>
+            <button class="quick-animal-chip" id="btn3d-fullscreen" title="Vollbildmodus">⛶</button>
+            <button class="modal-close-btn browser-close-inline" id="btn3d-close-x" title="Zurück">✖</button>
+          </div>
+        </div>
 
         <div class="level3d-grid">
           <!-- Level 1 -->
-          <div class="level3d-card selected" data-level="1" id="card3d-lvl1">
-            <div class="level3d-badge">LEVEL 1</div>
+          <div class="level3d-card theme-3d-1 selected" data-level="1" id="card3d-lvl1">
+            <div class="level3d-card-banner"><span>LEVEL 1</span><span>1.180m</span></div>
             <div class="level3d-name">🌲 Sunset Valley</div>
-            <div class="level3d-desc">Kreissägen, Sägewerk & Wald</div>
+            <div class="level3d-tags"><span>2 Brücken</span><span>S-Kurven</span><span>Tal-See</span></div>
+            <div class="level3d-desc">Fließende Hyrule-Wiesen mit sanften Hügeln und klassischen Hängebrücken.</div>
           </div>
           <!-- Level 2 -->
-          <div class="level3d-card" data-level="2" id="card3d-lvl2">
-            <div class="level3d-badge">LEVEL 2</div>
+          <div class="level3d-card theme-3d-2" data-level="2" id="card3d-lvl2">
+            <div class="level3d-card-banner"><span>LEVEL 2</span><span>1.260m</span></div>
             <div class="level3d-name">❄️ Snowset Peaks</div>
-            <div class="level3d-desc">Eishöhlen & rasante Bergabfahrt</div>
+            <div class="level3d-tags"><span>Gletscherbrücke</span><span>Serpentinen</span><span>Schnee</span></div>
+            <div class="level3d-desc">Steile Alpenkehren, hoher Berggipfel-Aufstieg und rasante Abfahrten.</div>
           </div>
           <!-- Level 3 -->
-          <div class="level3d-card" data-level="3" id="card3d-lvl3">
-            <div class="level3d-badge">LEVEL 3</div>
-            <div class="level3d-name">🍭 Sugar Slope</div>
-            <div class="level3d-desc">Speed-Pads & Candy-Wahnsinn</div>
+          <div class="level3d-card theme-3d-3" data-level="3" id="card3d-lvl3">
+            <div class="level3d-card-banner"><span>LEVEL 3</span><span>1.220m</span></div>
+            <div class="level3d-name">🌸 Sugar Slope</div>
+            <div class="level3d-tags"><span>3 Brücken-Hops</span><span>Schikanen</span><span>Turbo</span></div>
+            <div class="level3d-desc">Kirschblüten-Sprint voller Bodenwellen, Speed-Pads & Trampoline.</div>
+          </div>
+          <!-- Level 4 -->
+          <div class="level3d-card theme-3d-4" data-level="4" id="card3d-lvl4">
+            <div class="level3d-card-banner"><span>LEVEL 4</span><span>1.300m</span></div>
+            <div class="level3d-name">🏝️ Lagoon Canyon</div>
+            <div class="level3d-tags"><span>3 Brücken</span><span>2 Lagunen</span><span>Klippen</span></div>
+            <div class="level3d-desc">Große Küstenschleifen mit doppelten Lagunen-Seen und Klippensprüngen.</div>
           </div>
         </div>
 
-        <!-- Controls explanation -->
         <div class="level3d-tips">
-          ⌨️ <b>Tastatur:</b> A/D oder Pfeile = Spur • Leertaste/W/Oben = Sprung & Doppelsprung • X = Item<br>
-          📱 <b>Touch:</b> Wischen Links/Rechts = Spur • <b>Sprungtaste oder Wischen Nach Oben = Sprung & Doppelsprung</b> • Feuer-Button = Item
+          🎮 <b>Steuerung:</b> Spur wechseln (←/→ oder Wischen) • Doppelsprung (Leertaste / ↑ / Wischen hoch) • Item (X / Feuer-Button, nach vorn wischen = nach vorne werfen)
         </div>
 
-        <div style="display: flex; gap: 15px; margin-top: 18px; justify-content: center; flex-wrap: wrap;">
-          <button class="start-btn" id="btn3d-start-touch" style="padding: 12px 30px; font-size: 18px;">🏁 STARTEN</button>
-          <button class="secondary-btn" id="btn3d-cancel" style="padding: 12px 25px; font-size: 18px;">⬅️ ZURÜCK</button>
+        <div class="browser-footer">
+          <button class="secondary-btn browser-back-btn" id="btn3d-cancel">⬅️ ZURÜCK</button>
+          <span class="browser-selected-info" id="lvl3d-selected-summary">Level 1 • Sunset Valley</span>
+          <button class="start-btn browser-start-btn" id="btn3d-start-touch">🏁 RENNEN STARTEN</button>
         </div>
       </div>
     </div>
@@ -401,15 +386,16 @@
     <div id="results3d-screen" class="modal-screen hidden" style="display: none;">
       <div class="results-card">
         <h2 class="comic-title" id="result3d-title">ZIEL ERREICHT!</h2>
-        <p id="result3d-subtitle" style="color: #ffeb3b; font-weight: bold; margin-bottom: 15px;">ERGEBNIS DES 3D RENNENS</p>
-        
+        <p id="result3d-subtitle" style="color: #ffeb3b; font-weight: bold; margin-bottom: 15px;">POCKET RUN 3D — ERGEBNIS</p>
+
         <ul class="leaderboard-list" id="results3d-list">
           <!-- Dynamically populated -->
         </ul>
 
-        <div style="display: flex; gap: 15px; margin-top: 15px;">
-          <button class="start-btn" id="btn3d-restart" style="padding: 12px 25px; font-size: 18px;">🏁 NOCHMAL</button>
-          <button class="secondary-btn" id="btn3d-menu" style="padding: 12px 25px; font-size: 18px;">🏠 ZUM MENÜ</button>
+        <div class="results-actions-row">
+          <button class="start-btn" id="btn3d-restart">🏁 NOCHMAL</button>
+          <button class="secondary-btn" id="btn3d-levels">🗺️ STRECKEN</button>
+          <button class="secondary-btn results-home-btn" id="btn3d-menu">🏠 MENÜ</button>
         </div>
       </div>
     </div>
