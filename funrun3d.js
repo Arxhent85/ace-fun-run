@@ -780,216 +780,361 @@
       this.wingL = null;
       this.wingR = null;
       this.tailGroup = null;
+      this.scarfGroup = null;
 
-      let mainColor = 0x9c5a28, bellyColor = 0xf7dfc4, darkColor = 0x522d12, earInnerColor = 0xff9eb5;
-      let collarColor = this.isPlayer ? 0x1976d2 : 0xd32f2f;
-      if (this.animal === 'fox') {
-        mainColor = 0xf26422; bellyColor = 0xfdf8f2; darkColor = 0x1e242b; earInnerColor = 0xffc4aa;
-        collarColor = this.isPlayer ? 0x1976d2 : 0x10b981;
-      } else if (this.animal === 'beaver') {
-        mainColor = 0x824421; bellyColor = 0xdba06b; darkColor = 0x3b1e0d; earInnerColor = 0xdba06b;
-        collarColor = this.isPlayer ? 0x1976d2 : 0xf59e0b;
-      } else if (this.animal === 'baldeagle' || this.animal === 'eagle') {
-        mainColor = 0x3a2b20; bellyColor = 0xf8fafc; darkColor = 0xfab005; earInnerColor = 0xfab005;
-        collarColor = this.isPlayer ? 0x1976d2 : 0x7c3aed;
+      const isBear = (this.animal === 'bear');
+      const isFox = (this.animal === 'fox');
+      const isBeaver = (this.animal === 'beaver');
+      const isEagle = (this.animal === 'baldeagle' || this.animal === 'eagle');
+
+      // Per-species color palettes & anatomical proportions (every character has its OWN silhouette!)
+      let mainColor = 0x8d4e21, bellyColor = 0xf5d9b8, darkColor = 0x4a240c, earInnerColor = 0xff9eb5;
+      let collarColor = this.isPlayer ? 0x0ea5e9 : 0xe53935;
+      let shoeColor = this.isPlayer ? 0xe53935 : 0x2563eb;
+      let torsoScale = [1.20, 1.14, 1.06], torsoY = 0.98;
+      let headScale = [1.05, 1.0, 1.02], headY = 1.90;
+      let armOffsetX = 0.84, armScale = [1.08, 1.38, 1.05], footOffsetX = 0.40;
+
+      if (isFox) {
+        // FOX: Sleek, tall, agile speedster with narrow athletic waist
+        mainColor = 0xf05a19; bellyColor = 0xfff8f0; darkColor = 0x1b2028; earInnerColor = 0xffcfb8;
+        collarColor = this.isPlayer ? 0x06b6d4 : 0x10b981;
+        shoeColor = 0xff6d00;
+        torsoScale = [0.76, 1.18, 0.78]; torsoY = 0.96;
+        headScale = [0.90, 0.88, 1.08]; headY = 1.84;
+        armOffsetX = 0.58; armScale = [0.68, 1.32, 0.72]; footOffsetX = 0.28;
+      } else if (isBeaver) {
+        // BEAVER: Compact, stocky, low-slung builder with wide pear-shaped hips
+        mainColor = 0x7c4120; bellyColor = 0xd9a16c; darkColor = 0x361b0c; earInnerColor = 0xd9a16c;
+        collarColor = this.isPlayer ? 0xfacc15 : 0xf59e0b;
+        shoeColor = 0x4e2c15;
+        torsoScale = [1.08, 0.86, 1.06]; torsoY = 0.78;
+        headScale = [1.02, 0.92, 0.98]; headY = 1.56;
+        armOffsetX = 0.76; armScale = [0.88, 1.05, 0.88]; footOffsetX = 0.36;
+      } else if (isEagle) {
+        // BALD EAGLE: Proud upright V-tapered aerodynamic avian striker
+        mainColor = 0x35251a; bellyColor = 0xf8fafc; darkColor = 0xf59e0b; earInnerColor = 0xf59e0b;
+        collarColor = this.isPlayer ? 0x38bdf8 : 0x8b5cf6;
+        shoeColor = 0xf59e0b;
+        torsoScale = [0.88, 1.15, 0.82]; torsoY = 1.02;
+        headScale = [0.88, 0.94, 0.96]; headY = 1.88;
+        armOffsetX = 0.56; armScale = [0.55, 0.95, 0.55]; footOffsetX = 0.30;
       }
 
-      this.bodyMat = new THREE.MeshStandardMaterial({ color: mainColor, roughness: 0.58, metalness: 0.04 });
-      this.bellyMat = new THREE.MeshStandardMaterial({ color: bellyColor, roughness: 0.62, metalness: 0.02 });
-      this.darkMat = new THREE.MeshStandardMaterial({ color: darkColor, roughness: 0.65, metalness: 0.05 });
+      this.baseTorsoY = torsoY;
+      this.baseHeadY = headY;
+
+      this.bodyMat = new THREE.MeshStandardMaterial({ color: mainColor, roughness: 0.56, metalness: 0.04 });
+      this.bellyMat = new THREE.MeshStandardMaterial({ color: bellyColor, roughness: 0.60, metalness: 0.02 });
+      this.darkMat = new THREE.MeshStandardMaterial({ color: darkColor, roughness: 0.62, metalness: 0.06 });
       this.innerEarMat = new THREE.MeshStandardMaterial({ color: earInnerColor, roughness: 0.55 });
       this.eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
       this.eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-      this.shoeMat = new THREE.MeshStandardMaterial({ color: this.isPlayer ? 0xe53935 : 0x3949ab, roughness: 0.42, metalness: 0.1 });
+      this.shoeMat = new THREE.MeshStandardMaterial({ color: shoeColor, roughness: 0.38, metalness: 0.12 });
       this.soleMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.45 });
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0x926400, emissiveIntensity: 0.35, metalness: 0.28, roughness: 0.22 });
+      const collarMat = new THREE.MeshStandardMaterial({ color: collarColor, roughness: 0.42, metalness: 0.1 });
 
-      // 1. Torso
-      const torsoGeo = new THREE.SphereGeometry(0.72, 18, 16);
-      torsoGeo.scale(1.0, 1.25, 0.96);
+      // 1. Anatomically Distinct Torso per Species!
+      let torsoGeo;
+      if (isEagle) {
+        // V-tapered aerodynamic chest
+        torsoGeo = new THREE.CylinderGeometry(0.62, 0.36, 1.32, 14);
+      } else if (isFox) {
+        // Slender athletic tapered speedster chest
+        torsoGeo = new THREE.CylinderGeometry(0.42, 0.32, 1.32, 14);
+      } else if (isBeaver) {
+        // Low stout pear-shaped builder body
+        torsoGeo = new THREE.SphereGeometry(0.72, 16, 14);
+        torsoGeo.scale(torsoScale[0], torsoScale[1], torsoScale[2]);
+      } else {
+        // Broad muscular powerhouse bear torso
+        torsoGeo = new THREE.SphereGeometry(0.74, 18, 16);
+        torsoGeo.scale(torsoScale[0], torsoScale[1], torsoScale[2]);
+      }
       this.torsoMesh = new THREE.Mesh(torsoGeo, this.bodyMat);
-      this.torsoMesh.position.y = 0.92;
+      this.torsoMesh.position.y = torsoY;
       this.torsoMesh.castShadow = true;
       this.torsoMesh.receiveShadow = true;
       this.group.add(this.torsoMesh);
 
-      // Creamy Belly Wrap
-      const bellyGeo = new THREE.SphereGeometry(0.56, 14, 12);
-      bellyGeo.scale(0.85, 0.96, 0.38);
+      // Creamy Belly Wrap (front)
+      const bellyGeo = new THREE.SphereGeometry(0.52, 12, 10);
+      bellyGeo.scale(torsoScale[0] * 0.72, torsoScale[1] * 0.82, 0.34);
       const bellyMesh = new THREE.Mesh(bellyGeo, this.bellyMat);
-      bellyMesh.position.set(0, 0.88, 0.62);
+      bellyMesh.position.set(0, torsoY - 0.04, 0.48 * torsoScale[2]);
       this.group.add(bellyMesh);
 
-      // Racing Scarf / Collar + Front & Back Golden Emblems (clearly visible from behind!)
-      const collarMat = new THREE.MeshStandardMaterial({ color: collarColor, roughness: 0.45, metalness: 0.1 });
-      const collarGeo = new THREE.TorusGeometry(0.68, 0.09, 10, 20);
-      collarGeo.rotateX(Math.PI / 2);
-      const collar = new THREE.Mesh(collarGeo, collarMat);
-      collar.position.set(0, 1.35, 0.08);
-      collar.castShadow = true;
-      this.group.add(collar);
+      // Role-Specific Signature Backpacks, Gear & Outfits (clearly visible from behind!)
+      this.scarfGroup = new THREE.Group();
+      this.group.add(this.scarfGroup);
 
-      const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.85, roughness: 0.25 });
-      const starGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.06, 5);
-      starGeo.rotateX(Math.PI / 2);
-      const starFront = new THREE.Mesh(starGeo, goldMat);
-      starFront.position.set(0, 1.35, 0.78);
-      this.group.add(starFront);
-
-      // Flying Scarf Tails billowing behind neck
-      const scarfTailMat = new THREE.MeshStandardMaterial({ color: collarColor, roughness: 0.5 });
-      for (const side of [-1, 1]) {
-        const scarfTail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.58), scarfTailMat);
-        scarfTail.position.set(side * 0.18, 1.33, -0.78);
-        scarfTail.rotation.set(0.28, side * 0.25, 0);
-        scarfTail.castShadow = true;
-        this.group.add(scarfTail);
+      if (isBear) {
+        // BEAR: Explorer Leather Backpack + Cross Straps + Bandana Tails
+        const packMat = new THREE.MeshStandardMaterial({ color: 0x5c3618, roughness: 0.72 });
+        const strapMat = new THREE.MeshStandardMaterial({ color: 0x3b200c, roughness: 0.78 });
+        const pack = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.82, 0.42), packMat);
+        pack.position.set(0, torsoY + 0.06, -0.78);
+        pack.castShadow = true;
+        this.group.add(pack);
+        const flap = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.24, 0.46), strapMat);
+        flap.position.set(0, torsoY + 0.36, -0.78);
+        this.group.add(flap);
+        for (const s of [-1, 1]) {
+          const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 0.08), goldMat);
+          buckle.position.set(s * 0.24, torsoY + 0.14, -1.01);
+          this.group.add(buckle);
+        }
+        // Racing Bandana collar + fluttering tails
+        const band = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.10, 8, 18), collarMat);
+        band.rotation.x = Math.PI / 2; band.position.set(0, torsoY + 0.46, 0.04);
+        this.group.add(band);
+        for (const s of [-1, 1]) {
+          const tail = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.08, 0.56), collarMat);
+          tail.position.set(s * 0.20, torsoY + 0.44, -0.82);
+          tail.rotation.set(0.25, s * 0.28, 0);
+          this.scarfGroup.add(tail);
+        }
+      } else if (isFox) {
+        // FOX: Long Flowing Speedster Scarf + Aviator Racing Goggles Strap around Head!
+        const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.11, 8, 18), collarMat);
+        scarf.rotation.x = Math.PI / 2; scarf.position.set(0, torsoY + 0.46, 0.04);
+        this.group.add(scarf);
+        for (const s of [-1, 1]) {
+          const streamer = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.92), collarMat);
+          streamer.position.set(s * 0.16, torsoY + 0.44, -0.78);
+          streamer.rotation.set(0.22, s * 0.20, 0);
+          streamer.castShadow = true;
+          this.scarfGroup.add(streamer);
+        }
+        // Dark racing jacket vest stripe down back
+        const vest = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.72, 0.22), this.darkMat);
+        vest.position.set(0, torsoY + 0.04, -0.34);
+        this.group.add(vest);
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.68, 0.25), collarMat);
+        stripe.position.set(0, torsoY + 0.04, -0.34);
+        this.group.add(stripe);
+      } else if (isBeaver) {
+        // BEAVER: Builder Leather Tool-Belt + Gleaming Wrench + Lumberjack Suspenders + Yellow Hard-Hat!
+        const beltMat = new THREE.MeshStandardMaterial({ color: 0x3b1e0d, roughness: 0.72 });
+        const steelMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, emissive: 0x475569, emissiveIntensity: 0.28, metalness: 0.28, roughness: 0.25 });
+        const suspMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.52 });
+        const belt = new THREE.Mesh(new THREE.TorusGeometry(0.74, 0.10, 8, 20), beltMat);
+        belt.rotation.x = Math.PI / 2; belt.position.set(0, torsoY - 0.08, 0);
+        this.group.add(belt);
+        // Crossed red builder suspenders clearly visible on Beaver's back
+        for (const s of [-1, 1]) {
+          const strap = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.74, 0.08), suspMat);
+          strap.position.set(s * 0.22, torsoY + 0.20, -0.74);
+          strap.rotation.z = s * 0.38;
+          this.group.add(strap);
+        }
+        const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.10), goldMat);
+        buckle.position.set(0, torsoY - 0.08, -0.82);
+        this.group.add(buckle);
+        const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.28, 0.22), beltMat);
+        pouch.position.set(0.42, torsoY - 0.12, -0.62);
+        this.group.add(pouch);
+        const wrench = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.48, 0.08), steelMat);
+        wrench.position.set(-0.38, torsoY - 0.10, -0.70);
+        wrench.rotation.z = 0.35;
+        this.group.add(wrench);
+      } else if (isEagle) {
+        // EAGLE: Golden Flight Harness & White Neck Ruff Feathers
+        const ruff = new THREE.Mesh(new THREE.ConeGeometry(0.64, 0.55, 12), this.bellyMat);
+        ruff.position.set(0, torsoY + 0.48, 0.02);
+        this.group.add(ruff);
+        const harness = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.07, 8, 16), goldMat);
+        harness.rotation.x = Math.PI / 2; harness.position.set(0, torsoY + 0.18, 0);
+        this.group.add(harness);
+        const emblem = new THREE.Mesh(new THREE.OctahedronGeometry(0.18), goldMat);
+        emblem.position.set(0, torsoY + 0.18, -0.52);
+        this.group.add(emblem);
       }
 
-      // 2. Head
-      const isEagle = (this.animal === 'baldeagle' || this.animal === 'eagle');
-      const headGeo = new THREE.SphereGeometry(0.58, 18, 16);
+      // 2. Head (Species-specific shape & accessories!)
+      const headGeo = new THREE.SphereGeometry(0.56, 18, 16);
+      headGeo.scale(headScale[0], headScale[1], headScale[2]);
       this.headMesh = new THREE.Mesh(headGeo, isEagle ? this.bellyMat : this.bodyMat);
-      this.headMesh.position.set(0, 1.78, 0.08);
+      this.headMesh.position.set(0, headY, 0.08);
       this.headMesh.castShadow = true;
       this.group.add(this.headMesh);
 
-      // Expressive Comic Eyes + Brows
-      const eyeGeo = new THREE.SphereGeometry(0.14, 12, 10);
-      eyeGeo.scale(0.9, 1.15, 0.5);
-      const pupilGeo = new THREE.SphereGeometry(0.08, 8, 6);
-      pupilGeo.scale(0.9, 1.0, 0.4);
+      if (isBeaver) {
+        // Iconic Bright Yellow Lumberjack / Builder Hard-Hat!
+        const hatMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.28, metalness: 0.12 });
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.54), hatMat);
+        dome.position.set(0, headY + 0.12, 0.08);
+        dome.castShadow = true;
+        this.group.add(dome);
+        const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.74, 0.74, 0.08, 16), hatMat);
+        brim.position.set(0, headY + 0.12, 0.14);
+        this.group.add(brim);
+        const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.20, 0.88), hatMat);
+        ridge.position.set(0, headY + 0.68, 0.08);
+        this.group.add(ridge);
+      } else if (isFox) {
+        // Aviator Goggles Strap & Lenses resting on Fox's brow/head
+        const gogStrap = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.06, 6, 18), this.darkMat);
+        gogStrap.rotation.x = Math.PI / 2;
+        gogStrap.position.set(0, headY + 0.20, 0.08);
+        this.group.add(gogStrap);
+        const lensMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.5, roughness: 0.15 });
+        for (const s of [-1, 1]) {
+          const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.12, 10), lensMat);
+          lens.rotation.x = Math.PI / 2;
+          lens.position.set(s * 0.22, headY + 0.24, 0.58);
+          this.group.add(lens);
+        }
+      }
 
+      // Expressive Comic Eyes
+      const eyeGeo = new THREE.SphereGeometry(0.13, 10, 8);
+      eyeGeo.scale(0.9, 1.15, 0.5);
+      const pupilGeo = new THREE.SphereGeometry(0.075, 8, 6);
+      pupilGeo.scale(0.9, 1.0, 0.4);
       for (let eyeSide of [-1, 1]) {
         const eyeWhite = new THREE.Mesh(eyeGeo, this.eyeWhiteMat);
-        eyeWhite.position.set(eyeSide * 0.24, 1.88, 0.54);
-        eyeWhite.rotation.y = eyeSide * 0.15;
+        eyeWhite.position.set(eyeSide * 0.22, headY + 0.08, 0.52 * headScale[2]);
         this.group.add(eyeWhite);
-
         const eyePupil = new THREE.Mesh(pupilGeo, this.eyePupilMat);
-        eyePupil.position.set(eyeSide * 0.24, 1.88, 0.59);
+        eyePupil.position.set(eyeSide * 0.22, headY + 0.08, 0.57 * headScale[2]);
         this.group.add(eyePupil);
-
-        const catchlight = new THREE.Mesh(new THREE.SphereGeometry(0.032, 6, 4), this.eyeWhiteMat);
-        catchlight.position.set(eyeSide * 0.22, 1.92, 0.62);
-        this.group.add(catchlight);
       }
 
       // Snout / Beak & Species Facial Detail
       if (isEagle) {
-        const beakUpper = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.56, 8), this.darkMat);
-        beakUpper.rotation.x = Math.PI / 2 + 0.15;
-        beakUpper.position.set(0, 1.70, 0.68);
+        const beakUpper = new THREE.Mesh(new THREE.ConeGeometry(0.20, 0.58, 8), this.darkMat);
+        beakUpper.rotation.x = Math.PI / 2 + 0.18;
+        beakUpper.position.set(0, headY - 0.06, 0.66);
         this.group.add(beakUpper);
-
-        // White feathered head crest visible from back
-        const crestGeo = new THREE.ConeGeometry(0.24, 0.50, 7);
-        const crest = new THREE.Mesh(crestGeo, this.bellyMat);
-        crest.position.set(0, 2.15, -0.35);
-        crest.rotation.x = -0.95;
-        this.group.add(crest);
+        // Spiked white feathered head crest clearly visible from behind
+        for (let cr = -1; cr <= 1; cr++) {
+          const crest = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.48, 6), this.bellyMat);
+          crest.position.set(cr * 0.14, headY + 0.42, -0.34);
+          crest.rotation.set(-0.95, 0, -cr * 0.25);
+          this.group.add(crest);
+        }
       } else {
-        const snoutGeo = new THREE.SphereGeometry(0.32, 14, 10);
-        snoutGeo.scale(1.0, 0.75, 0.88);
+        const snoutLen = isFox ? 1.25 : 0.88;
+        const snoutGeo = new THREE.SphereGeometry(isFox ? 0.26 : 0.32, 12, 10);
+        snoutGeo.scale(isFox ? 0.85 : 1.0, 0.72, snoutLen);
         const snout = new THREE.Mesh(snoutGeo, this.bellyMat);
-        snout.position.set(0, 1.64, 0.54);
+        snout.position.set(0, headY - 0.12, 0.52);
         this.group.add(snout);
 
-        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.25 }));
-        nose.position.set(0, 1.73, 0.80);
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 6), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.25 }));
+        nose.position.set(0, headY - 0.04, 0.78 + (isFox ? 0.10 : 0));
         this.group.add(nose);
 
-        if (this.animal === 'beaver') {
-          // Iconic cute buck teeth
-          const toothGeo = new THREE.BoxGeometry(0.10, 0.14, 0.06);
+        if (isBeaver) {
+          const toothGeo = new THREE.BoxGeometry(0.10, 0.15, 0.06);
           for (const side of [-1, 1]) {
             const tooth = new THREE.Mesh(toothGeo, this.eyeWhiteMat);
-            tooth.position.set(side * 0.06, 1.50, 0.78);
+            tooth.position.set(side * 0.06, headY - 0.26, 0.78);
             this.group.add(tooth);
           }
         }
       }
 
-      // Ears & Tails (Tail placed in movable tailGroup)
+      // Ears & Signature Tails (dramatically distinct from behind!)
       this.tailGroup = new THREE.Group();
-      this.tailGroup.position.set(0, 0.62, -0.66);
+      this.tailGroup.position.set(0, torsoY - 0.26, -0.58 * torsoScale[2]);
       this.group.add(this.tailGroup);
 
-      if (this.animal === 'bear') {
+      if (isBear) {
         for (let side of [-1, 1]) {
-          const earOuter = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 10), this.darkMat);
-          earOuter.position.set(side * 0.48, 2.24, 0.02);
+          const earOuter = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), this.darkMat);
+          earOuter.position.set(side * 0.50, headY + 0.46, 0.02);
           earOuter.castShadow = true;
-          const earInner = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), this.innerEarMat);
-          earInner.position.set(side * 0.48, 2.24, 0.12);
+          const earInner = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), this.innerEarMat);
+          earInner.position.set(side * 0.50, headY + 0.46, 0.12);
           this.group.add(earOuter);
           this.group.add(earInner);
         }
-        const bobtail = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), this.darkMat);
-        bobtail.position.set(0, 0.02, -0.08);
+        const bobtail = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), this.darkMat);
+        bobtail.position.set(0, 0.04, -0.14);
         bobtail.castShadow = true;
         this.tailGroup.add(bobtail);
-      } else if (this.animal === 'fox') {
+      } else if (isFox) {
+        // Tall pointed triangular fox ears with black tips!
         for (let side of [-1, 1]) {
-          const earOuter = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.64, 7), this.bodyMat);
-          earOuter.position.set(side * 0.36, 2.34, 0.05);
-          earOuter.rotation.z = -side * 0.22;
+          const earOuter = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.78, 7), this.bodyMat);
+          earOuter.position.set(side * 0.34, headY + 0.58, 0.04);
+          earOuter.rotation.z = -side * 0.20;
           earOuter.castShadow = true;
-          const earTip = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.26, 7), this.darkMat);
-          earTip.position.set(side * 0.42, 2.54, 0.05);
-          earTip.rotation.z = -side * 0.22;
+          const earTip = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.34, 7), this.darkMat);
+          earTip.position.set(side * 0.40, headY + 0.84, 0.04);
+          earTip.rotation.z = -side * 0.20;
           this.group.add(earOuter);
           this.group.add(earTip);
         }
-        // Bushy Fox Tail with White Tip!
-        const bushyTail = new THREE.Mesh(new THREE.ConeGeometry(0.36, 1.05, 10), this.bodyMat);
-        bushyTail.position.set(0, 0.18, -0.35);
-        bushyTail.rotation.x = -0.95;
-        bushyTail.castShadow = true;
-        const tailTip = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.48, 10), this.bellyMat);
-        tailTip.position.set(0, 0.40, -0.68);
-        tailTip.rotation.x = -0.95;
-        this.tailGroup.add(bushyTail);
-        this.tailGroup.add(tailTip);
-      } else if (this.animal === 'beaver') {
+        // HUGE Fluffy Segmented Bushy Fox Tail with Bold White Brush Tip!
+        const tailBase = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), this.bodyMat);
+        tailBase.scale.set(0.95, 0.95, 1.45);
+        tailBase.position.set(0, 0.14, -0.34);
+        tailBase.castShadow = true;
+        const tailMid = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8), this.bodyMat);
+        tailMid.scale.set(1.0, 0.96, 1.55);
+        tailMid.position.set(0, 0.34, -0.82);
+        tailMid.castShadow = true;
+        const tailTip = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.72, 10), this.bellyMat);
+        tailTip.rotation.x = -Math.PI * 0.42;
+        tailTip.position.set(0, 0.50, -1.38);
+        tailTip.castShadow = true;
+        this.tailGroup.add(tailBase, tailMid, tailTip);
+      } else if (isBeaver) {
         for (let side of [-1, 1]) {
-          const ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), this.darkMat);
-          ear.position.set(side * 0.46, 2.16, 0.0);
+          const ear = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), this.darkMat);
+          ear.position.set(side * 0.52, headY + 0.08, 0.02);
           this.group.add(ear);
         }
-        // Rounded Waffle Paddle Tail
-        const paddleGeo = new THREE.BoxGeometry(0.62, 0.12, 1.02);
-        const paddle = new THREE.Mesh(paddleGeo, this.darkMat);
-        paddle.position.set(0, -0.05, -0.45);
-        paddle.rotation.x = -0.28;
+        // Sculpted Diamond-Hatched Flat Scaly Paddle Tail!
+        const pCan = document.createElement('canvas');
+        pCan.width = 64; pCan.height = 64;
+        const pCtx = pCan.getContext('2d');
+        pCtx.fillStyle = '#361b0c'; pCtx.fillRect(0, 0, 64, 64);
+        pCtx.strokeStyle = '#63371e'; pCtx.lineWidth = 3;
+        for (let i = -64; i < 128; i += 12) {
+          pCtx.beginPath(); pCtx.moveTo(i, 0); pCtx.lineTo(i + 64, 64); pCtx.stroke();
+          pCtx.beginPath(); pCtx.moveTo(i + 64, 0); pCtx.lineTo(i, 64); pCtx.stroke();
+        }
+        const padTex = new THREE.CanvasTexture(pCan);
+        const padMat = new THREE.MeshStandardMaterial({ map: padTex, roughness: 0.65 });
+        const paddle = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.36, 0.14, 12), padMat);
+        paddle.scale.set(0.95, 1.0, 1.55);
+        paddle.position.set(0, -0.06, -0.68);
+        paddle.rotation.x = -0.22;
         paddle.castShadow = true;
         this.tailGroup.add(paddle);
       } else if (isEagle) {
-        // Tail feathers fan
-        for (let f = -1; f <= 1; f++) {
-          const feather = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.07, 0.75), this.bellyMat);
-          feather.position.set(f * 0.20, 0.06, -0.36);
-          feather.rotation.set(0.22, f * -0.26, 0);
+        // 5-Plume Fanned White & Espresso Eagle Tail Fan!
+        for (let f = -2; f <= 2; f++) {
+          const feather = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.06, 0.92), f % 2 === 0 ? this.bellyMat : this.bodyMat);
+          feather.position.set(f * 0.17, 0.08, -0.45);
+          feather.rotation.set(0.18, f * -0.22, 0);
+          feather.castShadow = true;
           this.tailGroup.add(feather);
         }
       }
 
-      // 3. Articulated Arms / Wings
+      // 3. Articulated Multi-Tier Wings (Eagle) or Species-Sized Arms
       if (isEagle) {
         const makeWing = (side) => {
           const wg = new THREE.Group();
-          const mainFeath = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8), this.bodyMat);
-          mainFeath.scale.set(1.15, 0.28, 0.72);
-          mainFeath.position.set(side * 0.42, 0, -0.08);
-          mainFeath.rotation.y = side * -0.25;
-          mainFeath.castShadow = true;
-          wg.add(mainFeath);
-
-          const tipFeath = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.55, 6), this.bodyMat);
-          tipFeath.rotation.z = side * -Math.PI / 2;
-          tipFeath.rotation.y = side * -0.28;
-          tipFeath.position.set(side * 0.92, -0.02, -0.18);
-          wg.add(tipFeath);
-          wg.position.set(side * 0.54, 1.12, 0.0);
+          const upper = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.18, 0.56), this.bodyMat);
+          upper.position.set(side * 0.42, 0, -0.05);
+          upper.castShadow = true;
+          wg.add(upper);
+          for (let f = 0; f < 4; f++) {
+            const plume = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.72 + f * 0.12, 5), f === 3 ? this.bellyMat : this.bodyMat);
+            plume.rotation.z = side * (-Math.PI / 2 + f * 0.08);
+            plume.rotation.y = side * (-0.25 - f * 0.06);
+            plume.position.set(side * (0.95 + f * 0.08), -0.02, -0.18 + f * 0.11);
+            plume.castShadow = true;
+            wg.add(plume);
+          }
+          wg.position.set(side * 0.52, torsoY + 0.24, -0.04);
           return wg;
         };
         this.wingL = makeWing(1);
@@ -997,35 +1142,50 @@
         this.group.add(this.wingL);
         this.group.add(this.wingR);
       }
-      const armGeo = new THREE.SphereGeometry(0.21, 10, 8);
-      armGeo.scale(0.82, 1.32, 0.82);
+      const armGeo = new THREE.SphereGeometry(0.20, 10, 8);
+      armGeo.scale(armScale[0], armScale[1], armScale[2]);
       this.armL = new THREE.Mesh(armGeo, this.bodyMat);
       this.armR = new THREE.Mesh(armGeo, this.bodyMat);
-      this.armL.position.set(0.74, 1.05, 0.1);
-      this.armR.position.set(-0.74, 1.05, 0.1);
+      this.armL.position.set(armOffsetX, torsoY + 0.12, 0.08);
+      this.armR.position.set(-armOffsetX, torsoY + 0.12, 0.08);
+      this.armL.visible = !isEagle;
+      this.armR.visible = !isEagle;
       this.armL.castShadow = true;
       this.armR.castShadow = true;
       this.group.add(this.armL);
       this.group.add(this.armR);
 
-      // 4. Stylized Running Sneakers / Feet
+      // 4. Footwear / Talons (Species-matched!)
       const buildFoot = () => {
         const fg = new THREE.Group();
-        const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.22, 0.56), this.shoeMat);
-        sneaker.position.y = 0.16;
-        sneaker.castShadow = true;
-        const toeCap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), this.soleMat);
-        toeCap.scale.set(1.0, 0.65, 1.0);
-        toeCap.position.set(0, 0.14, 0.24);
-        const sole = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.08, 0.62), this.soleMat);
-        sole.position.y = 0.04;
-        fg.add(sneaker); fg.add(toeCap); fg.add(sole);
+        if (isEagle) {
+          // Sharp Golden 3-Toed Eagle Talons!
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.34, 6), this.darkMat);
+          leg.position.y = 0.22; fg.add(leg);
+          for (const t of [-1, 0, 1]) {
+            const toe = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.36, 5), this.darkMat);
+            toe.rotation.x = Math.PI / 2;
+            toe.rotation.z = -t * 0.35;
+            toe.position.set(t * 0.10, 0.06, 0.18);
+            fg.add(toe);
+          }
+        } else {
+          const w = isFox ? 0.28 : 0.38;
+          const sneaker = new THREE.Mesh(new THREE.BoxGeometry(w, 0.22, 0.56), this.shoeMat);
+          sneaker.position.y = 0.16; sneaker.castShadow = true;
+          const toeCap = new THREE.Mesh(new THREE.SphereGeometry(w * 0.5, 10, 8), this.soleMat);
+          toeCap.scale.set(1.0, 0.65, 1.0);
+          toeCap.position.set(0, 0.14, 0.24);
+          const sole = new THREE.Mesh(new THREE.BoxGeometry(w + 0.04, 0.08, 0.62), this.soleMat);
+          sole.position.y = 0.04;
+          fg.add(sneaker, toeCap, sole);
+        }
         return fg;
       };
       this.footL = buildFoot();
       this.footR = buildFoot();
-      this.footL.position.set(0.36, 0, 0);
-      this.footR.position.set(-0.36, 0, 0);
+      this.footL.position.set(footOffsetX, 0, 0);
+      this.footR.position.set(-footOffsetX, 0, 0);
       this.group.add(this.footL);
       this.group.add(this.footR);
 
@@ -1055,13 +1215,14 @@
 
       if (this.isPlayer) {
         this.badgeSprite = this.createBadgeSprite('DU');
-        this.badgeSprite.position.y = 2.7;
+        this.badgeSprite.position.y = headY + 0.92;
         this.group.add(this.badgeSprite);
       }
     }
 
     jump() {
       if (this.dead || this.stunTimer > 0) return;
+      const worldX = this.engine.getCurveX(this.z) + this.x;
 
       if (!this.isJumping) {
         // First jump from ground
@@ -1071,7 +1232,7 @@
         this.isFlipping = false;
         this.flipAngle = 0;
         if (this.isPlayer) sfx.play('jump');
-        this.engine.particles.spawnDust(this.x, this.engine.getHillY(this.z), this.z, 6);
+        this.engine.particles.spawnDust(worldX, this.engine.getHillY(this.z) + this.jumpY, this.z, 6);
       } else if (this.isJumping && this.jumpCount === 1) {
         // Double jump in mid-air with 360° somersault flip & golden sparks!
         this.vy = 13.8;
@@ -1079,7 +1240,7 @@
         this.isFlipping = true;
         this.flipAngle = 0.05;
         if (this.isPlayer) sfx.play('double_jump');
-        this.engine.particles.spawnSparks(this.x, this.engine.getHillY(this.z) + this.jumpY + 0.5, this.z, 20);
+        this.engine.particles.spawnSparks(worldX, this.engine.getHillY(this.z) + this.jumpY + 0.5, this.z, 20);
       }
     }
 
@@ -1199,7 +1360,8 @@
         this.speed = Math.min(this.speed, this.baseSpeed * 0.45);
       } else if (this.speedBoostTimer > 0) {
         this.speedBoostTimer -= dt;
-        this.engine.particles.spawnSpeedFlames(this.x, this.engine.getHillY(this.z) + this.jumpY, this.z);
+        const wx = this.engine.getCurveX(this.z) + this.x;
+        this.engine.particles.spawnSpeedFlames(wx, this.engine.getHillY(this.z) + this.jumpY, this.z);
       } else if (this.stunTimer > 0) {
         this.stunTimer -= dt;
         this.speed = 0;
@@ -1257,13 +1419,15 @@
           this.usePowerup(opponentAhead ? 'forward' : 'backward');
         }
 
-        for (let r of this.engine.rocks) {
-          if (r.active && r.z > this.z && (r.z - this.z) < 14.0 && Math.abs(r.laneX - this.x) < 2.0) {
-            if (Math.random() < 0.75) {
-              this.jump();
-            } else {
-              const openLanes = [4.5, 0, -4.5].filter(l => Math.abs(l - r.laneX) > 2.0);
-              if (openLanes.length > 0) this.targetX = openLanes[0];
+        for (const obsList of [this.engine.rocks, this.engine.barriers]) {
+          for (let r of obsList) {
+            if (r.active && r.z > this.z && (r.z - this.z) < 14.0 && Math.abs(r.laneX - this.x) < 2.0) {
+              if (Math.random() < 0.75) {
+                this.jump();
+              } else {
+                const openLanes = [4.5, 0, -4.5].filter(l => Math.abs(l - r.laneX) > 2.0);
+                if (openLanes.length > 0) this.targetX = openLanes[0];
+              }
             }
           }
         }
@@ -1277,26 +1441,29 @@
 
       this.group.position.set(finalX, finalY, this.z);
 
-      // Calculate terrain slope pitch angle (leaning naturally into climbs & descents!)
+      // Calculate BOTH terrain slope pitch AND road curve yaw so characters ALWAYS run straight along curves!
       const dz = 1.0;
       const slopeDy = this.engine.getHillY(this.z + dz) - this.engine.getHillY(this.z - dz);
       const slopePitch = Math.atan2(slopeDy, dz * 2.0);
+      const curveDx = this.engine.getCurveX(this.z + dz) - this.engine.getCurveX(this.z - dz);
+      const curveYaw = Math.atan2(curveDx, dz * 2.0);
 
-      // Tilting & Somersault Rotation (Natural leaning into turns and hills!)
-      const laneTilt = (this.targetX - this.x) * 0.08;
+      // Natural leaning into lane switches and curves!
+      const laneTilt = -(this.targetX - this.x) * 0.08 - curveDx * 0.08;
+      this.group.rotation.order = 'YXZ';
       if (this.isFlipping) {
-        this.group.rotation.set(this.flipAngle, 0, laneTilt);
+        this.group.rotation.set(this.flipAngle, curveYaw, laneTilt);
       } else {
-        // Rotate X axis to follow slope incline
-        this.group.rotation.set(-slopePitch, 0, laneTilt);
+        this.group.rotation.set(-slopePitch, curveYaw, laneTilt);
       }
 
-      // Animated Running Limbs (Arms pump, sneakers step, tail wags, eagle wings flap)
+      // Animated Running Limbs (Arms pump, sneakers step, tail wags, eagle wings flap, scarves flutter)
       const runCycle = this.z * 1.6;
+      const bTorsoY = this.baseTorsoY || 0.96;
+      const bHeadY = this.baseHeadY || 1.84;
       if (!this.isJumping && this.speed > 2.0) {
-        // Paws swing opposite
-        this.footL.position.z = Math.sin(runCycle) * 0.40;
-        this.footR.position.z = Math.sin(runCycle + Math.PI) * 0.40;
+        this.footL.position.z = Math.sin(runCycle) * 0.42;
+        this.footR.position.z = Math.sin(runCycle + Math.PI) * 0.42;
         this.footL.position.y = Math.max(0, -Math.sin(runCycle)) * 0.24;
         this.footR.position.y = Math.max(0, -Math.sin(runCycle + Math.PI)) * 0.24;
         this.footL.rotation.x = Math.cos(runCycle) * 0.35;
@@ -1307,32 +1474,35 @@
         this.armL.rotation.x = Math.sin(runCycle) * 0.55;
         this.armR.rotation.x = -Math.sin(runCycle) * 0.55;
 
-        // Running body bobbing
-        this.torsoMesh.position.y = 0.92 + Math.abs(Math.sin(runCycle)) * 0.09;
-        this.headMesh.position.y = 1.78 + Math.abs(Math.sin(runCycle)) * 0.09;
+        this.torsoMesh.position.y = bTorsoY + Math.abs(Math.sin(runCycle)) * 0.09;
+        this.headMesh.position.y = bHeadY + Math.abs(Math.sin(runCycle)) * 0.09;
 
         if (this.tailGroup) {
-          this.tailGroup.rotation.y = Math.sin(runCycle * 0.8) * 0.28;
-          this.tailGroup.rotation.x = Math.sin(runCycle) * 0.12;
+          this.tailGroup.rotation.y = Math.sin(runCycle * 0.85) * 0.34;
+          this.tailGroup.rotation.x = Math.sin(runCycle) * 0.14;
+        }
+        if (this.scarfGroup) {
+          this.scarfGroup.rotation.y = Math.sin(runCycle * 1.1) * 0.15;
+          this.scarfGroup.rotation.x = Math.sin(runCycle * 1.4) * 0.10;
         }
         if (this.wingL && this.wingR) {
-          const flap = Math.sin(runCycle * 1.2) * 0.42;
+          const flap = Math.sin(runCycle * 1.15) * 0.46;
           this.wingL.rotation.z = flap;
           this.wingR.rotation.z = -flap;
         }
       } else {
-        this.footL.position.set(0.36, this.isJumping ? 0.15 : 0, 0);
-        this.footR.position.set(-0.36, this.isJumping ? 0.15 : 0, 0);
+        this.footL.position.set(this.footL.position.x, this.isJumping ? 0.15 : 0, 0);
+        this.footR.position.set(this.footR.position.x, this.isJumping ? 0.15 : 0, 0);
         this.footL.rotation.x = this.isJumping ? 0.3 : 0;
         this.footR.rotation.x = this.isJumping ? -0.2 : 0;
         this.armL.position.z = 0;
         this.armR.position.z = 0;
         this.armL.rotation.x = this.isJumping ? -0.6 : 0;
         this.armR.rotation.x = this.isJumping ? -0.6 : 0;
-        this.torsoMesh.position.y = 0.92;
-        this.headMesh.position.y = 1.78;
+        this.torsoMesh.position.y = bTorsoY;
+        this.headMesh.position.y = bHeadY;
         if (this.wingL && this.wingR) {
-          const wingAngle = this.isJumping ? 0.38 : 0.12;
+          const wingAngle = this.isJumping ? 0.42 : 0.12;
           this.wingL.rotation.z = wingAngle;
           this.wingR.rotation.z = -wingAngle;
         }
@@ -1342,11 +1512,12 @@
         this.shieldMesh.rotation.y += dt * 3.2;
       }
 
-      // Contact Shadow aligned with terrain or elevated platform deck
+      // Contact Shadow aligned with terrain slope & curve yaw
       const shadowBaseY = groundY + floorY + 0.06;
       const heightAboveFloor = Math.max(0, this.jumpY - floorY);
       this.shadowMesh.position.set(finalX, shadowBaseY, this.z);
-      this.shadowMesh.rotation.set(-Math.PI / 2 - slopePitch, 0, 0);
+      this.shadowMesh.rotation.order = 'YXZ';
+      this.shadowMesh.rotation.set(-Math.PI / 2 - slopePitch, curveYaw, 0);
       const shadowScale = Math.max(0.2, 1.0 - heightAboveFloor * 0.22);
       this.shadowMesh.scale.set(shadowScale, shadowScale, shadowScale);
     }
@@ -1381,13 +1552,17 @@
       this.player = null;
       this.racers = [];
       this.rocks = [];
+      this.barriers = [];
       this.crates = [];
       this.speedPads = [];
       this.bouncePads = [];
+      this.camLookX = 0;
+      this.camYaw = 0;
       this.projectiles = [];
       this.traps = [];
       this.punchBoxes = [];
       this.lightningEffects = [];
+      this.ricochetRings = [];
       this.lightningFlashTimer = 0;
       this.clouds = [];
       this.grassMaterials = [];
@@ -4455,7 +4630,11 @@
         if (roll < pCrate) {
           this.createCrate(worldX, cy + 1.6, z, laneX, 0);
         } else if (roll < pRock) {
-          this.createRock(worldX, cy + 0.7, z, laneX);
+          if (rng() < 0.42) {
+            this.createBarrier(worldX, cy, z, laneX);
+          } else {
+            this.createRock(worldX, cy + 0.7, z, laneX);
+          }
         } else if (roll < pBounce) {
           this.createBouncePad(worldX, cy + 0.1, z, laneX);
         } else {
@@ -4571,72 +4750,78 @@
     }
 
     createSawbladeMesh() {
+      // Gleaming 3D Ricochet Buster-Rocket / Spiked Plasma Cannonball (high-visibility crimson/gold/cyan!)
       const group = new THREE.Group();
 
-      const shape = new THREE.Shape();
-      const teeth = 10;
-      const rOuter = 1.35;
-      const rInner = 0.95;
-
-      for (let i = 0; i < teeth; i++) {
-        const a0 = (i / teeth) * Math.PI * 2;
-        const a1 = a0 + (Math.PI * 2 / teeth) * 0.35;
-        const a2 = a0 + (Math.PI * 2 / teeth) * 0.85;
-
-        const x0 = Math.cos(a0) * rInner;
-        const y0 = Math.sin(a0) * rInner;
-        if (i === 0) shape.moveTo(x0, y0);
-        else shape.lineTo(x0, y0);
-
-        const x1 = Math.cos(a1) * rOuter;
-        const y1 = Math.sin(a1) * rOuter;
-        shape.lineTo(x1, y1);
-
-        const x2 = Math.cos(a2) * rInner;
-        const y2 = Math.sin(a2) * rInner;
-        shape.lineTo(x2, y2);
-      }
-      shape.closePath();
-
-      const hole = new THREE.Path();
-      hole.absarc(0, 0, 0.35, 0, Math.PI * 2, true);
-      shape.holes.push(hole);
-
-      const bladeGeo = new THREE.ExtrudeGeometry(shape, {
-        depth: 0.12,
-        bevelEnabled: true,
-        bevelSegments: 2,
-        steps: 1,
-        bevelSize: 0.03,
-        bevelThickness: 0.03
+      const shellMat = new THREE.MeshStandardMaterial({
+        color: 0xe11d48,
+        emissive: 0x9f1239,
+        emissiveIntensity: 0.42,
+        metalness: 0.25,
+        roughness: 0.22
       });
-      bladeGeo.center();
-
-      const bladeMat = new THREE.MeshStandardMaterial({
-        color: 0xd6e0e6,
-        metalness: 0.92,
+      const chromeMat = new THREE.MeshStandardMaterial({
+        color: 0xf8fafc,
+        emissive: 0x334155,
+        emissiveIntensity: 0.18,
+        metalness: 0.35,
         roughness: 0.18
       });
-      const bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
-      bladeMesh.castShadow = true;
-      group.add(bladeMesh);
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: 0xfacc15,
+        emissive: 0xd97706,
+        emissiveIntensity: 0.45,
+        metalness: 0.35,
+        roughness: 0.25
+      });
+      const glowRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const flameOuterMat = new THREE.MeshBasicMaterial({ color: 0xff6b00, transparent: true, opacity: 0.9 });
+      const flameCoreMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
 
-      // Red hazard/blood ring
-      const ringGeo = new THREE.RingGeometry(0.40, 0.72, 16);
-      const ringMat = new THREE.MeshBasicMaterial({ color: 0xb71c1c, side: THREE.DoubleSide });
-      const ringF = new THREE.Mesh(ringGeo, ringMat);
-      ringF.position.z = 0.07;
-      group.add(ringF);
-      const ringB = new THREE.Mesh(ringGeo, ringMat);
-      ringB.position.z = -0.07;
-      group.add(ringB);
+      // Aerodynamic Rocket-Orb Core pointing toward +Z
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.56, 1.35, 14), shellMat);
+      body.rotation.x = Math.PI / 2;
+      body.castShadow = true;
+      group.add(body);
 
-      // Center arbor bolt
-      const boltGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.20, 12);
-      boltGeo.rotateX(Math.PI / 2);
-      const boltMat = new THREE.MeshStandardMaterial({ color: 0x455a64, metalness: 0.9, roughness: 0.2 });
-      const bolt = new THREE.Mesh(boltGeo, boltMat);
-      group.add(bolt);
+      // Gleaming Chrome Nose Cone (+Z)
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.46, 0.85, 14), chromeMat);
+      nose.rotation.x = Math.PI / 2;
+      nose.position.z = 1.08;
+      nose.castShadow = true;
+      group.add(nose);
+
+      // Glowing Cyan Energy Halo Ring around waist
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.08, 8, 20), glowRingMat);
+      halo.position.z = 0.05;
+      group.add(halo);
+
+      // 4 Golden Stabilizer Fins with Red Tips
+      for (let f = 0; f < 4; f++) {
+        const ang = (f / 4) * Math.PI * 2 + Math.PI / 4;
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.62, 0.68), goldMat);
+        fin.position.set(Math.cos(ang) * 0.54, Math.sin(ang) * 0.54, -0.35);
+        fin.rotation.z = ang + Math.PI / 2;
+        group.add(fin);
+      }
+
+      // Rear Thruster Nozzle + Bright Rocket Exhaust Flame (-Z)
+      const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.44, 0.28, 12), chromeMat);
+      nozzle.rotation.x = Math.PI / 2;
+      nozzle.position.z = -0.76;
+      group.add(nozzle);
+
+      const flameGroup = new THREE.Group();
+      flameGroup.position.z = -1.25;
+      const fOut = new THREE.Mesh(new THREE.ConeGeometry(0.36, 1.15, 10), flameOuterMat);
+      fOut.rotation.x = -Math.PI / 2;
+      const fIn = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.72, 8), flameCoreMat);
+      fIn.rotation.x = -Math.PI / 2;
+      fIn.position.z = 0.16;
+      flameGroup.add(fOut, fIn);
+      group.add(flameGroup);
+      group.flame = flameGroup;
+      group.scale.set(1.28, 1.28, 1.28);
 
       return group;
     }
@@ -4718,62 +4903,73 @@
     createSpeedPadMesh() {
       const group = new THREE.Group();
 
-      // Dark metallic base plate with cyan glowing side rails (from Zelda-Copy1/track_boost_pad)
-      const baseMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.35, metalness: 0.7 });
-      const glowRailMat = new THREE.MeshStandardMaterial({
-        color: 0x00f0ff,
-        emissive: 0x00d4ff,
-        emissiveIntensity: 2.0,
-        roughness: 0.2
+      // Vibrant Mario-Kart / Fun-Run AAA Neon Turbo Strip (luminous cyan/gold rails, never dark black!)
+      const frameMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        emissive: 0x0369a1,
+        emissiveIntensity: 0.65,
+        roughness: 0.25,
+        metalness: 0.35
       });
+      const glowRailMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
 
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.08, 4.4), baseMat);
-      plate.position.y = 0.04;
-      plate.receiveShadow = true;
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.10, 5.4), frameMat);
+      plate.position.y = 0.05;
       group.add(plate);
 
       for (const side of [-1, 1]) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 4.3), glowRailMat);
-        rail.position.set(side * 1.38, 0.06, 0);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.20, 5.38), glowRailMat);
+        rail.position.set(side * 1.56, 0.10, 0);
         group.add(rail);
       }
 
-      // Animated scrolling chevrons pointing STRICTLY FORWARD (+Z)
-      const geo = new THREE.PlaneGeometry(2.5, 4.1);
+      // Luminous animated scrolling gold/emerald/white chevrons pointing STRICTLY FORWARD (+Z)
+      const geo = new THREE.PlaneGeometry(2.86, 5.20);
       geo.rotateX(-Math.PI / 2);
 
       const canvas = document.createElement('canvas');
       canvas.width = 256;
-      canvas.height = 256;
+      canvas.height = 512;
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, 256, 256);
 
-      // With rotateX(-PI/2), canvas TOP (y=0 -> v=1) is at -Z (camera), canvas BOTTOM (y=256 -> v=0) is at +Z (forward)!
-      // Therefore arrows pointing toward yCenter + 32 point toward +Z (FORWARD)!
-      for (let row = 0; row < 3; row++) {
-        const yCenter = 45 + row * 80;
-        ctx.shadowColor = '#00e5ff';
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = '#ffea00';
+      // Deep vibrant electric sapphire-to-cyan runway base so bright chevrons pop with huge contrast!
+      const bgGrad = ctx.createLinearGradient(0, 0, 256, 0);
+      bgGrad.addColorStop(0.0, '#0c4a6e');
+      bgGrad.addColorStop(0.5, '#0369a1');
+      bgGrad.addColorStop(1.0, '#0c4a6e');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, 256, 512);
+
+      // Subtle glowing center energy track line
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.30)';
+      ctx.fillRect(112, 0, 32, 512);
+
+      // 4 bold neon chevrons pointing toward +Y in canvas -> +Z (FORWARD along track!)
+      const colors = ['#fde047', '#4ade80', '#38bdf8', '#facc15'];
+      for (let row = 0; row < 4; row++) {
+        const yCenter = 64 + row * 128;
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = colors[row % colors.length];
         ctx.beginPath();
-        ctx.moveTo(128, yCenter + 32);
-        ctx.lineTo(230, yCenter - 22);
-        ctx.lineTo(195, yCenter - 34);
-        ctx.lineTo(128, yCenter + 2);
-        ctx.lineTo(61, yCenter - 34);
-        ctx.lineTo(26, yCenter - 22);
+        ctx.moveTo(128, yCenter + 50);
+        ctx.lineTo(238, yCenter - 26);
+        ctx.lineTo(202, yCenter - 50);
+        ctx.lineTo(128, yCenter + 6);
+        ctx.lineTo(54, yCenter - 50);
+        ctx.lineTo(18, yCenter - 26);
         ctx.closePath();
         ctx.fill();
 
         ctx.shadowBlur = 0;
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.moveTo(128, yCenter + 24);
-        ctx.lineTo(210, yCenter - 20);
-        ctx.lineTo(195, yCenter - 28);
-        ctx.lineTo(128, yCenter + 2);
-        ctx.lineTo(61, yCenter - 28);
-        ctx.lineTo(46, yCenter - 20);
+        ctx.moveTo(128, yCenter + 34);
+        ctx.lineTo(206, yCenter - 20);
+        ctx.lineTo(190, yCenter - 32);
+        ctx.lineTo(128, yCenter + 12);
+        ctx.lineTo(66, yCenter - 32);
+        ctx.lineTo(50, yCenter - 20);
         ctx.closePath();
         ctx.fill();
       }
@@ -4782,13 +4978,10 @@
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.RepeatWrapping;
 
-      const chevMat = new THREE.MeshBasicMaterial({
-        map: tex,
-        transparent: true,
-        opacity: 0.96
-      });
+      const chevMat = new THREE.MeshBasicMaterial({ map: tex });
       const chevMesh = new THREE.Mesh(geo, chevMat);
-      chevMesh.position.y = 0.095;
+      // MUST sit strictly above plate top (plate y=0.05 + h/2=0.05 => 0.100) to avoid being occluded!
+      chevMesh.position.y = 0.125;
       group.add(chevMesh);
       group.tex = tex;
       return group;
@@ -4888,6 +5081,54 @@
       this.rocks.push({ mesh: group, x, z, laneX, active: true });
     }
 
+    createBarrier(x, y, z, laneX) {
+      // Biome-styled Jumpable Track Bumper / Ricochet Barricade aligned to curve & slope!
+      const group = new THREE.Group();
+      const lvl = this.currentLevel;
+      const postCol = lvl === 2 ? 0x0ea5e9 : lvl === 3 ? 0xf43f5e : lvl === 5 ? 0x292524 : lvl === 8 ? 0x38bdf8 : 0x5c3311;
+      const stripeA = lvl === 2 ? '#38bdf8' : lvl === 3 ? '#f43f5e' : lvl === 5 ? '#f97316' : lvl === 8 ? '#a855f7' : '#facc15';
+      const stripeB = lvl === 2 ? '#ffffff' : lvl === 3 ? '#ffffff' : lvl === 5 ? '#1c1917' : lvl === 8 ? '#0f172a' : '#1f2937';
+
+      const bCan = document.createElement('canvas');
+      bCan.width = 128; bCan.height = 64;
+      const bCtx = bCan.getContext('2d');
+      bCtx.fillStyle = stripeB; bCtx.fillRect(0, 0, 128, 64);
+      bCtx.fillStyle = stripeA;
+      for (let i = -64; i < 192; i += 32) {
+        bCtx.beginPath(); bCtx.moveTo(i, 0); bCtx.lineTo(i + 16, 0); bCtx.lineTo(i + 36, 64); bCtx.lineTo(i + 20, 64); bCtx.closePath(); bCtx.fill();
+      }
+      const bTex = new THREE.CanvasTexture(bCan);
+      const beamMat = new THREE.MeshStandardMaterial({ map: bTex, roughness: 0.45, metalness: 0.15 });
+      const postMat = new THREE.MeshStandardMaterial({ color: postCol, roughness: 0.65, metalness: 0.2 });
+
+      const capMat = new THREE.MeshBasicMaterial({ color: lvl === 8 ? 0x38bdf8 : 0xfef08a });
+      for (const side of [-1, 1]) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 1.35, 8), postMat);
+        post.position.set(side * 1.45, 0.68, 0);
+        post.castShadow = true;
+        group.add(post);
+        // Glowing ricochet bumper orb cap on each post
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), capMat);
+        orb.position.set(side * 1.45, 1.42, 0);
+        group.add(orb);
+      }
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(3.45, 0.68, 0.42), beamMat);
+      beam.position.set(0, 0.86, 0);
+      beam.castShadow = true;
+      beam.receiveShadow = true;
+      group.add(beam);
+
+      const curveDx = this.getCurveX(z + 0.8) - this.getCurveX(z - 0.8);
+      const slopeDy = this.getHillY(z + 0.8) - this.getHillY(z - 0.8);
+      const yaw = Math.atan2(curveDx, 1.6);
+      const pitch = Math.atan2(slopeDy, 1.6);
+      group.position.set(x, y, z);
+      group.rotation.order = 'YXZ';
+      group.rotation.set(-pitch, yaw, 0);
+      this.scene.add(group);
+      this.barriers.push({ mesh: group, x, z, laneX, active: true });
+    }
+
     createCrate(x, y, z, laneX, yOffset = 0) {
       const mesh = this.createMysteryCrateMesh();
       mesh.position.set(x, y, z);
@@ -4897,14 +5138,26 @@
 
     createSpeedPad(x, y, z, laneX, yOffset = 0) {
       const mesh = this.createSpeedPadMesh();
-      mesh.position.set(x, y, z);
+      const curveDx = this.getCurveX(z + 0.8) - this.getCurveX(z - 0.8);
+      const slopeDy = this.getHillY(z + 0.8) - this.getHillY(z - 0.8);
+      const yaw = Math.atan2(curveDx, 1.6);
+      const pitch = Math.atan2(slopeDy, 1.6);
+      mesh.position.set(x, y + 0.08, z);
+      mesh.rotation.order = 'YXZ';
+      mesh.rotation.set(-pitch, yaw, 0);
       this.scene.add(mesh);
       this.speedPads.push({ mesh, x, z, laneX, yOffset, active: true });
     }
 
     createBouncePad(x, y, z, laneX) {
       const mesh = this.createBouncePadMesh();
-      mesh.position.set(x, y, z);
+      const curveDx = this.getCurveX(z + 0.8) - this.getCurveX(z - 0.8);
+      const slopeDy = this.getHillY(z + 0.8) - this.getHillY(z - 0.8);
+      const yaw = Math.atan2(curveDx, 1.6);
+      const pitch = Math.atan2(slopeDy, 1.6);
+      mesh.position.set(x, y + 0.06, z);
+      mesh.rotation.order = 'YXZ';
+      mesh.rotation.set(-pitch, yaw, 0);
       this.scene.add(mesh);
       this.bouncePads.push({ mesh, x, z, laneX, active: true });
     }
@@ -4912,16 +5165,24 @@
     spawnSawblade(x, z, owner, direction = 'forward') {
       const mesh = this.createSawbladeMesh();
       const isBack = (direction === 'backward');
-      const spawnZ = z + (isBack ? -2.4 : 2.2);
-      const cy = this.getHillY(spawnZ) + 0.8;
-      mesh.position.set(this.getCurveX(spawnZ) + x, cy, spawnZ);
+      const spawnZ = z + (isBack ? -2.4 : 2.3);
+      const worldX = this.getCurveX(spawnZ) + x;
+      const cy = this.getHillY(spawnZ) + 0.95;
+      mesh.position.set(worldX, cy, spawnZ);
       this.scene.add(mesh);
+      // Muzzle-flash spark burst on launch!
+      this.particles.spawnSparks(worldX, cy, spawnZ, 12);
       this.projectiles.push({
         mesh,
         x,
         z: spawnZ,
-        speed: isBack ? -42.0 : 46.0,
+        speed: isBack ? -44.0 : 48.0,
         owner,
+        type: 'rocket',
+        bouncesLeft: 3,
+        canHitOwner: false,
+        bounceCooldown: 0,
+        roll: 0,
         active: true
       });
     }
@@ -5138,8 +5399,24 @@
       this.cameraShake = 0.95;
     }
 
+    spawnRicochetRing(x, y, z) {
+      const geo = new THREE.TorusGeometry(0.95, 0.16, 8, 22);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.96,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, y, z);
+      this.scene.add(mesh);
+      this.ricochetRings.push({ mesh, mat, age: 0, maxAge: 0.38 });
+    }
+
     clearWorldElements() {
       for (let r of this.rocks) this.scene.remove(r.mesh);
+      for (let br of this.barriers) this.scene.remove(br.mesh);
       for (let c of this.crates) this.scene.remove(c.mesh);
       for (let s of this.speedPads) this.scene.remove(s.mesh);
       for (let b of this.bouncePads) this.scene.remove(b.mesh);
@@ -5147,7 +5424,9 @@
       for (let t of this.traps) this.scene.remove(t.mesh);
       for (let pb of this.punchBoxes) this.scene.remove(pb.mesh);
       for (let lf of this.lightningEffects) this.scene.remove(lf.group);
+      for (let rr of this.ricochetRings) this.scene.remove(rr.mesh);
       this.rocks = [];
+      this.barriers = [];
       this.crates = [];
       this.speedPads = [];
       this.bouncePads = [];
@@ -5155,6 +5434,7 @@
       this.traps = [];
       this.punchBoxes = [];
       this.lightningEffects = [];
+      this.ricochetRings = [];
       this.lightningFlashTimer = 0;
     }
 
@@ -5178,7 +5458,23 @@
       this.weaponBtn.style.display = 'flex';
       const iconImg = document.getElementById('icon3d-powerup');
       if (iconImg) {
-        if (itemType === 'blade') iconImg.src = 'assets/images/game/powerup/blade/icon.png';
+        if (itemType === 'blade') {
+          iconImg.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">' +
+            '<defs><linearGradient id="rb" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff4d6d"/><stop offset="100%" stop-color="#be123c"/></linearGradient></defs>' +
+            '<circle cx="48" cy="48" r="42" fill="#0f172a" stroke="#38bdf8" stroke-width="5"/>' +
+            '<path d="M18 70 Q34 52 24 38" fill="none" stroke="#38bdf8" stroke-width="4" stroke-dasharray="6 4" stroke-linecap="round"/>' +
+            '<path d="M22 76 L34 62 L38 72 Z" fill="#fde047"/>' +
+            '<g transform="rotate(-40 50 48)">' +
+            '<path d="M48 14 C57 26 60 40 58 58 L38 58 C36 40 39 26 48 14 Z" fill="url(#rb)" stroke="#fff" stroke-width="2.5"/>' +
+            '<path d="M48 14 C53 21 55 27 56 32 L40 32 C41 27 43 21 48 14 Z" fill="#f8fafc"/>' +
+            '<ellipse cx="48" cy="44" rx="13" ry="4" fill="none" stroke="#38bdf8" stroke-width="4"/>' +
+            '<polygon points="38,48 26,64 39,60" fill="#facc15" stroke="#92400e" stroke-width="1.5"/>' +
+            '<polygon points="58,48 70,64 57,60" fill="#facc15" stroke="#92400e" stroke-width="1.5"/>' +
+            '<polygon points="41,60 48,79 55,60" fill="#ff6b00"/><polygon points="44,60 48,73 52,60" fill="#fef08a"/>' +
+            '</g></svg>'
+          );
+        }
         else if (itemType === 'trap') iconImg.src = 'assets/images/game/powerup/trap/icon.png';
         else if (itemType === 'punchBox') iconImg.src = 'assets/images/game/powerup/bounceTrap/icon.png';
         else if (itemType === 'lightning') iconImg.src = 'assets/images/game/powerup/lightning/icon.png';
@@ -5392,14 +5688,20 @@
       }
 
       const p = this.player;
-      const camX = this.getCurveX(p.z) + p.x * 0.75;
-      const camZ = p.z - 11.5;
+      const initYaw = Math.atan2(this.getCurveX(p.z + 10.0) - this.getCurveX(p.z - 4.0), 14.0);
+      this.camYaw = initYaw;
+      const camDist = 11.2;
+      const pCurveX = this.getCurveX(p.z);
+      const camX = pCurveX + p.x * 0.72 - Math.sin(initYaw) * camDist;
+      const camZ = p.z - Math.cos(initYaw) * camDist;
       const camY = Math.max(this.getHillY(p.z) + 4.9, this.getHillY(camZ) + 3.2);
+      this.camLookX = pCurveX + p.x * 0.32 + Math.sin(initYaw) * 18.0;
+      const initLookZ = p.z + Math.cos(initYaw) * 18.0;
       this.camera.position.set(camX, camY, camZ);
-      this.camera.lookAt(this.getCurveX(p.z) + p.x * 0.3, this.getHillY(p.z) + 1.8, p.z + 16.0);
+      this.camera.lookAt(this.camLookX, this.getHillY(p.z) + 1.85, initLookZ);
       if (this.skyDome) this.skyDome.position.set(camX, camY, camZ);
       this.sunLight.position.set(camX + 26, camY + 42, camZ + 18);
-      this.sunLight.target.position.set(camX, camY, camZ + 20);
+      this.sunLight.target.position.set(pCurveX, this.getHillY(p.z), p.z + 18);
       this.sunLight.target.updateMatrixWorld();
       this.renderer.render(this.scene, this.camera);
     }
@@ -5467,18 +5769,21 @@
       for (let r of this.racers) {
         if (r.dead) continue;
 
-        // 1. Rock Boulders
-        for (let rock of this.rocks) {
-          if (!rock.active) continue;
-          const dz = Math.abs(r.z - rock.z);
-          const dx = Math.abs(r.x - rock.laneX);
-          if (dz < 1.3 && dx < 1.6) {
-            if (r.jumpY < 1.3) {
-              r.stumbleTimer = 0.75;
-              r.speed *= 0.45;
-              sfx.play('rock_hit');
-              this.particles.spawnDust(r.x, this.getHillY(r.z) + 0.3, r.z, 8);
-              if (r.isPlayer) this.cameraShake = 0.55;
+        // 1. Rock Boulders & Jumpable Track Barricades
+        const trackObstacles = [this.rocks, this.barriers];
+        for (const list of trackObstacles) {
+          for (let obs of list) {
+            if (!obs.active) continue;
+            const dz = Math.abs(r.z - obs.z);
+            const dx = Math.abs(r.x - obs.laneX);
+            if (dz < 1.3 && dx < 1.6) {
+              if (r.jumpY < 1.35) {
+                r.stumbleTimer = 0.75;
+                r.speed *= 0.45;
+                sfx.play('rock_hit');
+                this.particles.spawnDust(this.getCurveX(r.z) + r.x, this.getHillY(r.z) + 0.3, r.z, 8);
+                if (r.isPlayer) this.cameraShake = 0.55;
+              }
             }
           }
         }
@@ -5525,7 +5830,7 @@
             r.isFlipping = true;
             r.flipAngle = 0;
             sfx.play('bounce');
-            this.particles.spawnSparks(r.x, this.getHillY(r.z) + 0.5, r.z, 22);
+            this.particles.spawnSparks(this.getCurveX(r.z) + r.x, this.getHillY(r.z) + 0.5, r.z, 22);
           }
         }
 
@@ -5570,17 +5875,18 @@
         }
       }
 
-      // 6. Projectiles vs Racers
+      // 6. Projectiles vs Racers (Ricocheted Rockets can even hit the shooter!)
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const p = this.projectiles[i];
         if (!p.active) continue;
         for (let r of this.racers) {
-          if (r !== p.owner && !r.dead) {
+          if ((r !== p.owner || p.canHitOwner) && !r.dead) {
             const dz = Math.abs(r.z - p.z);
             const dx = Math.abs(r.x - p.x);
-            if (dz < 1.6 && dx < 1.5) {
+            if (dz < 1.65 && dx < 1.55 && r.jumpY < 1.8) {
               p.active = false;
               this.scene.remove(p.mesh);
+              this.particles.spawnSparks(this.getCurveX(p.z) + p.x, this.getHillY(p.z) + 1.0, p.z, 24);
               if (p.type === 'thrownTrap') {
                 r.takeDamage('trap');
               } else if (p.type === 'thrownPunchBox') {
@@ -5769,16 +6075,64 @@
             p.mesh.position.set(this.getCurveX(p.z) + p.x, p.y, p.z);
           }
         } else {
+          // Ricochet Buster-Rocket flying along track curves & bouncing off Rocks and Barriers!
+          if (p.bounceCooldown > 0) p.bounceCooldown -= dt;
           p.z += p.speed * dt;
-          p.mesh.rotation.z += dt * (p.speed >= 0 ? 38 : -38);
-          const cy = this.getHillY(p.z) + 0.8;
-          p.mesh.position.set(this.getCurveX(p.z) + p.x, cy, p.z);
-          if (Math.random() < 0.35) {
-            this.particles.spawnSparks(this.getCurveX(p.z) + p.x, cy - 0.4, p.z, 2);
+          p.roll = (p.roll || 0) + dt * 14.0;
+          const worldX = this.getCurveX(p.z) + p.x;
+          const cy = this.getHillY(p.z) + 0.95;
+          const curveDx = this.getCurveX(p.z + 0.8) - this.getCurveX(p.z - 0.8);
+          const slopeDy = this.getHillY(p.z + 0.8) - this.getHillY(p.z - 0.8);
+          const yaw = Math.atan2(curveDx, 1.6) + (p.speed < 0 ? Math.PI : 0);
+          const pitch = Math.atan2(slopeDy, 1.6) * (p.speed < 0 ? -1 : 1);
+
+          p.mesh.position.set(worldX, cy, p.z);
+          p.mesh.rotation.order = 'YXZ';
+          p.mesh.rotation.set(-pitch, yaw, p.roll);
+
+          if (p.mesh.flame) {
+            const flScale = 0.85 + Math.sin(this.elapsedTime * 35.0 + i) * 0.28;
+            p.mesh.flame.scale.set(flScale, flScale, flScale * 1.2);
+          }
+
+          if (Math.random() < 0.55) {
+            this.particles.spawnSparks(worldX, cy, p.z - Math.sign(p.speed) * 1.0, 2);
+          }
+
+          // TRUE RICOCHET CHECK against Rocks & Track Barricades!
+          if (p.bounceCooldown <= 0) {
+            let bounced = false;
+            for (const obsList of [this.rocks, this.barriers]) {
+              for (const obs of obsList) {
+                if (!obs.active) continue;
+                if (Math.abs(p.z - obs.z) < 1.85 && Math.abs(p.x - obs.laneX) < 1.8) {
+                  bounced = true;
+                  break;
+                }
+              }
+              if (bounced) break;
+            }
+            if (bounced) {
+              this.particles.spawnSparks(worldX, cy, p.z, 28);
+              this.spawnRicochetRing(worldX, cy, p.z);
+              sfx.play('blade_hit');
+              if (p.bouncesLeft > 0) {
+                p.speed = -p.speed;
+                p.bouncesLeft--;
+                p.canHitOwner = true;
+                p.bounceCooldown = 0.22;
+                p.z += Math.sign(p.speed) * 1.2;
+              } else {
+                p.active = false;
+                this.scene.remove(p.mesh);
+                this.projectiles.splice(i, 1);
+                continue;
+              }
+            }
           }
         }
 
-        if (p.z > this.finishLineZ + 50 || p.z < -20 || Math.abs(p.z - this.player.z) > 150) {
+        if (!p.active || p.z > this.finishLineZ + 50 || p.z < -20 || Math.abs(p.z - this.player.z) > 150) {
           this.scene.remove(p.mesh);
           this.projectiles.splice(i, 1);
         }
@@ -5814,15 +6168,34 @@
         lf.ringMat.opacity = fade * 0.95;
       }
 
+      // Animate expanding 3D Ricochet Impact Shockwave Rings
+      for (let i = this.ricochetRings.length - 1; i >= 0; i--) {
+        const rr = this.ricochetRings[i];
+        rr.age += dt;
+        if (rr.age >= rr.maxAge) {
+          this.scene.remove(rr.mesh);
+          this.ricochetRings.splice(i, 1);
+          continue;
+        }
+        const prog = rr.age / rr.maxAge;
+        const sc = 1.0 + prog * 3.2;
+        rr.mesh.scale.set(sc, sc, sc);
+        rr.mat.opacity = (1.0 - prog) * 0.95;
+      }
+
       this.checkCollisions();
 
-      // Camera Follower (Silky smooth 3rd person tracking directly behind player with downhill anti-clipping)
+      // True Curve-Tangent 3rd-Person Camera (Turns cleanly into every curve so racers NEVER look crooked!)
       const p = this.player;
       const curveX = this.getCurveX(p.z);
       const groundY = this.getHillY(p.z);
 
-      const targetCamX = curveX + p.x * 0.75;
-      const targetCamZ = p.z - 11.5;
+      const targetCamYaw = Math.atan2(this.getCurveX(p.z + 10.0) - this.getCurveX(p.z - 4.0), 14.0);
+      this.camYaw += (targetCamYaw - this.camYaw) * Math.min(1, 7.5 * dt);
+
+      const camDist = 11.2;
+      const targetCamX = curveX + p.x * 0.72 - Math.sin(this.camYaw) * camDist;
+      const targetCamZ = p.z - Math.cos(this.camYaw) * camDist;
 
       const groundAtCam = this.getHillY(targetCamZ);
       let highestObstacleY = groundAtCam;
@@ -5838,9 +6211,9 @@
 
       const targetCamY = desiredCamY;
 
-      this.camera.position.x += (targetCamX - this.camera.position.x) * 12.0 * dt;
-      this.camera.position.y += (targetCamY - this.camera.position.y) * 10.0 * dt;
-      this.camera.position.z = targetCamZ;
+      this.camera.position.x += (targetCamX - this.camera.position.x) * Math.min(1, 11.5 * dt);
+      this.camera.position.y += (targetCamY - this.camera.position.y) * Math.min(1, 10.0 * dt);
+      this.camera.position.z += (targetCamZ - this.camera.position.z) * Math.min(1, 14.0 * dt);
 
       const currentGroundBelowCam = this.getHillY(this.camera.position.z);
       if (this.camera.position.y < currentGroundBelowCam + 2.6) {
@@ -5853,23 +6226,25 @@
         this.cameraShake = Math.max(0, this.cameraShake - 2.5 * dt);
       }
 
-      const lookAheadZ = p.z + 16.0;
-      const lookX = this.getCurveX(p.z) + p.x * 0.3;
-      const lookY = groundY + p.jumpY + 1.8;
-      this.camera.lookAt(lookX, lookY, lookAheadZ);
+      const lookDist = 18.0;
+      const desiredLookX = curveX + p.x * 0.32 + Math.sin(this.camYaw) * lookDist;
+      const lookAheadZ = p.z + Math.cos(this.camYaw) * lookDist;
+      this.camLookX += (desiredLookX - this.camLookX) * Math.min(1, 12.0 * dt);
+      const lookY = groundY + p.jumpY + 1.85;
+      this.camera.lookAt(this.camLookX, lookY, lookAheadZ);
 
       // SkyDome tracks camera position cleanly
       if (this.skyDome) {
-        this.skyDome.position.set(targetCamX, targetCamY, targetCamZ);
+        this.skyDome.position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
       }
 
       // Sun Light & BotW Rim Light track player with updated target matrix!
-      this.sunLight.position.set(targetCamX + 26, groundY + 42, p.z + 18);
+      this.sunLight.position.set(this.camera.position.x + 26, groundY + 42, p.z + 18);
       this.sunLight.target.position.set(curveX, groundY, p.z + 18);
       this.sunLight.target.updateMatrixWorld();
 
       if (this.rimLight) {
-        this.rimLight.position.set(targetCamX - 22, groundY + 28, p.z - 14);
+        this.rimLight.position.set(this.camera.position.x - 22, groundY + 28, p.z - 14);
         this.rimLight.target.position.set(curveX, groundY, p.z + 18);
         this.rimLight.target.updateMatrixWorld();
       }
